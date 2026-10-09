@@ -14,6 +14,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 /**
@@ -38,6 +39,15 @@ public class WorkspacePreparer implements AutoCloseable {
 
     /** Root of the temp workspace created by {@link #prepare}; {@code null} until prepared. */
     private Path workspaceroot;
+
+    /**
+     * Process-wide, monotonic counter used to generate a unique id component
+     * when an attempt carries no explicit id. Being static and atomic, it
+     * guarantees that two concurrent attempts with a {@code null}/blank id can
+     * never produce the same workspace prefix and therefore cannot overwrite
+     * each other.
+     */
+    private static final AtomicLong AUTO_ID = new AtomicLong();
 
     /**
      * Creates a fresh temporary workspace and populates it with the attempt's
@@ -195,7 +205,16 @@ public class WorkspacePreparer implements AutoCloseable {
         return tester.getSourcePath();
     }
 
-    /** @return a filesystem-safe attempt identifier used in the temp prefix. */
+    /**
+     * Resolves a filesystem-safe id component for the temp-folder prefix.
+     *
+     * <p>If the attempt carries a usable id, it is sanitized and used. Otherwise
+     * a process-wide, monotonically increasing {@code auto-<n>} id is generated
+     * from {@link #AUTO_ID}, so concurrent attempts with no id each receive a
+     * distinct prefix and cannot overwrite one another.</p>
+     *
+     * @return a filesystem-safe attempt identifier used in the temp prefix
+     */
     private String attemptId(QuestionAttempt attempt) {
         // TODO: modify this when attempt id is ready / make id here
         try {
@@ -204,10 +223,10 @@ public class WorkspacePreparer implements AutoCloseable {
                 return id.replaceAll("[^A-Za-z0-9._-]", "_");
             }
         } catch (RuntimeException ignored) {
-            // Fall through to a neutral prefix component.
+            // Fall through to a generated id.
         }
-        // TODO: same foldername allowed for multi-thread or need to self define another id?
-        return "attempt";
+        // auto increment for concurrent safe operation, prevent creating the same folder and overwrite each other
+        return "autoID-" + AUTO_ID.incrementAndGet();
     }
 
     // ------------------------------------------------------------------
