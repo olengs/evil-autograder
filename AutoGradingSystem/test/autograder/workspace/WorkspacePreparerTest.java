@@ -6,15 +6,21 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import autograder.autograderException.WorkspacePreparationException;
-import autograder.entity.questionattempt;
-import autograder.entity.questiondefinition;
-import autograder.entity.testerdefinition;
+import autograder.autograderexception.WorkspacePreparationException;
+import autograder.model.QuestionAttempt;
+import autograder.model.QuestionDefinition;
+import autograder.model.TesterDefinition;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,12 +38,12 @@ class WorkspacePreparerTest {
         return f;
     }
 
-    private questiondefinition question(Path folder, Path testerSource) {
-        return new questiondefinition(folder, new testerdefinition(testerSource));
+    private QuestionDefinition question(Path folder, Path testerSource) {
+        return new QuestionDefinition(folder, new TesterDefinition(testerSource));
     }
 
-    private questionattempt attempt(String id, Path... answers) {
-        return new questionattempt(id, List.of(answers));
+    private QuestionAttempt attempt(String id, Path... answers) {
+        return new QuestionAttempt(id, List.of(answers));
     }
 
     // ---- prepare: basic contract ----------------------------------------
@@ -65,7 +71,7 @@ class WorkspacePreparerTest {
         writeFile(qFolder, "r.txt", "r");
         Path tester = writeFile(tmp, "Tester.java", "class Tester {}");
         Path answer = writeFile(tmp, "Answer.java", "class Answer {}");
-        questiondefinition q = question(qFolder, tester);
+        QuestionDefinition q = question(qFolder, tester);
 
         WorkspacePreparer p1 = new WorkspacePreparer();
         WorkspacePreparer p2 = new WorkspacePreparer();
@@ -244,7 +250,7 @@ class WorkspacePreparerTest {
         Files.createDirectories(target);
 
         WorkspacePreparer prep = new WorkspacePreparer();
-        prep.copyFile(new testerdefinition(tester), target);
+        prep.copyFile(new TesterDefinition(tester), target);
         assertTrue(Files.exists(target.resolve("Tester.java")));
         assertEquals("class Tester {}", Files.readString(target.resolve("Tester.java")));
     }
@@ -257,7 +263,7 @@ class WorkspacePreparerTest {
         WorkspacePreparer prep = new WorkspacePreparer();
         WorkspacePreparationException ex = assertThrows(
                 WorkspacePreparationException.class,
-                () -> prep.copyFile(new testerdefinition(tmp.resolve("Nope.java")), target));
+                () -> prep.copyFile(new TesterDefinition(tmp.resolve("Nope.java")), target));
         assertEquals("wsp-004", ex.getCode());
     }
 
@@ -278,6 +284,54 @@ class WorkspacePreparerTest {
             assertTrue(Files.exists(ws.resolve("spec.txt")), "resource present");
             assertTrue(Files.exists(ws.resolve("data").resolve("input.csv")), "nested resource present");
             assertTrue(Files.exists(ws.resolve("Tester.java")), "tester present");
+        }
+    }
+
+    // ---- concurrency: auto-id uniqueness --------------------------------
+
+    @Test
+    @DisplayName("concurrent prepare() with null attempt ids yields distinct workspaces")
+    void concurrentNullIdsAreDistinct(@TempDir Path tmp) throws Exception {
+        Path qFolder = tmp.resolve("qres");
+        writeFile(qFolder, "r.txt", "r");
+        Path tester = writeFile(tmp, "Tester.java", "class Tester {}");
+        Path answer = writeFile(tmp, "Answer.java", "class Answer {}");
+        QuestionDefinition q = question(qFolder, tester);
+
+        final int threads = 20;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        Set<Path> workspaces = ConcurrentHashMap.newKeySet();
+        List<WorkspacePreparer> preps = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        try {
+            List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+            for (int i = 0; i < threads; i++) {
+                futures.add(pool.submit(() -> {
+                    try {
+                        start.await();
+                        WorkspacePreparer prep = new WorkspacePreparer();
+                        preps.add(prep);
+                        // null id -> auto-incrementing id fallback
+                        Path ws = prep.prepare(q, attempt(null, answer));
+                        workspaces.add(ws);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }));
+            }
+            start.countDown();
+            for (java.util.concurrent.Future<?> f : futures) {
+                f.get();
+            }
+            assertEquals(threads, workspaces.size(),
+                    "every concurrent null-id prepare must produce a distinct workspace");
+        } finally {
+            for (WorkspacePreparer prep : preps) {
+                prep.close();
+            }
+            pool.shutdownNow();
+            pool.awaitTermination(5, TimeUnit.SECONDS);
         }
     }
 }

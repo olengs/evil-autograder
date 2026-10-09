@@ -1,9 +1,9 @@
 package autograder.workspace;
 
 import autograder.autograderexception.WorkspacePreparationException;
-import autograder.entity.questionattempt;
-import autograder.entity.questiondefinition;
-import autograder.entity.testerdefinition;
+import autograder.model.QuestionAttempt;
+import autograder.model.QuestionDefinition;
+import autograder.model.TesterDefinition;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -26,9 +26,9 @@ public final class Wsp001Probe {
         WorkspacePreparer prep = new WorkspacePreparer();
         try {
             prep.prepare(
-                    new questiondefinition(Path.of("qres"),
-                            new testerdefinition(Path.of("Tester.java"))),
-                    new questionattempt("a1", List.of()));
+                    new QuestionDefinition(Path.of("qres"),
+                            new TesterDefinition(Path.of("Tester.java"))),
+                    new QuestionAttempt("a1", List.of()));
             System.out.println("CODE=none");
         } catch (WorkspacePreparationException e) {
             System.out.println("CODE=" + e.getCode());
