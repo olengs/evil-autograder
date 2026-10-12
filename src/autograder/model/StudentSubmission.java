@@ -5,23 +5,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class StudentSubmission {
-
     private Student student;
     private Path originalZip;
     private Path rootDirectory;
-
     private List<QuestionAttempt> questionAttempts;
     private List<SubmissionIssue> submissionIssues;
 
-    public StudentSubmission(
-            Student student,
-            Path originalZip,
-            Path rootDirectory) {
-
+    public StudentSubmission(Student student, Path originalZip, Path rootDirectory) {
         this.student = student;
         this.originalZip = originalZip;
         this.rootDirectory = rootDirectory;
-
         this.questionAttempts = new ArrayList<>();
         this.submissionIssues = new ArrayList<>();
     }

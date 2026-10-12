@@ -5,21 +5,14 @@ import java.util.Collections;
 import java.util.List;
 
 public class QuestionDefinition {
-
     private final String id;
     private final String expectedFolder;
     private final List<String> requiredFiles;
 
-    public QuestionDefinition(
-            String id,
-            String expectedFolder,
-            List<String> requiredFiles) {
-
+    public QuestionDefinition(String id, String expectedFolder, List<String> requiredFiles) { //eg. q1 > q1 > q1a.java &&& q1b.java
         this.id = id;
         this.expectedFolder = expectedFolder;
-
-        this.requiredFiles =
-                new ArrayList<>(requiredFiles);
+        this.requiredFiles = new ArrayList<>(requiredFiles);
     }
 
     public String getId() {
@@ -31,8 +24,6 @@ public class QuestionDefinition {
     }
 
     public List<String> getRequiredFiles() {
-
-        return Collections.unmodifiableList(
-                requiredFiles);
+        return Collections.unmodifiableList(requiredFiles); //read only
     }
 }
