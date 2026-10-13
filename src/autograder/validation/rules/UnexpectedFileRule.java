@@ -18,128 +18,55 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-public class UnexpectedFileRule
-        implements SubmissionValidationRule {
-
+public class UnexpectedFileRule implements SubmissionValidationRule {
     @Override
-    public List<SubmissionIssue> validate(
-            StudentSubmission submission,
-            AssessmentDefinition assessment) {
-
-        List<SubmissionIssue> issues =
-                new ArrayList<>();
+    public List<SubmissionIssue> validate(StudentSubmission submission, AssessmentDefinition assessment) {
+        List<SubmissionIssue> issues = new ArrayList<>();
 
         /*
-         * Build:
-         *
-         * folder -> expected filenames
-         *
-         * Example:
-         *
-         * Q1 -> Q1a.java, Q1b.java
-         * Q2 -> Q2.java
-         * Q3 -> Q3.java
+         * build > folder > expected filenames
+         * eg. q1 > q1a.java &&& q1b.java
          */
-        Map<String, Set<String>>
-                expectedFilesByFolder =
-                buildExpectedFilesMap(
-                        assessment);
 
-        for (Map.Entry<String, Set<String>>
-                entry :
-                expectedFilesByFolder.entrySet()) {
+        Map<String, Set<String>> expectedFilesByFolder = buildExpectedFilesMap(assessment);
 
-            String folderName =
-                    entry.getKey();
+        for (Map.Entry<String, Set<String>> entry : expectedFilesByFolder.entrySet()) {
+            String folderName = entry.getKey();
+            Set<String> expectedFiles = entry.getValue();
+            Path folder = submission.getRootDirectory().resolve(folderName);
 
-            Set<String> expectedFiles =
-                    entry.getValue();
+            //missing folders are handled by ~questionfolderrule~
 
-            Path folder =
-                    submission
-                            .getRootDirectory()
-                            .resolve(folderName);
-
-            /*
-             * Missing folders are handled
-             * by QuestionFolderRule.
-             */
             if (!Files.isDirectory(folder)) {
                 continue;
             }
 
-            try (Stream<Path> files =
-                         Files.list(folder)) {
+            try (Stream<Path> files = Files.list(folder)) {
+                files.filter(Files::isRegularFile).forEach(file -> {
+                    String actualName = file.getFileName().toString();
 
-                files
-                    .filter(Files::isRegularFile)
-                    .forEach(file -> {
-
-                        String actualName =
-                                file.getFileName()
-                                        .toString();
-
-                        if (!expectedFiles
-                                .contains(actualName)) {
-
-                            issues.add(
-                                    new SubmissionIssue(
-                                            "UNEXPECTED_FILE",
-                                            IssueSeverity.WARNING,
-                                            "Unexpected file "
-                                                    + actualName
-                                                    + " found in "
-                                                    + folderName
-                                                    + ".",
-                                            null,
-                                            file
-                                    )
-                            );
-                        }
-                    });
-
+                    if (expectedFiles.stream().noneMatch(expected -> expected.equalsIgnoreCase(actualName))) {
+                        issues.add(new SubmissionIssue("unexpected file", IssueSeverity.WARNING,
+                                "unexpected file " + actualName + " found in " + folderName + ".", null,
+                                file));
+                    }
+                });
             } catch (IOException e) {
-
-                issues.add(
-                        new SubmissionIssue(
-                                "FOLDER_READ_ERROR",
-                                IssueSeverity.ERROR,
-                                "Unable to inspect folder "
-                                        + folderName
-                                        + ": "
-                                        + e.getMessage(),
-                                null,
-                                folder
-                        )
-                );
+                issues.add(new SubmissionIssue("folder read error", IssueSeverity.ERROR,
+                        "Unable to inspect folder " + folderName + ": " + e.getMessage(), null, folder));
             }
         }
-
         return issues;
     }
 
-    private Map<String, Set<String>>
-            buildExpectedFilesMap(
-                    AssessmentDefinition assessment) {
+    private Map<String, Set<String>> buildExpectedFilesMap(AssessmentDefinition assessment) {
+        Map<String, Set<String>> expectedFilesByFolder = new HashMap<>();
 
-        Map<String, Set<String>>
-                expectedFilesByFolder =
-                new HashMap<>();
-
-        for (QuestionDefinition question :
-                assessment.getQuestions()) {
-
-            String folder =
-                    question.getExpectedFolder();
-
-            expectedFilesByFolder
-                    .computeIfAbsent(
-                            folder,
-                            key -> new HashSet<>())
-                    .addAll(
-                            question.getRequiredFiles());
+        for (QuestionDefinition question : assessment.getQuestions()) {
+            String folder = question.getExpectedFolder();
+            expectedFilesByFolder.computeIfAbsent(folder, key -> new HashSet<>()).addAll(question.getRequiredFiles());
+            expectedFilesByFolder.get(folder).addAll(question.getAllowedResourceFiles());
         }
-
         return expectedFilesByFolder;
     }
 }

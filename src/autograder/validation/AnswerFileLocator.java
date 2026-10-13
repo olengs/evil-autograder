@@ -10,93 +10,52 @@ import java.util.stream.Stream;
 
 public class AnswerFileLocator {
 
-    public Optional<Path> findExact(
-            Path directory,
-            String requiredFileName)
-            throws IOException {
-
+    public Optional<Path> findExact(Path directory, String requiredFileName) throws IOException { //a path ||| nothing
         if (!Files.isDirectory(directory)) {
-
             return Optional.empty();
         }
 
-        try (Stream<Path> files =
-                     Files.list(directory)) {
+        try (Stream<Path> files = Files.list(directory)) {
 
-            return files
-                    .filter(Files::isRegularFile)
-                    .filter(path ->
-                            path.getFileName()
-                                .toString()
-                                .equals(
-                                    requiredFileName))
+            return files.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().equals(requiredFileName))
                     .findFirst();
         }
     }
 
-    public Optional<Path> findIgnoringCase(
-            Path directory,
-            String requiredFileName)
-            throws IOException {
-
+    public Optional<Path> findIgnoringCase(Path directory, String requiredFileName) throws IOException {
         if (!Files.isDirectory(directory)) {
-
             return Optional.empty();
         }
 
-        try (Stream<Path> files =
-                     Files.list(directory)) {
+        try (Stream<Path> files = Files.list(directory)) {
 
-            return files
-                    .filter(Files::isRegularFile)
-                    .filter(path ->
-                            path.getFileName()
-                                .toString()
-                                .equalsIgnoreCase(
-                                    requiredFileName))
-                    .findFirst();
+            List<Path> matches = files.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().equalsIgnoreCase(requiredFileName))
+                    .limit(2).toList();
+            if (matches.size() > 1) {
+                throw new IOException("ambiguous filename > " + requiredFileName + " in " + directory);
+            }
+            return matches.stream().findFirst();
         }
     }
 
-    public List<Path> locateAnswerFiles(
-            Path directory,
-            List<String> requiredFiles)
-            throws IOException {
+    public List<Path> locateAnswerFiles(Path directory, List<String> requiredFiles) throws IOException {
+        List<Path> answerFiles = new ArrayList<>();
 
-        List<Path> answerFiles =
-                new ArrayList<>();
-
-        for (String requiredFile :
-                requiredFiles) {
-
-            Optional<Path> exact =
-                    findExact(
-                            directory,
-                            requiredFile);
+        for (String requiredFile : requiredFiles) {
+            Optional<Path> exact = findExact(directory, requiredFile);
 
             if (exact.isPresent()) {
-
-                answerFiles.add(
-                        exact.get());
-
+                answerFiles.add(exact.get());
                 continue;
             }
 
-            /*
-             * If exact name is absent,
-             * keep a case-insensitive
-             * candidate so we still know
-             * what the student submitted.
-             */
-            Optional<Path> caseInsensitive =
-                    findIgnoringCase(
-                            directory,
-                            requiredFile);
+            //if exact name is absent > keep a case insensitive candidate so we still know what student submitted
 
-            caseInsensitive.ifPresent(
-                    answerFiles::add);
+            Optional<Path> caseInsensitive = findIgnoringCase(directory, requiredFile);
+            caseInsensitive.ifPresent(answerFiles::add);
         }
-
         return answerFiles;
     }
 }

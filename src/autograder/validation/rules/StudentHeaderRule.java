@@ -15,156 +15,83 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class StudentHeaderRule
-        implements ValidationRule {
-
-    private static final int HEADER_LINES_TO_CHECK = 15;
-
+public class StudentHeaderRule implements ValidationRule {
+    private static final int headerLineMax = 15; //sets how many lines to inspect student java file
     private final AnswerFileLocator fileLocator;
 
-    public StudentHeaderRule(
-            AnswerFileLocator fileLocator) {
-
+    public StudentHeaderRule(AnswerFileLocator fileLocator) {
         this.fileLocator = fileLocator;
     }
 
     @Override
-    public List<SubmissionIssue> validate(
-            StudentSubmission submission,
-            QuestionDefinition question) {
+    public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question) {
+        List<SubmissionIssue> issues = new ArrayList<>();
+        Path questionFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
 
-        List<SubmissionIssue> issues =
-                new ArrayList<>();
-
-        Path questionFolder =
-                submission
-                        .getRootDirectory()
-                        .resolve(
-                            question
-                                .getExpectedFolder());
-
-        if (!Files.isDirectory(
-                questionFolder)) {
-
+        if (!Files.isDirectory(questionFolder)) {
             return issues;
         }
 
-        Student student =
-                submission.getStudent();
+        Student student = submission.getStudent();
 
-        for (String requiredFile :
-                question.getRequiredFiles()) {
+        if (student == null) {
+            issues.add(new SubmissionIssue("unknown student", IssueSeverity.WARNING,
+                    "cannot check headers without a matched student", question.getId(), questionFolder));
+            return issues;
+        }
 
+        for (String requiredFile : question.getRequiredFiles()) {
             try {
+                Optional<Path> file = fileLocator.findExact(questionFolder, requiredFile);
 
-                Optional<Path> file =
-                        fileLocator.findExact(
-                                questionFolder,
-                                requiredFile);
-
-                /*
-                 * If filename itself is invalid,
-                 * naming validation deals with it.
-                 *
-                 * For now, inspect only correctly
-                 * named source files.
-                 */
                 if (file.isEmpty()) {
                     continue;
                 }
 
-                String header =
-                        readHeader(
-                                file.get());
+                String header = readHeader(file.get());
 
-                String lowerHeader =
-                        header.toLowerCase();
+                boolean containsName = containsField(header, "Name", student.getName());
+                boolean containsEmail = containsField(header, "Email(?:\\h+ID)?", student.getEmail());
 
-                boolean containsName =
-                        student.getName() != null
-                        && !student.getName()
-                                   .isBlank()
-                        && lowerHeader.contains(
-                                student
-                                    .getName()
-                                    .toLowerCase());
-
-                boolean containsEmail =
-                        student.getEmail() != null
-                        && !student.getEmail()
-                                   .isBlank()
-                        && lowerHeader.contains(
-                                student
-                                    .getEmail()
-                                    .toLowerCase());
-
-                if (!containsName
-                        || !containsEmail) {
-
-                    issues.add(
-                            new SubmissionIssue(
-                                    "MISSING_STUDENT_HEADER",
-                                    IssueSeverity.WARNING,
-                                    "Student name/email "
-                                    + "was not found near "
-                                    + "the top of "
-                                    + requiredFile
-                                    + ".",
-                                    question.getId(),
-                                    file.get()
-                            )
-                    );
+                if (!containsName || !containsEmail) {
+                    issues.add(new SubmissionIssue("missing student header", IssueSeverity.WARNING, "student name ||| email "
+                                    + "was not found near " + "top of " + requiredFile + ".",
+                            question.getId(), file.get()));
                 }
-
             } catch (IOException e) {
-
-                issues.add(
-                        new SubmissionIssue(
-                                "FILE_READ_ERROR",
-                                IssueSeverity.ERROR,
-                                "Unable to read "
-                                        + requiredFile
-                                        + ".",
-                                question.getId(),
-                                questionFolder
-                                    .resolve(
-                                        requiredFile)
-                        )
-                );
+                issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR,
+                        "unable to read " + requiredFile + ".", question.getId(),
+                        questionFolder.resolve(requiredFile)));
             }
         }
-
         return issues;
     }
 
-    private String readHeader(
-            Path file)
-            throws IOException {
+    private boolean containsField(String header, String label, String expected) {
+        return expected != null && !expected.isBlank()
+                && Pattern.compile("^\\h*(?://|/\\*|\\*)?\\h*" + label + "\\h*:\\h*"
+                        + Pattern.quote(expected.strip()) + "\\h*(?:\\*/)?\\h*$",
+                        Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE)
+                        .matcher(header).find();
+    }
 
-        StringBuilder header =
-                new StringBuilder();
+    private String readHeader(Path file) throws IOException {
+        StringBuilder header = new StringBuilder();
 
-        try (BufferedReader reader =
-                     Files.newBufferedReader(
-                             file)) {
-
+        try (BufferedReader reader = Files.newBufferedReader(file)) {
             String line;
             int count = 0;
 
-            while ((line =
-                    reader.readLine()) != null
-                    && count
-                    < HEADER_LINES_TO_CHECK) {
-
-                header.append(line)
-                      .append(
-                          System.lineSeparator());
-
+            while (count < headerLineMax && (line = reader.readLine()) != null) {
+                header.append(line).append(System.lineSeparator());
                 count++;
             }
         }
-
-        return header.toString();
+        Matcher comments = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)")
+                .matcher(header);
+        return comments.find() ? comments.group(1) : "";
     }
 }
