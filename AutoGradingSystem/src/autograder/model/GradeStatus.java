@@ -22,5 +22,8 @@ public enum GradeStatus {
     TIMEOUT,
 
     /** The attempt was not ready (missing files or invalid). */
-    SKIPPED
+    SKIPPED,
+
+    /** Placeholder used when proccessing status. */
+    PENDING
 }
