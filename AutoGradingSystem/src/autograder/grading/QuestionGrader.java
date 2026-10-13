@@ -1,7 +1,6 @@
 package autograder.grading;
 
 import autograder.model.QuestionDefinition;
-import autograder.model.TesterDefinition;
 import autograder.model.QuestionAttempt;
 import autograder.model.ProcessResult;
 import autograder.model.QuestionGrade;
