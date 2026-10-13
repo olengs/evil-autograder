@@ -38,4 +38,12 @@ public class StudentSubmission {
     public List<SubmissionIssue> getSubmissionIssues() {
         return submissionIssues;
     }
+
+    public void addQuestionAttempt(QuestionAttempt attempt) {
+        questionAttempts.add(attempt);
+    }
+
+    public void addIssues(List<SubmissionIssue> issues) {
+        submissionIssues.addAll(issues);
+    }
 }
