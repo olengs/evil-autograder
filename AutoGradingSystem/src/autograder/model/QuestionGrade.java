@@ -49,6 +49,7 @@ public final class QuestionGrade {
     public QuestionGrade(String questionId, GradeStatus status, double earnedMarks,
             List<TestCaseResult> testCaseResults,
             ProcessResult processResult, String message) {
+        //TODO: wtf is this
         if (status == null) {
             throw new IllegalArgumentException("status is required");
         }
