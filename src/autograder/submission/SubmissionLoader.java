@@ -24,21 +24,12 @@ public class SubmissionLoader {
 
     public List<Path> loadSubmissions(Path submissionFolder, Path workspaceFolder) throws IOException {
 
-        List<Path> studentSubmissionPaths;
-
-        //1. find all zip files
-        try (Stream<Path> paths = Files.list(submissionFolder)) { //lists files directly inside
-
-            studentSubmissionPaths = paths.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().toLowerCase(Locale.ROOT).endsWith(".zip")).toList(); //case insenstive
-        }
+        List<Path> studentSubmissionPaths = findZipFiles(submissionFolder);
 
         List<Path> extractedFolders = new ArrayList<>();
 
         //2. extract each zip
         for (Path studentSubmissionPath : studentSubmissionPaths) {
-            System.out.println("processing > " + studentSubmissionPath);
-
             String zipFileName = studentSubmissionPath.getFileName().toString(); //eg. alice.tan.2025.zip
 
             try {
@@ -63,6 +54,15 @@ public class SubmissionLoader {
         }
 
         return extractedFolders;
+    }
+
+    public List<Path> findZipFiles(Path submissionFolder) throws IOException {
+        //1. find all zip files
+        try (Stream<Path> paths = Files.list(submissionFolder)) { //lists files directly inside
+            return paths.filter(Files::isRegularFile)
+                    .filter(path -> path.toString().toLowerCase(Locale.ROOT).endsWith(".zip")) //case insenstive
+                    .sorted().toList();
+        }
     }
 
 }
