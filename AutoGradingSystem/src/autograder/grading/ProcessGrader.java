@@ -68,6 +68,9 @@ public class ProcessGrader {
 
         String[] testOutputs = questionOutput.split("Test ");
         for (String testOutput : testOutputs) {
+            if (!testOutput.contains(":")) {
+                continue;
+            }
             // TODO: check if question needs a pass attribute
             String testId = testOutput.substring(0, testOutput.indexOf(":"));
             Integer passedIndex = testOutput.indexOf("Passed");
