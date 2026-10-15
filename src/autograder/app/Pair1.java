@@ -7,8 +7,8 @@ import autograder.model.QuestionDefinition;
 import autograder.model.Student;
 import autograder.model.StudentSubmission;
 import autograder.model.SubmissionIssue;
-import autograder.submission.SubmissionLoader;
 import autograder.submission.StudentIdentifier;
+import autograder.submission.SubmissionLoader;
 import autograder.validation.AnswerFileLocator;
 import autograder.validation.SubmissionValidator;
 import autograder.validation.rules.FileNamingRule;
@@ -20,9 +20,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -39,6 +39,9 @@ public class Pair1 {
             throw new IOException("student-submission folder not found in " + projectFolder);
         }
         //Sample-project configuration only; pair-3 supplies the real roster and assessment later.
+        if (!Files.exists(Path.of("IS442-ScoreSheet.csv"))) {
+            Files.createFile(Path.of("IS442-ScoreSheet.csv"));
+        }
         List<Student> students = readSampleRoster(projectFolder.resolve("IS442-ScoreSheet.csv"));
         AssessmentDefinition assessment = new AssessmentDefinition("CS102 sample", List.of(
                 new QuestionDefinition("Q1a", "Q1", List.of("Q1a.java")),
@@ -69,9 +72,9 @@ public class Pair1 {
     }
 
     public static List<StudentSubmission> run(Path submissionFolder, Path workspaceFolder,
-            List<Student> students, AssessmentDefinition assessment) throws IOException {
-        SubmissionLoader loader = new SubmissionLoader();
-        List<Path> zipFiles = loader.findZipFiles(submissionFolder);
+                List<Student> students, AssessmentDefinition assessment) throws IOException {
+
+        List<Path> zipFiles = SubmissionLoader.findZipFiles(submissionFolder);
         StudentIdentifier identifier = new StudentIdentifier();
         AnswerFileLocator locator = new AnswerFileLocator();
         SubmissionValidator validator = new SubmissionValidator(List.of(new QuestionFolderRule(),
@@ -81,7 +84,7 @@ public class Pair1 {
         System.out.println("\nchecking " + zipFiles.size() + " submissions");
         System.out.println("ready = passed file validation; answers have not been graded");
 
-        for (Path folder : loader.loadSubmissions(submissionFolder, workspaceFolder)) {
+        for (Path folder : SubmissionLoader.loadSubmissions(submissionFolder, workspaceFolder)) {
             Path zip = zipFiles.stream().filter(path -> {
                 String name = path.getFileName().toString();
                 return name.substring(0, name.length() - 4).equals(folder.getFileName().toString());

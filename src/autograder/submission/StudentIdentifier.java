@@ -14,6 +14,7 @@ import java.util.List;
 
 public class StudentIdentifier {
 
+    // JC: Might need to refactor for better solve to the problem, maybe compare against inputted class list of student ids
     public Student identify(Path zipFile, List<Student> students) {
         String fileName = zipFile.getFileName().toString();
         String username = fileName.substring(0, fileName.length() - 4);

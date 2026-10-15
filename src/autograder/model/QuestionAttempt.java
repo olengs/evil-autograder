@@ -29,11 +29,6 @@ public class QuestionAttempt {
     }
 
     public boolean isValid() {
-        for (SubmissionIssue issue : issues) {
-            if (issue.getSeverity() == IssueSeverity.ERROR) {
-                return false;
-            }
-        }
-        return true;
+        return !issues.stream().anyMatch(x -> x.getSeverity() == IssueSeverity.ERROR);
     }
 }

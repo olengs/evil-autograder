@@ -20,9 +20,7 @@ import java.util.stream.Stream;
 
 public class SubmissionLoader {
 
-    private ZipExtractor zipExtractor = new ZipExtractor();
-
-    public List<Path> loadSubmissions(Path submissionFolder, Path workspaceFolder) throws IOException {
+    public static List<Path> loadSubmissions(Path submissionFolder, Path workspaceFolder) throws IOException {
 
         List<Path> studentSubmissionPaths = findZipFiles(submissionFolder);
 
@@ -40,14 +38,16 @@ public class SubmissionLoader {
                 }
 
                 //eg. workspace/alice.tan.2025
-                Path destinationFolder = workspaceFolder.resolve(folderName); //where this zip should be extracted
+                Path destinationFolder = workspaceFolder.resolve(folderName.toLowerCase()); //where this zip should be extracted
 
                 if (Files.exists(destinationFolder)) {
                     throw new IOException("submission folder already exists > " + destinationFolder);
                 }
 
-                Path extractedFolder = zipExtractor.extract(studentSubmissionPath, destinationFolder); //extract zip
-                extractedFolders.add(extractedFolder);
+                List<Path> extractedFolder = ZipExtractor.ExtractZipFiles(studentSubmissionPath, destinationFolder);
+                /// TODO: keep the questions folder into another class with the extract folder and student details
+                extractedFolders.add(destinationFolder);
+
             } catch (IOException error) {
                 System.err.println("could not process " + zipFileName + " > " + error.getMessage());
             }
@@ -56,7 +56,7 @@ public class SubmissionLoader {
         return extractedFolders;
     }
 
-    public List<Path> findZipFiles(Path submissionFolder) throws IOException {
+    public static List<Path> findZipFiles(Path submissionFolder) throws IOException {
         //1. find all zip files
         try (Stream<Path> paths = Files.list(submissionFolder)) { //lists files directly inside
             return paths.filter(Files::isRegularFile)

@@ -1,0 +1,1 @@
+java -cp target/classes autograder.app.Main ./student-submission/
