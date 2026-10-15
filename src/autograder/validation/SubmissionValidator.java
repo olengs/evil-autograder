@@ -29,14 +29,29 @@ public class SubmissionValidator {
         }
 
         //step 1 > rules that need to inspect entire submission
-        for (SubmissionValidationRule rule : submissionRules) {
-            List<SubmissionIssue> issues = rule.validate(submission, assessment);
-            submission.addIssues(issues);
+        if (submission.getSubmissionIssues().stream().noneMatch(issue -> issue.getSeverity() == IssueSeverity.ERROR
+                && issue.getQuestionId() == null)) {
+            for (SubmissionValidationRule rule : submissionRules) {
+                try {
+                    submission.addIssues(rule.validate(submission, assessment));
+                } catch (RuntimeException error) {
+                    submission.addIssues(List.of(new SubmissionIssue("validation error", IssueSeverity.ERROR,
+                            error.toString(), null, submission.getRootDirectory())));
+                }
+            }
         }
 
         //step 2 > validate every question
         for (QuestionDefinition question : assessment.getQuestions()) {
-            validateQuestion(submission, question);
+            List<SubmissionIssue> blocking = submission.getSubmissionIssues().stream()
+                    .filter(issue -> issue.getSeverity() == IssueSeverity.ERROR
+                            && (issue.getQuestionId() == null || issue.getQuestionId().equals(question.getId())))
+                    .toList();
+            if (blocking.isEmpty()) {
+                validateQuestion(submission, question);
+            } else {
+                submission.addQuestionAttempt(new QuestionAttempt(question, List.of(), blocking));
+            }
         }
         return submission;
     }
@@ -46,8 +61,12 @@ public class SubmissionValidator {
         
         //run all question level validation rules
         for (ValidationRule rule : questionRules) {
-            List<SubmissionIssue> ruleIssues = rule.validate(submission, question);
-            issues.addAll(ruleIssues);
+            try {
+                issues.addAll(rule.validate(submission, question));
+            } catch (RuntimeException error) {
+                issues.add(new SubmissionIssue("validation error", IssueSeverity.ERROR,
+                        error.toString(), question.getId(), submission.getRootDirectory()));
+            }
         }
 
         //locate submitted answer files
@@ -60,11 +79,12 @@ public class SubmissionValidator {
     }
 
     private List<Path> locateFiles(StudentSubmission submission, QuestionDefinition question, List<SubmissionIssue> issues) {
-        Path questionFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
+        Path questionFolder = submission.getRootDirectory();
         
         try {
+            questionFolder = questionFolder.resolve(question.getExpectedFolder());
             return fileLocator.locateAnswerFiles(questionFolder, question.getRequiredFiles());
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR,
                     "unable to locate answer files > " + e.getMessage(), question.getId(), questionFolder));
             return new ArrayList<>();

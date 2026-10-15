@@ -90,6 +90,9 @@ public class StudentHeaderRule implements ValidationRule {
                 count++;
             }
         }
+        if (!header.isEmpty() && header.charAt(0) == '\uFEFF') {
+            header.deleteCharAt(0);
+        }
         Matcher comments = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)")
                 .matcher(header);
         return comments.find() ? comments.group(1) : "";

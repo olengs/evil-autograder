@@ -9,6 +9,7 @@ import autograder.model.StudentSubmission;
 import autograder.model.SubmissionIssue;
 import autograder.submission.StudentIdentifier;
 import autograder.submission.SubmissionLoader;
+import autograder.submission.SubmissionNormalizer;
 import autograder.validation.AnswerFileLocator;
 import autograder.validation.SubmissionValidator;
 import autograder.validation.rules.FileNamingRule;
@@ -39,9 +40,6 @@ public class Pair1 {
             throw new IOException("student-submission folder not found in " + projectFolder);
         }
         //Sample-project configuration only; pair-3 supplies the real roster and assessment later.
-        if (!Files.exists(Path.of("IS442-ScoreSheet.csv"))) {
-            Files.createFile(Path.of("IS442-ScoreSheet.csv"));
-        }
         List<Student> students = readSampleRoster(projectFolder.resolve("IS442-ScoreSheet.csv"));
         AssessmentDefinition assessment = new AssessmentDefinition("CS102 sample", List.of(
                 new QuestionDefinition("Q1a", "Q1", List.of("Q1a.java")),
@@ -66,7 +64,8 @@ public class Pair1 {
             if (fields.length < 5 || fields[1].isBlank()) {
                 throw new IOException("invalid scoresheet row > " + (i + 1));
             }
-            students.add(new Student(fields[3].strip(), fields[1].strip().replaceFirst("^#", ""), fields[4].strip()));
+            String fullName = (fields[3].strip() + " " + fields[2].strip()).strip();
+            students.add(new Student(fullName, fields[1].strip().replaceFirst("^#", ""), fields[4].strip()));
         }
         return students;
     }
@@ -87,20 +86,22 @@ public class Pair1 {
         for (Path folder : SubmissionLoader.loadSubmissions(submissionFolder, workspaceFolder)) {
             Path zip = zipFiles.stream().filter(path -> {
                 String name = path.getFileName().toString();
-                return name.substring(0, name.length() - 4).equals(folder.getFileName().toString());
+                return name.substring(0, name.length() - 4).equalsIgnoreCase(folder.getFileName().toString());
             }).findFirst().orElseThrow(() -> new IOException("cannot find original ZIP for " + folder));
-            Student student = identifier.identify(zip, students);
+            Student student = null;
             StudentSubmission submission;
             try {
+                student = identifier.identify(zip, students);
                 if (student == null) {
                     throw new IOException("no roster match for " + zip.getFileName());
                 }
                 submission = new StudentSubmission(student, zip, folder);
+                SubmissionNormalizer.normalize(submission, assessment);
                 validator.validate(submission, assessment);
-            } catch (IOException error) {
+            } catch (IOException | RuntimeException error) {
                 submission = new StudentSubmission(student, zip, folder);
                 SubmissionIssue issue = new SubmissionIssue("submission preparation error", IssueSeverity.ERROR,
-                        error.getMessage(), null, folder);
+                        error.toString(), null, folder);
                 submission.addIssues(List.of(issue));
                 for (QuestionDefinition question : assessment.getQuestions()) {
                     submission.addQuestionAttempt(new QuestionAttempt(question, List.of(), List.of(issue)));
@@ -109,7 +110,9 @@ public class Pair1 {
             submissions.add(submission);
             printSubmission(submission);
         }
-        long ready = submissions.stream().filter(submission -> submission.getQuestionAttempts().stream()
+        long ready = submissions.stream().filter(submission -> submission.getSubmissionIssues().stream()
+                .noneMatch(issue -> issue.getSeverity() == IssueSeverity.ERROR))
+                .filter(submission -> submission.getQuestionAttempts().stream()
                 .allMatch(QuestionAttempt::isValid)).count();
         System.out.println("\nsummary > " + ready + " ready, " + (submissions.size() - ready) + " invalid, "
                 + (zipFiles.size() - submissions.size()) + " could not be extracted");

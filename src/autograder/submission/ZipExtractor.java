@@ -1,57 +1,88 @@
 package autograder.submission;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.zip.ZipFile;
 
+/** Extracts one ZIP; naming corrections belong to SubmissionNormalizer. */
 public class ZipExtractor {
-    /**
-     * extracts one zip file into given destination folder
-     *
-     * @param zipFile > zip file to extract
-     * @param destinationFolder > where zip will be extracted
-     * @return > extracted destination folder
-     * @throws IOException > if zip cannot be read ||| extracted
-     */
+    /** AI-assisted with Codex: rejects invalid archives and colliding paths before extraction. */
     public static ArrayList<Path> ExtractZipFiles(Path zipFile, Path destinationFolder) throws IOException {
-        ArrayList<Path> extractedTopLevelFolders = new ArrayList<>();
-        Path normalizedDestinationPath = destinationFolder.toAbsolutePath().normalize(); //make destination path absolute &&& normalise
-        Files.createDirectories(normalizedDestinationPath); //create destination folder if it does not exist
-
-        try ( InputStream inputStream = Files.newInputStream(zipFile); //reads raw bytes from file
-                ZipInputStream zipInputStream = new ZipInputStream(inputStream)) { //read files &&& folders inside it
-            
-            ZipEntry entry; //file ||| folder
-            while ((entry = zipInputStream.getNextEntry()) != null) { //read every item inside zip
-                Path outputPath = normalizedDestinationPath.resolve(entry.getName()).normalize(); //builds location where current zip item should go
-
-                if (!outputPath.startsWith(normalizedDestinationPath)) { //dont allow zip contents to escape destination folder
-                    throw new IOException("Invalid zip entry: " + entry.getName());
-                }
-
-                if (entry.isDirectory()) { //eg. q1
-                    Files.createDirectories(outputPath);
-                    extractedTopLevelFolders.add(outputPath);
-                } 
-                else { //eg. q1/q1a.java
-                    Path parentFolder = outputPath.getParent();
-
-                    if (parentFolder != null) {
-                        Files.createDirectories(parentFolder);
+        Path destination = destinationFolder.toAbsolutePath().normalize();
+        try (ZipFile archive = new ZipFile(zipFile.toFile())) {
+            List<? extends ZipEntry> entries = archive.stream().toList();
+            validateEntries(entries, destination);
+            Files.createDirectories(destination.getParent());
+            Files.createDirectory(destination); //never merge an archive with an existing submission
+            for (ZipEntry entry : entries) {
+                Path output = entryPath(destination, entry);
+                if (entry.isDirectory()) {
+                    Files.createDirectories(output);
+                } else {
+                    Files.createDirectories(output.getParent());
+                    CRC32 checksum = new CRC32();
+                    try (CheckedInputStream input = new CheckedInputStream(archive.getInputStream(entry), checksum)) {
+                        long size = Files.copy(input, output);
+                        if (size != entry.getSize() || checksum.getValue() != entry.getCrc()) {
+                            throw new IOException("corrupt ZIP entry > " + entry.getName());
+                        }
                     }
-
-                    Files.copy(zipInputStream, outputPath, StandardCopyOption.REPLACE_EXISTING); //copies contents of current zip file entry into destination path
                 }
+            }
+        } catch (InvalidPathException error) {
+            throw new IOException("invalid ZIP entry path > " + error.getInput(), error);
+        }
+        //Directory entries may be absent in a ZIP, so inspect the actual extracted tree.
+        try (var children = Files.list(destination)) {
+            return new ArrayList<>(children.filter(path -> Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS))
+                    .sorted().toList());
+        }
+    }
 
-                zipInputStream.closeEntry();
+    private static void validateEntries(List<? extends ZipEntry> entries, Path root) throws IOException {
+        Map<String, String> spellings = new HashMap<>();
+        Set<Path> files = new HashSet<>();
+        Set<Path> directories = new HashSet<>();
+        for (ZipEntry entry : entries) {
+            Path output = entryPath(root, entry);
+            for (Path path = output; !path.equals(root); path = path.getParent()) {
+                String name = path.toString();
+                String previous = spellings.putIfAbsent(name.toLowerCase(Locale.ROOT), name);
+                if (previous != null && !previous.equals(name)) {
+                    throw new IOException("ZIP path collision > " + previous + " and " + name);
+                }
+            }
+            if (entry.isDirectory()) {
+                if (files.contains(output)) { throw new IOException("ZIP file/directory collision > " + entry.getName()); }
+                directories.add(output);
+            } else if (output.equals(root) || directories.contains(output) || !files.add(output)) {
+                throw new IOException("duplicate or conflicting ZIP entry > " + entry.getName());
+            }
+            for (Path parent = output.getParent(); parent != null && parent.startsWith(root); parent = parent.getParent()) {
+                if (files.contains(parent)) { throw new IOException("ZIP file/directory collision > " + entry.getName()); }
+                directories.add(parent);
             }
         }
+    }
 
-        return extractedTopLevelFolders;
+    private static Path entryPath(Path root, ZipEntry entry) throws IOException {
+        Path output = root.resolve(entry.getName().replace('\\', '/')).normalize();
+        if (!output.startsWith(root)) {
+            throw new IOException("ZIP entry escapes extraction directory > " + entry.getName());
+        }
+        return output;
     }
 }

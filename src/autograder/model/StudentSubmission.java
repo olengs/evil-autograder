@@ -31,6 +31,13 @@ public class StudentSubmission {
         return rootDirectory;
     }
 
+    public void setRootDirectory(Path rootDirectory) {
+        if (!questionAttempts.isEmpty()) {
+            throw new IllegalStateException("cannot change submission root after validation");
+        }
+        this.rootDirectory = rootDirectory;
+    }
+
     public List<QuestionAttempt> getQuestionAttempts() {
         return questionAttempts;
     }

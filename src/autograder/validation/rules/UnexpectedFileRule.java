@@ -52,8 +52,12 @@ public class UnexpectedFileRule implements SubmissionValidationRule {
                     }
                 });
             } catch (IOException e) {
-                issues.add(new SubmissionIssue("folder read error", IssueSeverity.ERROR,
-                        "Unable to inspect folder " + folderName + ": " + e.getMessage(), null, folder));
+                for (QuestionDefinition question : assessment.getQuestions()) {
+                    if (question.getExpectedFolder().equals(folderName)) {
+                        issues.add(new SubmissionIssue("folder read error", IssueSeverity.ERROR,
+                                "Unable to inspect folder " + folderName + ": " + e.getMessage(), question.getId(), folder));
+                    }
+                }
             }
         }
         return issues;

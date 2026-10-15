@@ -20,11 +20,15 @@ public class StudentIdentifier {
         String username = fileName.substring(0, fileName.length() - 4);
         username = username.replaceFirst("^\\d{4}-\\d{4}-", ""); //provided zips include an academic year prefix
 
+        Student match = null;
         for (Student student : students) {
             if (student.getUserName().equalsIgnoreCase(username)) {
-                return student;
+                if (match != null) {
+                    throw new IllegalArgumentException("ambiguous roster identity > " + username);
+                }
+                match = student;
             }
         }
-        return null;
+        return match;
     }
 }

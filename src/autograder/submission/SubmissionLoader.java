@@ -2,6 +2,7 @@ package autograder.submission;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,17 +39,16 @@ public class SubmissionLoader {
                 }
 
                 //eg. workspace/alice.tan.2025
-                Path destinationFolder = workspaceFolder.resolve(folderName.toLowerCase()); //where this zip should be extracted
+                Path destinationFolder = workspaceFolder.resolve(folderName.toLowerCase(Locale.ROOT)); //where this zip should be extracted
 
                 if (Files.exists(destinationFolder)) {
                     throw new IOException("submission folder already exists > " + destinationFolder);
                 }
 
-                List<Path> extractedFolder = ZipExtractor.ExtractZipFiles(studentSubmissionPath, destinationFolder);
-                /// TODO: keep the questions folder into another class with the extract folder and student details
+                ZipExtractor.ExtractZipFiles(studentSubmissionPath, destinationFolder);
                 extractedFolders.add(destinationFolder);
 
-            } catch (IOException error) {
+            } catch (IOException | RuntimeException error) {
                 System.err.println("could not process " + zipFileName + " > " + error.getMessage());
             }
         }
@@ -59,7 +59,7 @@ public class SubmissionLoader {
     public static List<Path> findZipFiles(Path submissionFolder) throws IOException {
         //1. find all zip files
         try (Stream<Path> paths = Files.list(submissionFolder)) { //lists files directly inside
-            return paths.filter(Files::isRegularFile)
+            return paths.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
                     .filter(path -> path.toString().toLowerCase(Locale.ROOT).endsWith(".zip")) //case insenstive
                     .sorted().toList();
         }
