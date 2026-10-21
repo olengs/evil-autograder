@@ -1,4 +1,4 @@
-package autograderexception;
+package exceptions;
 
 /**
  * Checked exception raised while preparing an isolated grading workspace.
@@ -7,9 +7,7 @@ package autograderexception;
  * error code (wsp-001 .. wsp-005) so that callers and logs know what failed.
  *
  *   <li>wsp-001: temp workspace cannot be created</li>
- *   <li>wsp-002: answer file copy failed</li>
- *   <li>wsp-003: question resource folder missing</li>
- *   <li>wsp-004: tester source copy failed</li>
+ *   <li>wsp-002: file copy failed</li>
  *   <li>wsp-005: workspace cleanup failed</li>
  */
 public class WorkspacePreparationException extends RuntimeException {
