@@ -1,13 +1,5 @@
 package validation.rules;
 
-import model.IssueSeverity;
-import model.QuestionDefinition;
-import model.Student;
-import model.StudentSubmission;
-import model.SubmissionIssue;
-import validation.AnswerFileLocator;
-import validation.ValidationRule;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,6 +9,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import model.IssueSeverity;
+import model.QuestionDefinition;
+import model.StudentDetails;
+import model.StudentSubmission;
+import model.SubmissionIssue;
+import validation.AnswerFileLocator;
+import validation.ValidationRule;
 
 public class StudentHeaderRule implements ValidationRule {
     private static final int headerLineMax = 15; //sets how many lines to inspect student java file
@@ -35,7 +34,7 @@ public class StudentHeaderRule implements ValidationRule {
             return issues;
         }
 
-        Student student = submission.getStudent();
+        StudentDetails student = submission.getStudent();
 
         if (student == null) {
             issues.add(new SubmissionIssue("unknown student", IssueSeverity.WARNING,

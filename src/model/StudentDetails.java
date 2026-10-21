@@ -1,11 +1,11 @@
 package model;
 
-public class Student {
+public class StudentDetails {
     private String userName;
     private String name;
     private String email;
 
-    public Student(String name, String userName, String email) {
+    public StudentDetails(String name, String userName, String email) {
         this.name = name;
         this.userName = userName;
         this.email = email;

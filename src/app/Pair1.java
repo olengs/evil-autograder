@@ -1,10 +1,20 @@
 package app;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import model.AssessmentDefinition;
 import model.IssueSeverity;
 import model.QuestionAttempt;
 import model.QuestionDefinition;
-import model.Student;
+import model.StudentDetails;
 import model.StudentSubmission;
 import model.SubmissionIssue;
 import submission.StudentIdentifier;
@@ -16,16 +26,6 @@ import validation.rules.QuestionFolderRule;
 import validation.rules.RequiredFileRule;
 import validation.rules.StudentHeaderRule;
 import validation.rules.UnexpectedFileRule;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class Pair1 {
 
@@ -42,7 +42,7 @@ public class Pair1 {
         if (!Files.exists(Path.of("IS442-ScoreSheet.csv"))) {
             Files.createFile(Path.of("IS442-ScoreSheet.csv"));
         }
-        List<Student> students = readSampleRoster(projectFolder.resolve("IS442-ScoreSheet.csv"));
+        List<StudentDetails> students = readSampleRoster(projectFolder.resolve("IS442-ScoreSheet.csv"));
         AssessmentDefinition assessment = new AssessmentDefinition("CS102 sample", List.of(
                 new QuestionDefinition("Q1a", "Q1", List.of("Q1a.java")),
                 new QuestionDefinition("Q1b", "Q1", List.of("Q1b.java")),
@@ -54,8 +54,8 @@ public class Pair1 {
         System.out.println("extraction workspace > " + workspace);
     }
 
-    private static List<Student> readSampleRoster(Path scoresheet) throws IOException {
-        List<Student> students = new ArrayList<>();
+    private static List<StudentDetails> readSampleRoster(Path scoresheet) throws IOException {
+        List<StudentDetails> students = new ArrayList<>();
         List<String> rows = Files.readAllLines(scoresheet);
         //The supplied scoresheet has unquoted fields: ID, username, last name, first name, email.
         for (int i = 1; i < rows.size(); i++) {
@@ -66,13 +66,13 @@ public class Pair1 {
             if (fields.length < 5 || fields[1].isBlank()) {
                 throw new IOException("invalid scoresheet row > " + (i + 1));
             }
-            students.add(new Student(fields[3].strip(), fields[1].strip().replaceFirst("^#", ""), fields[4].strip()));
+            students.add(new StudentDetails(fields[3].strip(), fields[1].strip().replaceFirst("^#", ""), fields[4].strip()));
         }
         return students;
     }
 
     public static List<StudentSubmission> run(Path submissionFolder, Path workspaceFolder,
-                List<Student> students, AssessmentDefinition assessment) throws IOException {
+                List<StudentDetails> students, AssessmentDefinition assessment) throws IOException {
 
         List<Path> zipFiles = SubmissionLoader.findZipFiles(submissionFolder);
         StudentIdentifier identifier = new StudentIdentifier();
@@ -89,7 +89,7 @@ public class Pair1 {
                 String name = path.getFileName().toString();
                 return name.substring(0, name.length() - 4).equals(folder.getFileName().toString());
             }).findFirst().orElseThrow(() -> new IOException("cannot find original ZIP for " + folder));
-            Student student = identifier.identify(zip, students);
+            StudentDetails student = identifier.identify(zip, students);
             StudentSubmission submission;
             try {
                 if (student == null) {
