@@ -5,13 +5,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class StudentSubmission {
-    private Student student;
+    private StudentDetails student;
     private Path originalZip;
     private Path rootDirectory;
     private List<QuestionAttempt> questionAttempts;
     private List<SubmissionIssue> submissionIssues;
 
-    public StudentSubmission(Student student, Path originalZip, Path rootDirectory) {
+    public StudentSubmission(StudentDetails student, Path originalZip, Path rootDirectory) {
         this.student = student;
         this.originalZip = originalZip;
         this.rootDirectory = rootDirectory;
@@ -19,7 +19,7 @@ public class StudentSubmission {
         this.submissionIssues = new ArrayList<>();
     }
 
-    public Student getStudent() {
+    public StudentDetails getStudent() {
         return student;
     }
 
