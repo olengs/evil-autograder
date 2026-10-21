@@ -1,0 +1,1 @@
+javac -d target/classes -sourcepath src src/autograder/app/Main.java

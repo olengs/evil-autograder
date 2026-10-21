@@ -27,3 +27,7 @@ replay_pid*
 .vs
 .vscode
 .DS_Store
+
+#juny
+rawr/
+target/
