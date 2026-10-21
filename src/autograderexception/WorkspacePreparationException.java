@@ -1,4 +1,4 @@
-package autograder.autograderexception;
+package autograderexception;
 
 /**
  * Checked exception raised while preparing an isolated grading workspace.
