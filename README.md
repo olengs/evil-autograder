@@ -1,2 +1,9 @@
 # evil-autograder
-CS102 Project
+
+```bash
+./run.sh
+```
+
+```powershell
+.\run.bat
+```

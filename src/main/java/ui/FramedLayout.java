@@ -1,0 +1,58 @@
+package ui;
+
+import static utils.ui.UiDrawing.*;
+import dev.tamboui.layout.Rect;
+import dev.tamboui.terminal.Frame;
+import java.nio.file.Path;
+import grading.progress.ProgressSnapshot;
+import ui.panel.BatchPanel;
+import ui.panel.StudentPanel;
+import ui.panel.SummaryPanel;
+
+final class FramedLayout { //draws bordered grading, summary, resource & command panels
+    private FramedLayout() {}
+
+    static void draw(Frame frame, Rect area, Path project, ProgressSnapshot snapshot,
+            long displayedSecond, ResourceUsage.Sample resources) {
+        int width = Math.min(area.width() - 2, 96);
+        boolean compact = area.height() < 32;
+        int height = Math.min(area.height() - (compact ? 0 : 2), Math.max(30, Math.min(36, snapshot.questions().size() + 25)));
+        Rect outer = new Rect(area.x() + (area.width() - width) / 2, area.y() + (compact ? 0 : 1), width, height);
+        Rect inner = box(frame, outer, "evil autograder");
+        Rect content = new Rect(inner.x() + 1, inner.y(), inner.width() - 2, inner.height());
+        drawLine(frame, content, 0, "project > " + safeText(project.toString()), muted);
+
+        int commandY = content.y() + content.height() - 3;
+        boolean extraPadding = area.height() >= 34;
+        int resourceHeight = extraPadding ? 7 : 5;
+        int resourceY = commandY - resourceHeight - (compact ? 0 : 1);
+        int bodyY = content.y() + (compact ? 1 : 2);
+        int bodyHeight = resourceY - bodyY - (compact ? 0 : 1);
+        Rect body = new Rect(content.x(), bodyY, content.width(), bodyHeight);
+        if (snapshot.isFinished()) {
+            Rect summary = box(frame, body, "summary");
+            SummaryPanel.drawSummary(frame, summary, snapshot);
+        } else {
+            int leftWidth = Math.max(29, (body.width() - 1) * 2 / 5);
+            Rect batch = box(frame, new Rect(body.x(), body.y(), leftWidth, body.height()), "batch progress");
+            Rect student = box(frame, new Rect(body.x() + leftWidth + 1, body.y(), body.width() - leftWidth - 1, body.height()), "student");
+            BatchPanel.drawBatch(frame, horizontalPadding(batch), false, snapshot);
+            StudentPanel.drawStudent(frame, horizontalPadding(student), snapshot, displayedSecond);
+        }
+
+        Rect resourceInner = box(frame, new Rect(content.x(), resourceY, content.width(), resourceHeight), "resource usage");
+        Rect resource = new Rect(resourceInner.x() + 1, resourceInner.y(), resourceInner.width() - 2, resourceInner.height());
+        String[] metrics = resources.summary().split(" \\| ", 2);
+        int metricsRow = extraPadding ? 1 : 0;
+        drawLine(frame, resource, metricsRow, metrics[0], muted);
+        if (metrics.length > 1) drawLine(frame, resource, metricsRow + 1, metrics[1], muted);
+        drawLine(frame, resource, metricsRow + 2, "threads > " + resources.threads(), muted);
+        Rect commands = box(frame, new Rect(content.x(), commandY, content.width(), 3), "commands");
+        drawLine(frame, commands, 0, "[q] close", cyan);
+    }
+
+    private static Rect horizontalPadding(Rect area) {
+        return area.width() > 2 ? new Rect(area.x() + 1, area.y(), area.width() - 2, area.height()) : area;
+    }
+
+}
