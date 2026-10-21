@@ -7,6 +7,7 @@ import java.util.List;
 public class AssessmentDefinition {
     private final String name;
     private final List<QuestionDefinition> questions;
+    
 
     public AssessmentDefinition(String name, List<QuestionDefinition> questions) {
         this.name = name;

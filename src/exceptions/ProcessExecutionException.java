@@ -1,4 +1,4 @@
-package autograderexception;
+package exceptions;
 
 /**
  * Runtime exception raised while executing an external process
