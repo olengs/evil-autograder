@@ -1,11 +1,11 @@
 package grading;
 
+import java.util.ArrayList;
+import java.util.List;
 import model.GradeStatus;
 import model.ProcessResult;
 import model.QuestionGrade;
 import model.TestCaseResult;
-import java.util.ArrayList;
-import java.util.List;
 
 public class ProcessGrader {
 
@@ -71,12 +71,12 @@ public class ProcessGrader {
             if (!testOutput.contains(":")) {
                 continue;
             }
-            // TODO: check if question needs a pass attribute
+            // TODO (iter2): check if question needs a pass attribute
             String testId = testOutput.substring(0, testOutput.indexOf(":"));
             Integer passedIndex = testOutput.indexOf("Passed");
             double earnedMarks = passedIndex >= 0 ? 1 : 0;
             boolean passed = passedIndex >= 0;
-            // TODO: do we need message?
+            // TODO (iter2): do we need message?
             TestCaseResult testCase = new TestCaseResult(testId, passed, earnedMarks, "completed");
 
             testCaseResults.add(testCase);

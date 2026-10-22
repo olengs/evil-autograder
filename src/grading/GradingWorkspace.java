@@ -17,9 +17,9 @@ public class GradingWorkspace implements AutoCloseable {
     }
 
     public void Prepare(QuestionTestPack definitions) {
-        /// TODO: Currently assumes that student's attempt files don't modify the given files. 
+        /// TODO (iter2): Currently assumes that student's attempt files don't modify the given files. 
         /// Requires maybe input or validation to get what the files that requires students to change.
-        /// TODO: Convert to multithreaded,use CopyDirectorySafe.
+        /// TODO (iter2): Convert to multithreaded,use CopyDirectorySafe.
         try {
             FileUtils.CopyDirectory(definitions.getQuestionDefinition().getFolderPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
             FileUtils.CopyDirectory(definitions.getQuestionAttempt().getAttempRootPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
@@ -39,7 +39,7 @@ public class GradingWorkspace implements AutoCloseable {
     private void createWorkspaceRoot() {
         Path root;
         try {
-            // TODO: Change 05d to value based of config, log(num students). Currently assume max 100000 students.
+            // TODO (iter2): Change 05d to value based of config, log(num students). Currently assume max 100000 students.
             root = Files.createTempDirectory("autograder-ws-" + String.format("%05d", AUTO_ID.incrementAndGet()) + "-");
         } catch (Exception e) {
             throw new WorkspacePreparationException("wsp-001", "Temporary workspace cannot be created", e);
