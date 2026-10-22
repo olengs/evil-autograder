@@ -45,7 +45,7 @@ public class SubmissionLoader {
                 }
 
                 List<Path> extractedFolder = ZipExtractor.ExtractZipFiles(studentSubmissionPath, destinationFolder);
-                /// TODO: keep the questions folder into another class with the extract folder and student details
+                /// TODO (iter2): keep the questions folder into another class with the extract folder and student details
                 extractedFolders.add(destinationFolder);
 
             } catch (IOException error) {

@@ -38,6 +38,7 @@ public class QuestionGrader implements AutoCloseable {
         }
 
         ProcessResult testerResults = executeTester(testerEntryPoint);
+        // TODO (iter2): PARSE PARTIAL TESTER RESULTS
         if (!testerResults.isSuccessful() && !testerResults.isTimedOut()) {
             return new QuestionGrade(this.questionId, GradeStatus.RUNTIME_ERROR, 0, null, testerResults, "Testerfile encountered runtime error");
         } else if (!testerResults.isTimedOut()) {
