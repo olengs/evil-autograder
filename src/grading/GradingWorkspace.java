@@ -11,8 +11,7 @@ import model.TesterDefinition;
 import utils.FileUtils;
 
 public class GradingWorkspace implements AutoCloseable {
-    private String workspaceRoot;
-    private String originalPath;
+    private Path workspaceRoot;
     private static final AtomicLong AUTO_ID = new AtomicLong();
 
     public GradingWorkspace() {
@@ -28,11 +27,10 @@ public class GradingWorkspace implements AutoCloseable {
         }
 
         // TODO: Question definition should have a folder to copy for each question.
-        String testerPath = testerDefinition.getPath();
         try {
             // FileUtils.CopyFiles(questionDef, originalPath, FileUtils.CopyOptions.REPLACE_EXISTING);
             // FileUtils.CopyFiles(questionAttempt, originalPath, FileUtils.CopyOptions.REPLACE_EXISTING);
-            FileUtils.CopyFiles(testerPath, originalPath, FileUtils.CopyOptions.REPLACE_EXISTING);
+            FileUtils.CopyFiles(testerDefinition.getFullPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
         } catch (Exception e) {
             // Self-clean the partially-created workspace, then rethrow the original (coded) failure.
             this.workspaceRoot = null;
@@ -53,7 +51,7 @@ public class GradingWorkspace implements AutoCloseable {
             throw new WorkspacePreparationException("wsp-001", "Temporary workspace cannot be created", e);
         }
 
-        this.workspaceRoot = root.toString();
+        this.workspaceRoot = root;
     }
 
 }

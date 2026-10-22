@@ -23,7 +23,7 @@ public class ZipExtractor {
         Path normalizedDestinationPath = destinationFolder.toAbsolutePath().normalize(); //make destination path absolute &&& normalise
         Files.createDirectories(normalizedDestinationPath); //create destination folder if it does not exist
 
-        try ( InputStream inputStream = Files.newInputStream(zipFile); //reads raw bytes from file
+        try (InputStream inputStream = Files.newInputStream(zipFile); //reads raw bytes from file
                 ZipInputStream zipInputStream = new ZipInputStream(inputStream)) { //read files &&& folders inside it
             
             ZipEntry entry; //file ||| folder

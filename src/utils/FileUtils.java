@@ -24,7 +24,7 @@ public class FileUtils {
         REPLACE_EXISTING
     }
 
-    public static synchronized void CopyFilesSafe(String from, String to, CopyOptions option) throws IOException {
+    public static synchronized void CopyFilesSafe(Path from, Path to, CopyOptions option) throws IOException {
         try (FileChannel lockChannel = FileChannel.open(COPY_LOCK,
                 StandardOpenOption.CREATE, StandardOpenOption.WRITE);
                 FileLock lock = lockChannel.lock()) {
@@ -33,20 +33,26 @@ public class FileUtils {
         }
     }
 
-    public static void CopyFiles(String from, String to, CopyOptions option) throws IOException {
+    public static void CopyFiles(Path from, Path to, CopyOptions option) throws IOException {
         CopyPaths paths = validateCopyPaths(from, to, option);
         copyDirectory(paths.source(), paths.destination(), option);
     }
 
-    private static CopyPaths validateCopyPaths(String from, String to, CopyOptions option) throws IOException {
+    private static CopyPaths validateCopyPaths(Path from, Path to, CopyOptions option) throws IOException {
         if (option == null) {
             throw new IOException("Copy option is required");
         }
 
-        Path source = validatePath(from, "Source");
-        Path destination = validatePath(to, "Destination");
+        Path source = ValidatePath(from);
+        Path destination = ValidatePath(to);
         if (destination.startsWith(source)) {
             throw new IOException("Destination cannot be inside the source directory: " + destination);
+        }
+        if (!Files.isDirectory(from)) {
+            throw new IOException("Copy source is not a directory: " + from);
+        }
+        if (!Files.isDirectory(to)) {
+            throw new IOException("Copy destination is not a directory: " + to);
         }
         return new CopyPaths(source, destination);
     }
@@ -70,13 +76,13 @@ public class FileUtils {
                 if (!attributes.isRegularFile()) {
                     throw new IOException("Source contains a non-regular file: " + file);
                 }
-                copyFile(file, destinationRoot.resolve(sourceRoot.relativize(file)), option);
+                CopyFile(file, destinationRoot.resolve(sourceRoot.relativize(file)), option);
                 return FileVisitResult.CONTINUE;
             }
         });
     }
 
-    private static void copyFile(Path source, Path destination, CopyOptions option) throws IOException {
+    public static void CopyFile(Path source, Path destination, CopyOptions option) throws IOException {
         if (Files.exists(destination)) {
             if (!Files.isRegularFile(destination)) {
                 throw new IOException("Destination is not a regular file: " + destination);
@@ -94,8 +100,8 @@ public class FileUtils {
     }
     //#endregion filecopy
 
-    public static void DeleteFolder(String folder) throws IOException {
-        Path root = validatePath(folder, "Folder");
+    public static void DeleteFolder(Path folder) throws IOException {
+        Path root = ValidatePath(folder);
         
         if (root.getParent() == null) {
             throw new IOException("Cannot delete a filesystem root: " + root);
@@ -121,19 +127,16 @@ public class FileUtils {
         });
     }
 
-    public static Path validatePath(String value, String label) throws IOException {
+    public static Path ValidatePath(Path value) throws IOException {
         if (value == null) {
-            throw new IOException(label + " path is required");
+            throw new IOException("Failed to validate null path");
         }
 
         Path path;
         try {
-            path = Path.of(value).toAbsolutePath().normalize();
+            path = value.toAbsolutePath().normalize();
         } catch (InvalidPathException e) {
-            throw new IOException("Invalid " + label.toLowerCase() + " path", e);
-        }
-        if (!Files.isDirectory(path)) {
-            throw new IOException(label + " is not a directory: " + path);
+            throw new IOException("Invalid path:" + value.toString(), e);
         }
         return path.toRealPath();
     }
