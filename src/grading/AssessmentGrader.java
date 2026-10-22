@@ -1,6 +1,6 @@
 package grading;
 
-// TODO: Grade by question using 
+// TODO: Grade whole assessment
 public class AssessmentGrader {
     
 }
