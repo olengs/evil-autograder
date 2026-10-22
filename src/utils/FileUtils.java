@@ -17,51 +17,56 @@ public class FileUtils {
     private static final Path COPY_LOCK = Path.of(System.getProperty("java.io.tmpdir"), 
                                         "evil-autograder-directory-copy.lock");
 
-    private record CopyPaths(Path source, Path destination) {}
-
     public enum CopyOptions {
         DEFAULT,
         REPLACE_EXISTING
     }
 
-    public static synchronized void CopyFilesSafe(Path from, Path to, CopyOptions option) throws IOException {
-        try (FileChannel lockChannel = FileChannel.open(COPY_LOCK,
-                StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-                FileLock lock = lockChannel.lock()) {
-            CopyPaths paths = validateCopyPaths(from, to, option);
-            copyDirectory(paths.source(), paths.destination(), option);
-        }
-    }
-
-    public static void CopyFiles(Path from, Path to, CopyOptions option) throws IOException {
-        CopyPaths paths = validateCopyPaths(from, to, option);
-        copyDirectory(paths.source(), paths.destination(), option);
-    }
-
-    private static CopyPaths validateCopyPaths(Path from, Path to, CopyOptions option) throws IOException {
+    public static synchronized void CopyDirectorySafe(Path from, Path to, CopyOptions option) throws IOException {
         if (option == null) {
             throw new IOException("Copy option is required");
         }
-
         Path source = ValidatePath(from);
-        Path destination = ValidatePath(to);
-        if (destination.startsWith(source)) {
-            throw new IOException("Destination cannot be inside the source directory: " + destination);
+        Path dest = ValidatePath(to);
+        if (!isRecursive(from, to)) {
+            throw new IOException("Destination cannot be inside the source directory: " + to);
         }
-        if (!Files.isDirectory(from)) {
+        if (!Files.isDirectory(source)) {
             throw new IOException("Copy source is not a directory: " + from);
         }
-        if (!Files.isDirectory(to)) {
+        if (!Files.isDirectory(dest)) {
             throw new IOException("Copy destination is not a directory: " + to);
         }
-        return new CopyPaths(source, destination);
+
+        try (FileChannel lockChannel = FileChannel.open(COPY_LOCK,
+                StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+                FileLock lock = lockChannel.lock()) {
+            copyDirectory(source, dest, option);
+        }
+    }
+
+    public static void CopyDirectory(Path from, Path to, CopyOptions option) throws IOException {
+        if (option == null) {
+            throw new IOException("Copy option is required");
+        }
+        Path source = ValidatePath(from);
+        Path dest = ValidatePath(to);
+        if (!isRecursive(from, to)) {
+            throw new IOException("Destination cannot be inside the source directory: " + to);
+        }
+        if (!Files.isDirectory(source)) {
+            throw new IOException("Copy source is not a directory: " + from);
+        }
+        if (!Files.isDirectory(dest)) {
+            throw new IOException("Copy destination is not a directory: " + to);
+        }
+        copyDirectory(source, dest, option);
     }
 
     private static void copyDirectory(Path sourceRoot, Path destinationRoot, CopyOptions option) throws IOException {
         Files.walkFileTree(sourceRoot, new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult preVisitDirectory(Path directory, BasicFileAttributes attributes)
-                    throws IOException {
+            public FileVisitResult preVisitDirectory(Path directory, BasicFileAttributes attributes) throws IOException {
                 Path target = destinationRoot.resolve(sourceRoot.relativize(directory));
                 if (Files.isSymbolicLink(target)) {
                     throw new IOException("Destination contains a symbolic link: " + target);
@@ -71,8 +76,7 @@ public class FileUtils {
             }
 
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attributes)
-                    throws IOException {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) throws IOException {
                 if (!attributes.isRegularFile()) {
                     throw new IOException("Source contains a non-regular file: " + file);
                 }
@@ -98,6 +102,11 @@ public class FileUtils {
             Files.copy(source, destination);
         }
     }
+    
+    public static void CopyFileSafe(Path source, Path destination, CopyOptions option) throws IOException {
+        
+    }
+
     //#endregion filecopy
 
     public static void DeleteFolder(Path folder) throws IOException {
@@ -139,5 +148,9 @@ public class FileUtils {
             throw new IOException("Invalid path:" + value.toString(), e);
         }
         return path.toRealPath();
+    }
+
+    public static boolean isRecursive(Path p1, Path p2) {
+        return p1.startsWith(p2) || p2.startsWith(p1);
     }
 }

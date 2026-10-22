@@ -30,7 +30,7 @@ public class GradingWorkspace implements AutoCloseable {
         try {
             // FileUtils.CopyFiles(questionDef, originalPath, FileUtils.CopyOptions.REPLACE_EXISTING);
             // FileUtils.CopyFiles(questionAttempt, originalPath, FileUtils.CopyOptions.REPLACE_EXISTING);
-            FileUtils.CopyFiles(testerDefinition.getFullPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
+            FileUtils.CopyDirectory(testerDefinition.getFullPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
         } catch (Exception e) {
             // Self-clean the partially-created workspace, then rethrow the original (coded) failure.
             this.workspaceRoot = null;
