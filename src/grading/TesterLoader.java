@@ -22,7 +22,9 @@ public class TesterLoader {
                 if (Files.isRegularFile(file)) {
                     String name = file.getFileName().toString();
                     String id = name.substring(0, name.length() - "Tester.java".length()).toLowerCase();
-                    testers.add(new TesterDefinition(id, folderPath, folderPath.relativize(file)));
+                    // TODO: Validate file input.
+                    String entry = name.substring(0, name.lastIndexOf('.'));
+                    testers.add(new TesterDefinition(id, folderPath, folderPath.relativize(file), entry));
                 }
             }
         }
