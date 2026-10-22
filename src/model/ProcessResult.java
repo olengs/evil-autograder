@@ -2,7 +2,7 @@ package model;
 
 /**
  * Immutable result of running an external process ({@code javac} or
- * {@code java}) via {@link autograder.runner.ProcessRunner}.
+ * {@code java}) via {@link runner.ProcessRunner}.
  *
  * ProcessResult records what the operating system reported about one
  * process run - exit code, captured standard output, captured standard
