@@ -26,10 +26,12 @@ public class GradingWorkspace implements AutoCloseable {
             throw new IllegalArgumentException("null grading defintions received");
         }
 
-        // TODO: Question definition should have a folder to copy for each question.
+        /// TODO: Currently assumes that student's attempt files don't modify the given files. 
+        /// Requires maybe input or validation to get what the files that requires students to change.
+        /// TODO: Convert to multithreaded,use CopyDirectorySafe.
         try {
-            // FileUtils.CopyFiles(questionDef, originalPath, FileUtils.CopyOptions.REPLACE_EXISTING);
-            // FileUtils.CopyFiles(questionAttempt, originalPath, FileUtils.CopyOptions.REPLACE_EXISTING);
+            FileUtils.CopyDirectory(questionDefinition.getFolderPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
+            FileUtils.CopyDirectory(questionAttempt.getAttempRootPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
             FileUtils.CopyDirectory(testerDefinition.getFullPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
         } catch (Exception e) {
             // Self-clean the partially-created workspace, then rethrow the original (coded) failure.
