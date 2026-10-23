@@ -1,4 +1,4 @@
-package autograder.model;
+package model;
 
 /**
  * Outcome kind of one question grade.
