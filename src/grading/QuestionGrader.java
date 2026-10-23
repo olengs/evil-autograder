@@ -2,10 +2,13 @@ package grading;
 
 import exceptions.ProcessExecutionException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import model.GradeStatus;
 import model.ProcessResult;
 import model.QuestionGrade;
 import model.QuestionTestPack;
+import model.TestCaseResult;
 import utils.JavaProcessUtils;
 import utils.ProcessExecutor;
 
@@ -30,6 +33,7 @@ public class QuestionGrader implements AutoCloseable {
     }
 
     public QuestionGrade gradeQuestion() {
+        
         ProcessResult compileResults = compile();
         if (!compileResults.isSuccessful() && !compileResults.isTimedOut()) {
             return new QuestionGrade(this.questionId, GradeStatus.COMPILE_ERROR, 0, null, compileResults, "Compilation failed");
@@ -38,15 +42,18 @@ public class QuestionGrader implements AutoCloseable {
         }
 
         ProcessResult testerResults = executeTester(testerEntryPoint);
-        // TODO (iter2): PARSE PARTIAL TESTER RESULTS
+        // TODO (iter2): PARSE PARTIAL TESTER RESULTS and retry?
         if (!testerResults.isSuccessful() && !testerResults.isTimedOut()) {
             return new QuestionGrade(this.questionId, GradeStatus.RUNTIME_ERROR, 0, null, testerResults, "Testerfile encountered runtime error");
         } else if (!testerResults.isTimedOut()) {
             return new QuestionGrade(this.questionId, GradeStatus.TIMEOUT, 0, null, testerResults, "Testerfile timed out");
         }
 
-        //TODO: Parse tester results and return valid scores.
-        return new QuestionGrade(this.questionId, GradeStatus.COMPLETED, 100, null, testerResults, "Completed successfully");
+        List<TestCaseResult> testCaseResults =  readTestOutput(testerResults.getStandardOutput());
+        double earnedMarks = testCaseResults.stream().mapToDouble(TestCaseResult::getEarnedMarks).sum();
+        GradeStatus status = testerResults.isTimedOut() ? GradeStatus.TIMEOUT : GradeStatus.COMPLETED;
+
+        return new QuestionGrade(questionId, status, earnedMarks, testCaseResults, testerResults,"Grading Successful");
     }
 
     /**
@@ -85,6 +92,35 @@ public class QuestionGrader implements AutoCloseable {
         ProcessBuilder builder = new ProcessBuilder(JavaProcessUtils.getJavaExecutablePath().toString(), mainClass);
         builder.directory(this.workspace.getWorkspaceRoot().toFile());
         return ProcessExecutor.executeProcess(builder, timeout, "prc-002", "java execution failed");
+    }
+
+    /**
+     * Read the standard output captured from tester file execution, extract the
+     * each test case id, if they {@code passed} or {@code failed} and marks award
+     * for the test case. Assume each test case worth 1 mark.
+     * 
+     * @param questionOutput Standard output captured from tester file execution
+     * @return a list of {@code TestCaseResult}
+     */
+    private List<TestCaseResult> readTestOutput(String questionOutput) {
+        List<TestCaseResult> testCaseResults = new ArrayList<>();
+
+        String[] testOutputs = questionOutput.split("Test ");
+        for (String testOutput : testOutputs) {
+            if (!testOutput.contains(":")) {
+                continue;
+            }
+            // TODO (iter2): check if question needs a pass attribute
+            String testId = testOutput.substring(0, testOutput.indexOf(":"));
+            Integer passedIndex = testOutput.indexOf("Passed");
+            double earnedMarks = passedIndex >= 0 ? 1 : 0;
+            boolean passed = passedIndex >= 0;
+            // TODO (iter2): do we need message?
+            TestCaseResult testCase = new TestCaseResult(testId, passed, earnedMarks, "completed");
+
+            testCaseResults.add(testCase);
+        }
+        return testCaseResults;
     }
 
 
