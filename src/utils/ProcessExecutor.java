@@ -14,7 +14,7 @@ import model.ProcessResult;
 
 public class ProcessExecutor {
 
-    private static final ExecutorService drainers = Executors.newFixedThreadPool(2);
+    private static final ExecutorService drainers = Executors.newFixedThreadPool(2, Thread.ofPlatform().daemon().factory());
 
     public static ProcessResult executeProcess(ProcessBuilder builder, Duration timeout,
                                         String startErrorCode, String startErrorMsg) {

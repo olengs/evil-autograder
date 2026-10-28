@@ -49,7 +49,7 @@ public class FileUtils {
         }
         Path source = ValidatePath(from);
         Path dest = ValidatePath(to);
-        if (!isRecursive(from, to)) {
+        if (isRecursive(from, to)) {
             throw new IOException("Destination cannot be inside the source directory: " + to);
         }
         if (!Files.isDirectory(source)) {

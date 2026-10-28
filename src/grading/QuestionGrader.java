@@ -37,7 +37,7 @@ public class QuestionGrader implements AutoCloseable {
         ProcessResult compileResults = compile();
         if (!compileResults.isSuccessful() && !compileResults.isTimedOut()) {
             return new QuestionGrade(this.questionId, GradeStatus.COMPILE_ERROR, 0, null, compileResults, "Compilation failed");
-        } else if (!compileResults.isTimedOut()) {
+        } else if (compileResults.isTimedOut()) {
             return new QuestionGrade(this.questionId, GradeStatus.TIMEOUT, 0, null, compileResults, "Compilation timed out");
         }
 
@@ -45,7 +45,7 @@ public class QuestionGrader implements AutoCloseable {
         // TODO (iter2): PARSE PARTIAL TESTER RESULTS and retry?
         if (!testerResults.isSuccessful() && !testerResults.isTimedOut()) {
             return new QuestionGrade(this.questionId, GradeStatus.RUNTIME_ERROR, 0, null, testerResults, "Testerfile encountered runtime error");
-        } else if (!testerResults.isTimedOut()) {
+        } else if (testerResults.isTimedOut()) {
             return new QuestionGrade(this.questionId, GradeStatus.TIMEOUT, 0, null, testerResults, "Testerfile timed out");
         }
 
@@ -73,7 +73,14 @@ public class QuestionGrader implements AutoCloseable {
         // command.add("*.java");
 
         // assume all required files in question root
-        ProcessBuilder builder = new ProcessBuilder(JavaProcessUtils.getJavacExecutablePath().toString(), "*.java");
+        List<String> command = new ArrayList<>();
+        command.add(JavaProcessUtils.getJavacExecutablePath().toString());
+        String[] sources = workspace.getWorkspaceRoot().toFile().list((dir, name) -> name.endsWith(".java"));
+        if (sources == null) {
+            throw new ProcessExecutionException("prc-001", "Cannot list Java files in workspace", null);
+        }
+        command.addAll(List.of(sources));
+        ProcessBuilder builder = new ProcessBuilder(command);
         builder.directory(workspace.getWorkspaceRoot().toFile()); // making sure compilation done in workspace
         return ProcessExecutor.executeProcess(builder, timeout, "prc-001", "javac could not be started");
     }

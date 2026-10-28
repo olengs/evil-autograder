@@ -1,337 +1,119 @@
+import static org.junit.jupiter.api.Assertions.*;
 
+import app.Pair1;
+import grading.AssessmentGrader;
+import grading.TesterLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.stream.Stream;
+import java.util.zip.ZipOutputStream;
+import model.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.io.TempDir;
 
-// import static org.junit.jupiter.api.Assertions.assertEquals;
-// import static org.junit.jupiter.api.Assertions.assertNull;
-// import static org.junit.jupiter.api.Assertions.assertSame;
+/** Tests the real validation-to-marking flow; no reference-score file is used. */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class QuestionGraderTest {
+    @TempDir static Path temp;
+    private List<StudentSubmission> submissions;
+    private Map<StudentSubmission, List<QuestionGrade>> results;
+    private final Map<String, Integer> maxima = Map.of("Q1a", 3, "Q1b", 3, "Q2a", 5, "Q2b", 5, "Q3", 4);
 
-// import org.junit.jupiter.api.DisplayName;
-// import org.junit.jupiter.api.Test;
+    @BeforeAll
+    void markActualSubmissions() throws Exception {
+        System.out.print("project folder path > ");
+        String projectPath = new Scanner(System.in).nextLine().strip();
+        if (projectPath.isEmpty()) throw new IllegalArgumentException("Project folder path is required");
+        Path project = Path.of(projectPath).toAbsolutePath().normalize();
+        if (project.getFileName().toString().equals("student-submission")) project = project.getParent();
+        Path config = Files.isDirectory(project.resolve("Project")) ? project.resolve("Project") : project;
+        submissions = Pair1.run(project, temp.resolve("extracted"));
+        var testers = TesterLoader.LoadTesterFiles(config.resolve("Tester-Files").toString());
+        results = AssessmentGrader.grade(submissions, testers);
+        for (var entry : results.entrySet()) {
+            var student = entry.getKey().getStudent();
+            System.out.println("\n" + (student == null ? entry.getKey().getOriginalZip().getFileName()
+                : student.getName() + " (" + student.getUserName() + ")"));
+            for (QuestionGrade grade : entry.getValue()) {
+                System.out.printf("  %s: %.0f/%d [%s]%n", grade.getQuestionId(), grade.getEarnedMarks(),
+                    maxima.get(grade.getQuestionId()), grade.getStatus());
+                if (grade.getStatus() != GradeStatus.COMPLETED) System.out.println("    " + grade.getMessage());
+            }
+            System.out.printf("  Total: %.0f/20%n",
+                entry.getValue().stream().mapToDouble(QuestionGrade::getEarnedMarks).sum());
+        }
+    }
 
-// import autograder.grading.QuestionGrader;
-// import autograder.model.QuestionGrade;
-// import model.QuestionAttempt;
-// import autograder.model.GradeStatus;
+    @TestFactory
+    Stream<DynamicTest> actualStudentQuestions() {
+        return results.entrySet().stream().flatMap(entry -> entry.getValue().stream().map(grade ->
+            DynamicTest.dynamicTest(entry.getKey().getStudent().getUserName() + " " + grade.getQuestionId(), () -> {
+                var attempt = entry.getKey().getQuestionAttempts().stream()
+                    .filter(a -> a.getQuestionDefinition().getId().equals(grade.getQuestionId())).findFirst().orElseThrow();
+                assertTrue(grade.getEarnedMarks() >= 0 && grade.getEarnedMarks() <= maxima.get(grade.getQuestionId()));
+                if (!attempt.isValid()) {
+                    assertEquals(GradeStatus.SKIPPED, grade.getStatus());
+                    assertEquals(0, grade.getEarnedMarks());
+                    assertTrue(grade.getProcessResult().isEmpty());
+                    assertFalse(grade.getMessage().isBlank());
+                    return;
+                }
+                assertNotEquals(GradeStatus.SKIPPED, grade.getStatus(), grade.getMessage());
+                var process = grade.getProcessResult().orElseThrow();
+                if (grade.getStatus() == GradeStatus.COMPLETED) {
+                    assertTrue(process.isSuccessful());
+                    assertFalse(grade.getTestCaseResults().isEmpty(), "Tester results must actually be parsed");
+                    assertEquals(grade.getTestCaseResults().stream().mapToDouble(TestCaseResult::getEarnedMarks).sum(),
+                        grade.getEarnedMarks());
+                } else {
+                    assertTrue(List.of(GradeStatus.COMPILE_ERROR, GradeStatus.RUNTIME_ERROR, GradeStatus.TIMEOUT)
+                        .contains(grade.getStatus()));
+                    assertEquals(0, grade.getEarnedMarks());
+                    assertFalse(process.isSuccessful());
+                    assertEquals(grade.getStatus() == GradeStatus.TIMEOUT, process.isTimedOut());
+                }
+            })));
+    }
 
-// // groundtruth
-// // chee.teo.2022: Q1A:3.0   Q1B:3.0    Q2A:5.0    Q2B:1.0   Q3:0.0  Total: 12.0
-// // david.2024:    Q1A:3.0   Q1B:3.0    Q2A:4.0    Q2B:0.0   Q3:0.0  Total: 10.0
-// // fen.lai.2022:  Q1A:1.0   Q1B:0.0    Q2A:5.0    Q2B:4.0   Q3:0.0  Total: 10.0
-// // jing.lim.2021: Q1A:0.0   Q1B:0.0    Q2A:0.0    Q2B:0.0   Q3:0.0  Total: 0.0
-// // ping.lee.2023: Q1A:3.0   Q1B:3.0    Q2A:5.0    Q2B:5.0   Q3:4.0  Total: 20.0
-// // xing.yan.2023: Q1A:0.0   Q1B:1.0    Q2A:5.0    Q2B:5.0   Q3:4.0  Total: 1.0
+    @Test
+    void allActualStudentsAndTotalsAreIncluded() {
+        assertFalse(submissions.isEmpty(), "The selected folder must contain submissions");
+        assertEquals(submissions.size(), results.size());
+        assertEquals(submissions.size() * 5, results.values().stream().mapToInt(List::size).sum());
+        for (var entry : results.entrySet()) {
+            assertNotNull(entry.getKey().getStudent());
+            assertEquals(5, entry.getValue().size());
+            assertTrue(entry.getKey().getQuestionAttempts().stream().allMatch(QuestionAttempt::isValid),
+                "The supplied question folders must be found, including inside ZIP wrappers");
+            double total = entry.getValue().stream().mapToDouble(QuestionGrade::getEarnedMarks).sum();
+            assertTrue(total >= 0 && total <= 20);
+        }
+        assertTrue(results.values().stream().flatMap(List::stream)
+            .anyMatch(g -> g.getStatus() == GradeStatus.COMPLETED && g.getEarnedMarks() > 0),
+            "The integration must actually compile and execute answers, not return zero for everything");
+    }
 
-// /** Tests for {@link QuestionGrader}. */
-// class QuestionGraderTest {
-
-//     // ===== chee.teo.2022 =====
-
-//     @Test
-//     @DisplayName("chee.teo.2022 Q1A")
-//     void chee_Q1A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(3.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("chee.teo.2022 Q1B")
-//     void chee_Q1B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(3.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("chee.teo.2022 Q2A")
-//     void chee_Q2A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(5.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("chee.teo.2022 Q2B")
-//     void chee_Q2B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(1.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("chee.teo.2022 Q3")
-//     void chee_Q3() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     // ===== david.2024 =====
-
-//     @Test
-//     @DisplayName("david.2024 Q1A")
-//     void david_Q1A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(3.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("david.2024 Q1B")
-//     void david_Q1B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(3.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("david.2024 Q2A")
-//     void david_Q2A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(4.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("david.2024 Q2B")
-//     void david_Q2B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("david.2024 Q3")
-//     void david_Q3() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     // ===== fen.lai.2022 =====
-
-//     @Test
-//     @DisplayName("fen.lai.2022 Q1A")
-//     void fen_Q1A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(1.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("fen.lai.2022 Q1B")
-//     void fen_Q1B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("fen.lai.2022 Q2A")
-//     void fen_Q2A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(5.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("fen.lai.2022 Q2B")
-//     void fen_Q2B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(4.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("fen.lai.2022 Q3")
-//     void fen_Q3() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     // ===== jing.lim.2021 =====
-
-//     @Test
-//     @DisplayName("jing.lim.2021 Q1A")
-//     void jing_Q1A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("jing.lim.2021 Q1B")
-//     void jing_Q1B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("jing.lim.2021 Q2A")
-//     void jing_Q2A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("jing.lim.2021 Q2B")
-//     void jing_Q2B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("jing.lim.2021 Q3")
-//     void jing_Q3() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     // ===== ping.lee.2023 =====
-
-//     @Test
-//     @DisplayName("ping.lee.2023 Q1A")
-//     void ping_Q1A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(3.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("ping.lee.2023 Q1B")
-//     void ping_Q1B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(3.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("ping.lee.2023 Q2A")
-//     void ping_Q2A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(5.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("ping.lee.2023 Q2B")
-//     void ping_Q2B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(5.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("ping.lee.2023 Q3")
-//     void ping_Q3() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(4.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     // ===== xing.yan.2023 =====
-
-//     @Test
-//     @DisplayName("xing.yan.2023 Q1A")
-//     void xing_Q1A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(0.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("xing.yan.2023 Q1B")
-//     void xing_Q1B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(1.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("xing.yan.2023 Q2A")
-//     void xing_Q2A() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(5.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("xing.yan.2023 Q2B")
-//     void xing_Q2B() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(5.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-
-//     @Test
-//     @DisplayName("xing.yan.2023 Q3")
-//     void xing_Q3() {
-//         // pair1 to get question attemp
-//         QuestionAttempt attempt;
-//         QuestionGrade grade = new QuestionGrader.grade(attempt);
-//         assertEquals(4.0, grade.getEarnedMarks());
-//         assertEquals(GradeStatus.PENDING, grade.getStatus()); // need to find out by running, should only have COMPLETES, TIMEOUT and SKIPPED
-//     }
-// }
+    @Test
+    void invalidSubmissionIsSkippedWithAReason() throws Exception {
+        var actual = submissions.get(0);
+        Path zips = Files.createDirectory(temp.resolve("invalid-zip"));
+        try (var zip = new ZipOutputStream(Files.newOutputStream(zips.resolve(actual.getStudent().getUserName() + ".zip")))) {
+            // Empty ZIP deliberately has no required question folder or answer.
+        }
+        var definition = actual.getQuestionAttempts().get(0).getQuestionDefinition();
+        var invalid = Pair1.run(zips, temp.resolve("invalid-extracted"), List.of(actual.getStudent()),
+            new AssessmentDefinition("Missing answer", List.of(definition)));
+        var grade = AssessmentGrader.grade(invalid, Map.of()).values().iterator().next().get(0);
+        assertEquals(GradeStatus.SKIPPED, grade.getStatus());
+        assertEquals(0, grade.getEarnedMarks());
+        assertTrue(grade.getProcessResult().isEmpty(), "Invalid answers must not be compiled or run");
+        assertTrue(grade.getMessage().contains("missing"));
+    }
+}

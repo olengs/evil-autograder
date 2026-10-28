@@ -35,8 +35,16 @@ public class QuestionDefinition {
         return rootFolder.resolve(expectedFolder);
     }
 
-    public List<Path> getRequiredFiles() {
-        return Collections.unmodifiableList(requiredFiles); //read only
+    public String getExpectedFolder() {
+        return expectedFolder.toString();
+    }
+
+    public List<String> getRequiredFiles() {
+        return requiredFiles.stream().map(Path::toString).toList();
+    }
+
+    public List<String> getAllowedResourceFiles() {
+        return dependencyFiles.stream().map(Path::toString).toList();
     }
 
     public List<Path> getDependencyFiles() {

@@ -30,6 +30,12 @@ import validation.rules.UnexpectedFileRule;
 public class Pair1 {
 
     public static void run(Path projectFolder) throws IOException {
+        Path workspace = Files.createTempDirectory("pair1-");
+        run(projectFolder, workspace);
+        System.out.println("extraction workspace > " + workspace);
+    }
+
+    public static List<StudentSubmission> run(Path projectFolder, Path workspace) throws IOException {
         projectFolder = projectFolder.toAbsolutePath().normalize();
         if (projectFolder.getFileName() != null && projectFolder.getFileName().toString().equals("student-submission")) {
             projectFolder = projectFolder.getParent();
@@ -38,20 +44,16 @@ public class Pair1 {
         if (!Files.isDirectory(submissionFolder)) {
             throw new IOException("student-submission folder not found in " + projectFolder);
         }
-        //Sample-project configuration only; pair-3 supplies the real roster and assessment later.
-        if (!Files.exists(Path.of("IS442-ScoreSheet.csv"))) {
-            Files.createFile(Path.of("IS442-ScoreSheet.csv"));
-        }
-        List<StudentDetails> students = readSampleRoster(projectFolder.resolve("IS442-ScoreSheet.csv"));
+        Path config = Files.isDirectory(projectFolder.resolve("Project")) ? projectFolder.resolve("Project") : projectFolder;
+        List<StudentDetails> students = readSampleRoster(config.resolve("IS442-ScoreSheet.csv"));
+        String resources = config.resolve("RenameToYourUsername").toString();
         AssessmentDefinition assessment = new AssessmentDefinition("CS102 sample", List.of(
-                new QuestionDefinition("Q1a", "Q1", List.of("Q1a.java")),
-                new QuestionDefinition("Q1b", "Q1", List.of("Q1b.java")),
-                new QuestionDefinition("Q2a", "Q2", List.of("Q2a.java"), List.of("students.txt", "persons.txt")),
-                new QuestionDefinition("Q2b", "Q2", List.of("Q2b.java"), List.of("students.txt", "persons.txt")),
-                new QuestionDefinition("Q3", "Q3", List.of("Q3.java"), List.of("ShapeComparator.java"))));
-        Path workspace = Files.createTempDirectory("pair1-");
-        run(submissionFolder, workspace, students, assessment);
-        System.out.println("extraction workspace > " + workspace);
+                new QuestionDefinition("Q1a", "Q1", resources, List.of("Q1a.java")),
+                new QuestionDefinition("Q1b", "Q1", resources, List.of("Q1b.java")),
+                new QuestionDefinition("Q2a", "Q2", resources, List.of("Q2a.java"), List.of(Path.of("students.txt"), Path.of("persons.txt"))),
+                new QuestionDefinition("Q2b", "Q2", resources, List.of("Q2b.java"), List.of(Path.of("students.txt"), Path.of("persons.txt"))),
+                new QuestionDefinition("Q3", "Q3", resources, List.of("Q3.java"), List.of(Path.of("ShapeComparator.java")))));
+        return run(submissionFolder, workspace, students, assessment);
     }
 
     private static List<StudentDetails> readSampleRoster(Path scoresheet) throws IOException {
@@ -95,7 +97,17 @@ public class Pair1 {
                 if (student == null) {
                     throw new IOException("no roster match for " + zip.getFileName());
                 }
-                submission = new StudentSubmission(student, zip, folder);
+                Path answerRoot = folder;
+                if (assessment.getQuestions().stream().noneMatch(q -> Files.isDirectory(folder.resolve(q.getExpectedFolder())))) {
+                    try (var children = Files.list(folder)) {
+                        var roots = children.filter(Files::isDirectory)
+                                .filter(child -> !child.getFileName().toString().equals("__MACOSX"))
+                                .filter(child -> assessment.getQuestions().stream().anyMatch(q ->
+                                        Files.isDirectory(child.resolve(q.getExpectedFolder())))).toList();
+                        if (roots.size() == 1) answerRoot = roots.get(0);
+                    }
+                }
+                submission = new StudentSubmission(student, zip, answerRoot);
                 validator.validate(submission, assessment);
             } catch (IOException error) {
                 submission = new StudentSubmission(student, zip, folder);

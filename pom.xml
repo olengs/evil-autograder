@@ -38,6 +38,10 @@
                 <groupId>org.apache.maven.plugins</groupId> <!--connects maven to junit so mvn test actually runs your tests-->
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.6.0</version>
+                <configuration>
+                    <!--keep terminal input available for project folder prompt-->
+                    <forkCount>0</forkCount>
+                </configuration>
             </plugin>
         </plugins>
     </build>

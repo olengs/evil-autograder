@@ -23,7 +23,8 @@ public class GradingWorkspace implements AutoCloseable {
         try {
             FileUtils.CopyDirectory(definitions.getQuestionDefinition().getFolderPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
             FileUtils.CopyDirectory(definitions.getQuestionAttempt().getAttempRootPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
-            FileUtils.CopyDirectory(definitions.getTesterDefinition().getFullPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
+            Path tester = definitions.getTesterDefinition().getFullPath();
+            FileUtils.CopyFile(tester, workspaceRoot.resolve(tester.getFileName()), FileUtils.CopyOptions.REPLACE_EXISTING);
         } catch (Exception e) {
             // Self-clean the partially-created workspace, then rethrow the original (coded) failure.
             throw new WorkspacePreparationException("wsp-002", e.getMessage(), e);
