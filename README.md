@@ -1,2 +1,5 @@
 # evil-autograder
-CS102 Project
+
+```bash
+mvn test
+```
