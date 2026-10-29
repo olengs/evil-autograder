@@ -4,7 +4,7 @@ import model.IssueSeverity;
 import model.QuestionDefinition;
 import model.StudentSubmission;
 import model.SubmissionIssue;
-import validation.AnswerFileLocator;
+import validation.SubmissionFileFinder;
 import validation.ValidationRule;
 
 import java.io.IOException;
@@ -14,12 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-//checks filename casing
+public class FileNamingRule implements ValidationRule { //checks that answer filenames use expected capital letters
+    private final SubmissionFileFinder fileLocator;
 
-public class FileNamingRule implements ValidationRule {
-    private final AnswerFileLocator fileLocator;
-
-    public FileNamingRule(AnswerFileLocator fileLocator) { //constructor
+    public FileNamingRule(SubmissionFileFinder fileLocator) { //@1ejun6 > constructor
         this.fileLocator = fileLocator;
     }
 
@@ -39,16 +37,15 @@ public class FileNamingRule implements ValidationRule {
                     continue;
                 }
 
-                Optional<Path> ignoringCase = fileLocator.findIgnoringCase(questionFolder, requiredFile);
-                if (ignoringCase.isPresent()) {
-                    Path actualFile = ignoringCase.get();
+                Optional<Path> caseInsensitiveMatch = fileLocator.findIgnoringCase(questionFolder, requiredFile);
+                if (caseInsensitiveMatch.isPresent()) {
+                    Path actualFile = caseInsensitiveMatch.get();
                     issues.add(new SubmissionIssue("wrong file name", IssueSeverity.ERROR,
                             "expected filename " + requiredFile + " but found " + actualFile.getFileName().toString() + ".",
                             question.getId(), actualFile));
                 }
-            } catch (IOException e) {
-                issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR,
-                        "unable to inspect " + questionFolder + ".", question.getId(), questionFolder));
+            } catch (IOException error) {
+                issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR, "unable to inspect " + questionFolder + " > " + error.getMessage(), question.getId(), questionFolder));
             }
         }
         return issues;

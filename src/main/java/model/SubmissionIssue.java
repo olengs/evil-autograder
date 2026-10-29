@@ -2,9 +2,7 @@ package model;
 
 import java.nio.file.Path;
 
-//stores one error &&& warning &&& note found while checking a students submission
-
-public class SubmissionIssue {
+public class SubmissionIssue { //describes one validation problem \ note
 
     private final String code;
     private final IssueSeverity severity;
