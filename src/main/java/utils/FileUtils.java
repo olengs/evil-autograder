@@ -89,6 +89,9 @@ public class FileUtils { //copies files & folders & deletes temporary folders
     
     public static void deleteDirectory(Path folder) throws IOException {
         //@1ejun6 > delete files first > then their empty folders > then root folder
+        if (folder != null && Files.isSymbolicLink(folder)) {
+            Files.delete(folder); return;
+        }
         Path root = resolveExistingPath(folder);
         
         if (root.getParent() == null) {
