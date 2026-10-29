@@ -3,49 +3,15 @@ package model;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Immutable final result for one graded question.
- *
- * QuestionGrade aggregating everything that happened while
- * grading one question: the outcome {@link GradeStatus}, the marks earned, the
- * individual {@link TestCaseResult}(s), and (when the question was actually
- * run)
- * the raw {@link ProcessResult}.
- *
- * This entity is the output of grading a question.
- */
-public final class QuestionGrade {
-
-    /** Matches the {@code QuestionDefinition} id . */
+public final class QuestionGrade { //stores final result for one question > status & marks & test cases & process result
     private final String questionId;
-
-    /** Outcome kind of this grade. */
     private final GradeStatus status;
-
-    /** Marks earned for the question (zero or positive). */
     private final double earnedMarks;
+    private final List<TestCaseResult> testCaseResults; //test case results > list cannot be changed
+    private final Optional<ProcessResult> processResult; //process result > empty if not supplied
+    private final String message; //grading message > empty if not supplied
 
-    /** Immutable list of per-case results; may be empty. */
-    private final List<TestCaseResult> testCaseResults;
-
-    /** Raw process result; absent when the attempt was skipped. */
-    private final Optional<ProcessResult> processResult;
-
-    /** Human-readable message; present for compile/runtime errors, else absent. */
-    private final String message;
-
-    /**
-     * @param questionId      question id
-     * @param status          outcome kind
-     * @param earnedMarks     marks earned for the question
-     * @param testCaseResults per-case results; null becomes an empty list and
-     *                        the contents are defensively copied into an
-     *                        unmodifiable list
-     * @param processResult   raw process result, or {@code null} when absent
-     *                        (e.g. the attempt was skipped)
-     * @param message         optional human-readable message, or {@code null}
-     * @throws IllegalArgumentException if {@code status} is {@code null}
-     */
+    //require status & store results > copy test cases & handle null values
     public QuestionGrade(String questionId, GradeStatus status, double earnedMarks,
             List<TestCaseResult> testCaseResults,
             ProcessResult processResult, String message) {
@@ -56,50 +22,40 @@ public final class QuestionGrade {
         this.questionId = questionId == null ? "" : questionId;
         this.status = status;
         this.earnedMarks = earnedMarks;
-        this.testCaseResults = (testCaseResults == null)
-                ? List.of() // if no test case result, return empty list
-                : List.copyOf(testCaseResults);
+        this.testCaseResults = (testCaseResults == null)? List.of() : List.copyOf(testCaseResults); //no test case results > use empty list
         this.processResult = Optional.ofNullable(processResult);
         this.message = message==null ? "" : message;
     }
 
-    /** @return the question id */
     public String getQuestionId() {
         return questionId;
     }
 
-    /** @return the outcome kind */
     public GradeStatus getStatus() {
         return status;
     }
 
-    /** @return marks earned for the question */
     public double getEarnedMarks() {
         return earnedMarks;
     }
 
-    /** @return the unmodifiable list of per-case results (possibly empty) */
+    //return test case results
     public List<TestCaseResult> getTestCaseResults() {
         return testCaseResults;
     }
 
-    /** @return the raw process result, or empty when absent */
+    //return process result if present
     public Optional<ProcessResult> getProcessResult() {
         return processResult;
     }
 
-    /** @return the message, or empty when absent */
+    //return message
     public String getMessage() {
         return message;
     }
 
     @Override
     public String toString() {
-        return "QuestionGrade{questionId='" + questionId + '\''
-                + ", status=" + status
-                + ", earnedMarks=" + earnedMarks
-                + ", testCases=" + testCaseResults.size()
-                + ", hasProcessResult=" + processResult.isPresent()
-                + ", hasMessage=" + message + '}';
+        return "QuestionGrade{questionId='" + questionId + '\'' + ", status=" + status + ", earnedMarks=" + earnedMarks  + ", testCases=" + testCaseResults.size() + ", hasProcessResult=" + processResult.isPresent() + ", hasMessage=" + message + '}';
     }
 }
