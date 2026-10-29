@@ -18,12 +18,15 @@ public class GradingWorkspace implements AutoCloseable { //creates & cleans up t
     public void prepare(QuestionDefinition question, QuestionAttempt attempt,
             TesterDefinition tester) throws IOException {
         //TODO > iteration 2 > support multithreaded preparation with safe file copying
+        //@1ejun6 > current preparation uses a separate temporary folder per workspace
+        //@1ejun6 > multithreaded preparation remains pending
         for (String name : question.getAllowedResourceFiles()) { //@1ejun6 > copy only the declared support files.
             Path destination = directory.resolve(name);
             Files.createDirectories(destination.getParent());
             FileUtils.copyFile(question.getResourceDirectory().resolve(name), destination, FileUtils.CopyOptions.REPLACE_EXISTING);
         }
         //TODO > iteration 2 > validate which files students may change so answers cannot overwrite given files
+        //@1ejun6 > overwrite validation remains pending > student files currently replace matching support files
         //@1ejun6 > keep students helper classes & tester data with their answers > same flow as pair 2
         FileUtils.copyDirectory(attempt.getQuestionDirectory(), directory, FileUtils.CopyOptions.REPLACE_EXISTING);
         Path testerFile = tester.getSourceFile(); //@1ejun6 > copy tester as a file not a directory
