@@ -18,7 +18,7 @@ import validation.SubmissionFileFinder;
 import validation.SubmissionValidator;
 import validation.rules.*;
 
-public class Main { //@1ejun6 > loads project files & validates submissions & grades each question
+public class Main { //loads project files & validates submissions & grades each question
     public static void main(String[] args) {
         try {
             Config config = args.length == 0 ? new Config() : new Config(Path.of(args[0]));
