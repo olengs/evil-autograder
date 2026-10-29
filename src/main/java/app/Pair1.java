@@ -103,7 +103,7 @@ public class Pair1 {
                         error.getMessage(), null, folder);
                 submission.addIssues(List.of(issue));
                 for (QuestionDefinition question : assessment.getQuestions()) {
-                    submission.addQuestionAttempt(new QuestionAttempt(question, List.of(), List.of(issue)));
+                    submission.addQuestionAttempt(new QuestionAttempt(question, folder.resolve(question.getExpectedFolder()), List.of(), List.of(issue)));
                 }
             }
             submissions.add(submission);
