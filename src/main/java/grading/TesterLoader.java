@@ -21,6 +21,7 @@ public class TesterLoader { //find tester files in this folder
             for (Path file : files) {
 
                  //TODO > iteration 2 > validate file input
+                //@1ejun6 > addressed below > skip entries that are not regular files & reject unreadable testers
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
@@ -32,6 +33,7 @@ public class TesterLoader { //find tester files in this folder
                 String questionId = name.substring(0, name.length() - "Tester.java".length()).toLowerCase(Locale.ROOT);
                 //@1ejun6 > remove tester.java & lowercase lookup key
                 String mainClassName = name.substring(0, name.length() - ".java".length());
+                //@1ejun6 > input validation also rejects blank question ids & duplicate tester ids
                 if (questionId.isBlank() || testers.containsKey(questionId)) {
                     throw new IOException("invalid / duplicate tester id > " + name);
                 }
