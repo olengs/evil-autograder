@@ -4,12 +4,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StudentSubmission {
-    private StudentDetails student;
-    private Path originalZip;
-    private Path rootDirectory;
-    private List<QuestionAttempt> questionAttempts;
-    private List<SubmissionIssue> submissionIssues;
+public class StudentSubmission { //stores a students zip & extracted folder & validation results together
+    private final StudentDetails student;
+    private final Path originalZip;
+    private final Path rootDirectory;
+    private final List<QuestionAttempt> questionAttempts;
+    private final List<SubmissionIssue> submissionIssues;
 
     public StudentSubmission(StudentDetails student, Path originalZip, Path rootDirectory) {
         this.student = student;
@@ -32,11 +32,11 @@ public class StudentSubmission {
     }
 
     public List<QuestionAttempt> getQuestionAttempts() {
-        return questionAttempts;
+        return List.copyOf(questionAttempts);
     }
 
     public List<SubmissionIssue> getSubmissionIssues() {
-        return submissionIssues;
+        return List.copyOf(submissionIssues);
     }
 
     public void addQuestionAttempt(QuestionAttempt attempt) {

@@ -1,54 +1,41 @@
 package grading;
 
-import exceptions.WorkspacePreparationException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicLong;
-import model.QuestionTestPack;
+import model.QuestionAttempt;
+import model.QuestionDefinition;
+import model.TesterDefinition;
 import utils.FileUtils;
 
-public class GradingWorkspace implements AutoCloseable {
-    private Path workspaceRoot;
-    private static final AtomicLong AUTO_ID = new AtomicLong();
+public class GradingWorkspace implements AutoCloseable { //creates & cleans up temporary folder used to grade one question
+    private final Path directory;
 
-    public GradingWorkspace() {
-        createWorkspaceRoot();
+    public GradingWorkspace() throws IOException {
+        directory = Files.createTempDirectory("autograder-ws-"); //@1ejun6 > give this question its own temporary folder
     }
 
-    public void Prepare(QuestionTestPack definitions) {
-        /// TODO (iter2): Currently assumes that student's attempt files don't modify the given files. 
-        /// Requires maybe input or validation to get what the files that requires students to change.
-        /// TODO (iter2): Convert to multithreaded,use CopyDirectorySafe.
-        try {
-            FileUtils.CopyDirectory(definitions.getQuestionDefinition().getFolderPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
-            FileUtils.CopyDirectory(definitions.getQuestionAttempt().getAttempRootPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
-            FileUtils.CopyDirectory(definitions.getTesterDefinition().getFullPath(), workspaceRoot, FileUtils.CopyOptions.REPLACE_EXISTING);
-        } catch (Exception e) {
-            // Self-clean the partially-created workspace, then rethrow the original (coded) failure.
-            throw new WorkspacePreparationException("wsp-002", e.getMessage(), e);
+    public void prepare(QuestionDefinition question, QuestionAttempt attempt,
+            TesterDefinition tester) throws IOException {
+        //TODO > iteration 2 > support multithreaded preparation with safe file copying
+        for (String name : question.getAllowedResourceFiles()) { //@1ejun6 > copy only the declared support files.
+            Path destination = directory.resolve(name);
+            Files.createDirectories(destination.getParent());
+            FileUtils.copyFile(question.getResourceDirectory().resolve(name), destination, FileUtils.CopyOptions.REPLACE_EXISTING);
         }
+        //TODO > iteration 2 > validate which files students may change so answers cannot overwrite given files
+        //@1ejun6 > keep students helper classes & tester data with their answers > same flow as pair 2
+        FileUtils.copyDirectory(attempt.getQuestionDirectory(), directory, FileUtils.CopyOptions.REPLACE_EXISTING);
+        Path testerFile = tester.getSourceFile(); //@1ejun6 > copy tester as a file not a directory
+        FileUtils.copyFile(testerFile, directory.resolve(testerFile.getFileName()), FileUtils.CopyOptions.REPLACE_EXISTING);
+    }
+
+    public Path getDirectory() {
+        return directory;
     }
 
     @Override
     public void close() throws IOException {
-        if (this.workspaceRoot != null)
-            FileUtils.DeleteFolder(workspaceRoot);
-    }
-
-    private void createWorkspaceRoot() {
-        Path root;
-        try {
-            // TODO (iter2): Change 05d to value based of config, log(num students). Currently assume max 100000 students.
-            root = Files.createTempDirectory("autograder-ws-" + String.format("%05d", AUTO_ID.incrementAndGet()) + "-");
-        } catch (Exception e) {
-            throw new WorkspacePreparationException("wsp-001", "Temporary workspace cannot be created", e);
-        }
-
-        this.workspaceRoot = root;
-    }
-
-    public Path getWorkspaceRoot() {
-        return workspaceRoot;
+        FileUtils.deleteDirectory(directory);
     }
 }
