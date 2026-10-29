@@ -2,32 +2,32 @@ package model;
 
 import java.nio.file.Path;
 
-public class TesterDefinition {
-    private final String id;
-    private final Path root;
-    private final Path path;
-    private final String entryPoint;
+public class TesterDefinition { //stores where a tester file is & which java class to run
+    private final String questionId;
+    private final Path testerDirectory;
+    private final Path relativePath;
+    private final String mainClassName;
 
-    public TesterDefinition(String id, Path root, Path path, String entryPoint) {
-        this.id = id;
-        this.root = root;
-        this.path = path;
-        this.entryPoint = entryPoint;
+    public TesterDefinition(String questionId, Path testerDirectory, Path relativePath, String mainClassName) {
+        this.questionId = questionId;
+        this.testerDirectory = testerDirectory;
+        this.relativePath = relativePath;
+        this.mainClassName = mainClassName;
     }
 
-    public String getId() {
-        return id;
+    public String getQuestionId() {
+        return questionId;
     }
 
-    public Path getRelativePathToRoot() {
-        return path;
+    public Path getRelativePath() {
+        return relativePath;
     }
 
-    public Path getFullPath() {
-        return root.resolve(path);
+    public Path getSourceFile() { //@1ejun6 > resolve the source file under tester directory
+        return testerDirectory.resolve(relativePath);
     }
 
-    public String getEntryPoint() {
-        return entryPoint;
+    public String getMainClassName() { //@1ejun6 > return exact java class name to run
+        return mainClassName;
     }
 }
