@@ -19,8 +19,8 @@ class SubmissionValidationTest {
         var attempt = validate().getQuestionAttempts().getFirst();
 
         assertEquals("Q1a", attempt.getQuestionDefinition().getId());
-        assertEquals(folder, attempt.getAttempRootPath());
-        assertEquals(List.of(answer), attempt.getAttemptFullPaths());
+        assertEquals(folder, attempt.getQuestionDirectory());
+        assertEquals(List.of(answer), attempt.getSubmittedFiles());
         assertTrue(attempt.isValid());
     }
 
@@ -47,9 +47,9 @@ class SubmissionValidationTest {
     }
 
     private StudentSubmission validate() {
-        var question = new QuestionDefinition("Q1a", "Q1", List.of("Q1a.java"), List.of("support.txt"));
+        var question = new QuestionDefinition("Q1a", "Q1", root.resolve("resources"), List.of("Q1a.java"), List.of("support.txt"));
         var submission = new StudentSubmission(null, root.resolve("submission.zip"), root);
-        var finder = new AnswerFileLocator();
+        var finder = new SubmissionFileFinder();
         var validator = new SubmissionValidator(
                 List.of(new QuestionFolderRule(), new RequiredFileRule(finder), new FileNamingRule(finder)),
                 List.of(new UnexpectedFileRule()), finder);
