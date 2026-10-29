@@ -1,25 +1,18 @@
 package model;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-public class QuestionAttempt {
+public class QuestionAttempt { //stores a students answer files & any problems found for one question
     private final QuestionDefinition questionDefinition;
+    private final Path questionDirectory;
+    private final List<Path> submittedFiles;
     private final List<SubmissionIssue> issues;
-    private final Path rootPath;
-    private final List<Path> answerFiles;
 
-    public QuestionAttempt(QuestionDefinition questionDefinition, Path rootPath, List<Path> answerFiles) {
-        this(questionDefinition, rootPath, answerFiles, List.of());
-    }
-
-    public QuestionAttempt(QuestionDefinition questionDefinition, Path rootPath,
-            List<Path> answerFiles, List<SubmissionIssue> issues) {
-        this.questionDefinition = questionDefinition;
-        this.rootPath = rootPath;
-        this.answerFiles = new ArrayList<>(answerFiles);
+    public QuestionAttempt(QuestionDefinition questionDefinition, Path questionDirectory, List<Path> submittedFiles, List<SubmissionIssue> issues) {
+        this.questionDefinition = questionDefinition; //@1ejun6 > store question definition
+        this.questionDirectory = questionDirectory; //@1ejun6 > keep students question folder explicitly
+        this.submittedFiles = List.copyOf(submittedFiles); //@1ejun6 > copy lists & prevent outside changes
         this.issues = List.copyOf(issues);
     }
 
@@ -27,27 +20,24 @@ public class QuestionAttempt {
         return questionDefinition;
     }
 
+    public Path getQuestionDirectory() {
+        return questionDirectory;
+    }
+
+    public List<Path> getSubmittedFiles() {
+        return submittedFiles;
+    }
+
     public List<SubmissionIssue> getIssues() {
         return issues;
     }
 
     public boolean isValid() {
-        return issues.stream().noneMatch(issue -> issue.getSeverity() == IssueSeverity.ERROR);
-    }
-
-    public Path getAttempRootPath() {
-        return rootPath;
-    }
-
-    public List<Path> getAttemptRelativePaths() {
-        return answerFiles;
-    }
-
-    public List<Path> getAttemptFullPaths() {
-        return answerFiles.stream().map(x -> rootPath.resolve(x)).toList();
-    }
-
-    public List<Path> getAnswerFiles() {
-        return Collections.unmodifiableList(answerFiles);
+        for (SubmissionIssue issue : issues) {
+            if (issue.getSeverity() == IssueSeverity.ERROR) {
+                return false;
+            }
+        }
+        return true;
     }
 }

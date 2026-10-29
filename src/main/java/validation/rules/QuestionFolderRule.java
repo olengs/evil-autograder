@@ -11,18 +11,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-//checks required files
-
-public class QuestionFolderRule implements ValidationRule {
-    @Override //checks one student submission against one question requirements &&& returns any issues found
+public class QuestionFolderRule implements ValidationRule { //check that student supplied folder required for a question
+    @Override //@1ejun6 > checks one student submission against one question requirements & returns any issues found
     public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question) {
         List<SubmissionIssue> issues = new ArrayList<>();
         Path expectedFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
         
         if (!Files.isDirectory(expectedFolder)) {
-            issues.add(new SubmissionIssue("missing question folder", IssueSeverity.ERROR,
-                    "expected folder " + question.getExpectedFolder() + " is missing", question.getId(),
-                    expectedFolder));
+            issues.add(new SubmissionIssue("missing question folder", IssueSeverity.ERROR, "expected folder " + question.getExpectedFolder() + " is missing", question.getId(), expectedFolder));
         }
         return issues;
     }
