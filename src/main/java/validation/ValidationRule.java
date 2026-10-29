@@ -5,8 +5,6 @@ import model.StudentSubmission;
 import model.SubmissionIssue;
 import java.util.List;
 
-//once per question
-
-public interface ValidationRule {
+public interface ValidationRule { //defines validate method used by rules that check one question
     List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question);
 }
