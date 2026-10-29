@@ -99,6 +99,7 @@ public class QuestionGrader { //compiles & runs tester & calculates marks for on
     private QuestionGrade failedGrade(String questionId, GradeStatus status,
             ProcessResult process, String message) {
         //failed grade has 0 marks & no test case results > keep process details
+        if (!process.getErrorOutput().isBlank()) message += "\n" + process.getErrorOutput().strip();
         return new QuestionGrade(questionId, status, 0, List.of(), process, message);
     }
 
