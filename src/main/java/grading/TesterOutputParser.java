@@ -1,7 +1,9 @@
 package grading;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import model.TestCaseResult;
@@ -20,6 +22,7 @@ public class TesterOutputParser { //converts tester output text into individual 
 
     private List<TestCaseResult> parse(String output, boolean allowIncomplete) {
         List<TestCaseResult> results = new ArrayList<>();
+        Set<String> seenIds = new HashSet<>();
         String caseId = null;
         Boolean passed = null; //@1ejun6 > null means no outcome found yet
 
@@ -31,7 +34,10 @@ public class TesterOutputParser { //converts tester output text into individual 
                 if (caseId != null && (!allowIncomplete || passed != null)) {
                     results.add(createResult(caseId, passed));
                 }
-                caseId = testHeader.group(1);
+                caseId = testHeader.group(1).strip();
+                if (!seenIds.add(caseId)) {
+                    throw new IllegalArgumentException("duplicate test id " + caseId);
+                }
                 passed = null; //@1ejun6 > reset outcome for new test
             } else if (caseId != null && (trimmedLine.equalsIgnoreCase("Passed")
                     || trimmedLine.equalsIgnoreCase("Failed") || trimmedLine.startsWith("Failed -> "))) {
