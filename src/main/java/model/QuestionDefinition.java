@@ -1,61 +1,41 @@
 package model;
 
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
 
-public class QuestionDefinition {
+public class QuestionDefinition { //describes what one question needs independently of any students submission
     private final String id;
-    private final Path rootFolder;
-    private final Path expectedFolder;
-    private final List<String> requiredFiles;
-    private final List<Path> dependencyFiles;
+    private final String expectedFolder; //@1ejun6 > eg. "q1" & "q1a.java"
+    //@1ejun6 > store folder & file names as text > keep resource root as a path
+    private final Path resourceRoot;
+    private final List<String> requiredFiles; //@1ejun6 > eg. resources
+    private final List<String> allowedResourceFiles; //@1ejun6 > eg. resources/q1/q1a.java
 
-    public QuestionDefinition(String id, String expectedFolder, List<String> requiredFiles) {
-        this(id, expectedFolder, requiredFiles, List.of());
-    }
-
-    public QuestionDefinition(String id, String expectedFolder, List<String> requiredFiles, List<String> allowedResourceFiles) {
-        this(id, expectedFolder, ".", requiredFiles, allowedResourceFiles.stream().map(Path::of).toList());
-    }
-
-    public QuestionDefinition(String id, String expectedFolder, String root, List<String> requiredFiles) { //eg. q1 > q1 > q1a.java &&& q1b.java
-        this(id, expectedFolder,root, requiredFiles, List.of());
-    }
-
-    public QuestionDefinition(String id, String expectedFolder, String root, List<String> requiredFiles, List<Path> dependencyFiles) {
+    public QuestionDefinition(String id, String expectedFolder, Path resourceRoot, List<String> requiredFiles, List<String> allowedResourceFiles) {
         this.id = id;
-        this.rootFolder = Path.of(root);
-        this.expectedFolder = Path.of(expectedFolder);
+        this.expectedFolder = expectedFolder;
+        this.resourceRoot = resourceRoot;
         this.requiredFiles = List.copyOf(requiredFiles);
-        this.dependencyFiles = List.copyOf(dependencyFiles);
+        this.allowedResourceFiles = List.copyOf(allowedResourceFiles);
     }
 
     public String getId() {
         return id;
     }
 
-    public Path getRootFolderPath() {
-        return rootFolder;
-    }
-
-    public Path getFolderPath() {
-        return rootFolder.resolve(expectedFolder);
-    }
-
     public String getExpectedFolder() {
-        return expectedFolder.toString();
+        return expectedFolder;
     }
 
-    public List<String> getAllowedResourceFiles() {
-        return dependencyFiles.stream().map(Path::toString).toList();
+    public Path getResourceDirectory() { //@1ejun6 > build trusted resource folder
+        return resourceRoot.resolve(expectedFolder);
     }
 
     public List<String> getRequiredFiles() {
-        return Collections.unmodifiableList(requiredFiles); //read only
+        return requiredFiles;
     }
 
-    public List<Path> getDependencyFiles() {
-        return Collections.unmodifiableList(dependencyFiles);
+    public List<String> getAllowedResourceFiles() { //@1ejun6 > return support files this question is allowed to use
+        return allowedResourceFiles;
     }
 }
