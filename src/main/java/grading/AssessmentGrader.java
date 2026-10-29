@@ -6,7 +6,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import model.*;
+
+import model.AssessmentDefinition;
+import model.GradeStatus;
+import model.IssueSeverity;
+import model.QuestionAttempt;
+import model.QuestionDefinition;
+import model.QuestionGrade;
+import model.StudentSubmission;
+import model.SubmissionIssue;
+import model.TesterDefinition;
 
 public class AssessmentGrader {
     private final QuestionGrader questionGrader;
@@ -28,6 +37,8 @@ public class AssessmentGrader {
                 String skipReason = findBlockingIssue(submission, question.getId());
                 QuestionAttempt attempt = findAttempt(submission, question.getId());
                 TesterDefinition tester = testers.get(question.getId().toLowerCase(Locale.ROOT));
+
+                //TODO: handle case where attempt is null.
 
                 //@1ejun6 > 2 > keep whichever blocking reason appears first
                 //@1ejun6 > check for a missing attempt before reading its validation status

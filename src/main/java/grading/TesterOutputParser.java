@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import model.TestCaseResult;
 
 public class TesterOutputParser { //converts tester output text into individual test-case results without running a process
