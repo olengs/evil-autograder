@@ -14,6 +14,8 @@ import model.StudentDetails;
 
 public class StudentIdentifier { //matches a submitted zip filename to a student in scoresheet
     //@1ejun6 > jc > might need to refactor for better solve to the problem > maybe compare against inputted class list of student ids
+    //@1ejun6 > addressed above > compare zip username against students loaded from scoresheet
+    //@1ejun6 > remove academic year prefix before matching > return null when no student matches
     public StudentDetails identify(Path zipFile, List<StudentDetails> students) {
         String fileName = zipFile.getFileName().toString();
         String username = fileName.substring(0, fileName.length() - 4);

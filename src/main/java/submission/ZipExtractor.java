@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -51,7 +50,7 @@ public class ZipExtractor { //unpacks one zip into destination directory supplie
                         Files.createDirectories(parentFolder);
                     }
 
-                    Files.copy(zipInputStream, outputPath, StandardCopyOption.REPLACE_EXISTING); //@1ejun6 > write entrys bytes to its destination
+                    Files.copy(zipInputStream, outputPath); //@1ejun6 > write entrys bytes to its destination
                     //@1ejun6 > copies contents of current zip file entry into destination path
                 }
 
