@@ -14,14 +14,14 @@ import model.QuestionDefinition;
 import model.StudentDetails;
 import model.StudentSubmission;
 import model.SubmissionIssue;
-import validation.AnswerFileLocator;
+import validation.SubmissionFileFinder;
 import validation.ValidationRule;
 
-public class StudentHeaderRule implements ValidationRule {
-    private static final int headerLineMax = 15; //sets how many lines to inspect student java file
-    private final AnswerFileLocator fileLocator;
+public class StudentHeaderRule implements ValidationRule { //checks student name & email in comments at the top of each required answer
+    private static final int headerLineMax = 15; //@1ejun6 > sets how many lines to inspect student java file
+    private final SubmissionFileFinder fileLocator;
 
-    public StudentHeaderRule(AnswerFileLocator fileLocator) {
+    public StudentHeaderRule(SubmissionFileFinder fileLocator) {
         this.fileLocator = fileLocator;
     }
 
@@ -37,8 +37,7 @@ public class StudentHeaderRule implements ValidationRule {
         StudentDetails student = submission.getStudent();
 
         if (student == null) {
-            issues.add(new SubmissionIssue("unknown student", IssueSeverity.WARNING,
-                    "cannot check headers without a matched student", question.getId(), questionFolder));
+            issues.add(new SubmissionIssue("unknown student", IssueSeverity.WARNING, "cannot check headers without a matched student", question.getId(), questionFolder));
             return issues;
         }
 
@@ -52,29 +51,28 @@ public class StudentHeaderRule implements ValidationRule {
 
                 String header = readHeader(file.get());
 
-                boolean containsName = containsField(header, "Name", student.getName());
-                boolean containsEmail = containsField(header, "Email(?:\\h+ID)?", student.getEmail());
-
-                if (!containsName || !containsEmail) {
-                    issues.add(new SubmissionIssue("missing student header", IssueSeverity.WARNING, "student name ||| email "
-                                    + "was not found near " + "top of " + requiredFile + ".",
-                            question.getId(), file.get()));
-                }
+                checkField(header, "Name", "Name", student.getName(), question.getId(), file.get(), issues);
+                checkField(header, "Email(?:\\h+ID)?", "Email", student.getEmail(), question.getId(), file.get(), issues);
             } catch (IOException e) {
-                issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR,
-                        "unable to read " + requiredFile + ".", question.getId(),
-                        questionFolder.resolve(requiredFile)));
+                issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR, "unable to read " + requiredFile + " > " + e.getMessage(), question.getId(), questionFolder.resolve(requiredFile)));
             }
         }
         return issues;
     }
 
-    private boolean containsField(String header, String label, String expected) {
-        return expected != null && !expected.isBlank()
-                && Pattern.compile("^\\h*(?://|/\\*|\\*)?\\h*" + label + "\\h*:\\h*"
-                        + Pattern.quote(expected.strip()) + "\\h*(?:\\*/)?\\h*$",
-                        Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE)
-                        .matcher(header).find();
+    private void checkField(String header, String label, String field, String expected,
+            String questionId, Path file, List<SubmissionIssue> issues) {
+        //@1ejun6 > read actual header value > distinguish missing fields from mismatched values
+        String regex = "^\\h*(?://|/\\*|\\*)?\\h*" + label + "\\h*:\\h*(.*?)\\h*(?:\\*/)?\\h*$";
+        Matcher match = Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE).matcher(header);
+        String found = match.find() ? match.group(1).strip() : null;
+        boolean missing = found == null || found.isEmpty();
+        if (missing || expected == null || !found.equalsIgnoreCase(expected.strip())) {
+            String value = found == null ? "(missing)" : found.isEmpty() ? "(blank)" : found;
+            issues.add(new SubmissionIssue(missing ? "missing student header" : "mismatched student header",
+                    IssueSeverity.WARNING, file.getFileName() + " > " + field + ": expected [" + expected
+                    + "] but found [" + value + "]", questionId, file));
+        }
     }
 
     private String readHeader(Path file) throws IOException {
@@ -89,8 +87,7 @@ public class StudentHeaderRule implements ValidationRule {
                 count++;
             }
         }
-        Matcher comments = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)")
-                .matcher(header);
+        Matcher comments = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)").matcher(header);
         return comments.find() ? comments.group(1) : "";
     }
 }
