@@ -54,7 +54,7 @@ public class SubmissionValidator {
         List<Path> answerFiles = locateFiles(submission, question, issues);
 
         //build ~questionattempt~
-        QuestionAttempt attempt = new QuestionAttempt(question, answerFiles, issues);
+        QuestionAttempt attempt = new QuestionAttempt(question, submission.getRootDirectory().resolve(question.getExpectedFolder()), answerFiles, issues);
         submission.addQuestionAttempt(attempt);
         submission.addIssues(issues);
     }
