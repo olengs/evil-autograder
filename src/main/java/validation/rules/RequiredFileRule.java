@@ -12,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 public class RequiredFileRule implements ValidationRule { //reports required answer files that cannot be found
     private final SubmissionFileFinder fileLocator;
 
@@ -30,17 +29,10 @@ public class RequiredFileRule implements ValidationRule { //reports required ans
         }
         for (String requiredFile : question.getRequiredFiles()) {
             try {
-                Optional<Path> exact = fileLocator.findExact(questionFolder, requiredFile);
-                if (exact.isPresent()) {
-                    continue;
+                if (fileLocator.findCandidate(questionFolder, requiredFile).isEmpty()) {
+                    issues.add(new SubmissionIssue("missing required file", IssueSeverity.ERROR,
+                            "required file " + requiredFile + " is missing.", question.getId(), questionFolder.resolve(requiredFile)));
                 }
-
-                Optional<Path> caseInsensitiveMatch = fileLocator.findIgnoringCase(questionFolder, requiredFile);
-                if (caseInsensitiveMatch.isPresent()) {
-                    continue;
-                }
-
-                issues.add(new SubmissionIssue("missing required file", IssueSeverity.ERROR, "required file " + requiredFile + " is missing.", question.getId(), questionFolder.resolve(requiredFile)));
             } catch (IOException error) {
                 issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR, "unable to inspect " + questionFolder + " > " + error.getMessage(), question.getId(), questionFolder));
             }

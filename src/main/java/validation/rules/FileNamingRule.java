@@ -32,14 +32,10 @@ public class FileNamingRule implements ValidationRule { //checks that answer fil
 
         for (String requiredFile : question.getRequiredFiles()) {
             try {
-                Optional<Path> exact = fileLocator.findExact(questionFolder, requiredFile);
-                if (exact.isPresent()) {
-                    continue;
-                }
-
-                Optional<Path> caseInsensitiveMatch = fileLocator.findIgnoringCase(questionFolder, requiredFile);
-                if (caseInsensitiveMatch.isPresent()) {
-                    Path actualFile = caseInsensitiveMatch.get();
+                Optional<Path> candidate = fileLocator.findCandidate(questionFolder, requiredFile);
+                if (candidate.isPresent()
+                        && !candidate.get().getFileName().toString().equals(Path.of(requiredFile).getFileName().toString())) {
+                    Path actualFile = candidate.get();
                     issues.add(new SubmissionIssue("wrong file name", IssueSeverity.ERROR,
                             "expected filename " + requiredFile + " but found " + actualFile.getFileName().toString() + ".",
                             question.getId(), actualFile));

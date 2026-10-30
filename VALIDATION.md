@@ -54,6 +54,14 @@ not imply required: missing-file errors also use requiredFiles. Header checks in
 case-insensitive filename candidates and tolerate a UTF-8 BOM while retaining the branch's
 non-UTF-8 comment handling.
 
+## Shared answer-file lookup
+
+SubmissionFileFinder.findCandidate owns exact-first and case-insensitive fallback lookup.
+Required-file checks, filename checks, header validation and the submitted-file handoff reuse
+it. Exact matches take precedence; ambiguous fallback matches remain file-read errors. Filename
+capitalization is compared using actual filename strings, including nested answer paths, so
+Windows case-insensitive Path equality does not hide naming problems.
+
 ## Shared identity-comment reader
 
 StudentHeaderReader is the single read-only parser used by normalization, editable-file
