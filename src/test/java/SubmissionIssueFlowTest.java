@@ -224,14 +224,15 @@ class SubmissionIssueFlowTest {
     }
 
     @Test
-    void detectedEditableCompanionReceivesHeaderValidation() throws IOException {
+    void headerValidationChecksRequiredAnswerAndKeepsEditableCompanionSelected() throws IOException {
         Path resources = temp.resolve("companion-templates");
         write(resources.resolve("Q3/Q3.java"), source("Q3.java"));
         write(resources.resolve("Q3/ShapeComparator.java"), "// Name:\n// Email ID:\nclass ShapeComparator { }\n");
         AssessmentDefinition configured = new AssessmentDefinition("companion-templates", List.of(
                 new QuestionDefinition("Q3", "Q3", resources, List.of("Q3.java"), List.of("ShapeComparator.java"))));
         Path root = temp.resolve("companion-student");
-        write(root.resolve("Q3/Q3.java"), source("Q3.java"));
+        Path requiredAnswer = root.resolve("Q3/Q3.java");
+        write(requiredAnswer, "// Name: Other Person\n// Email ID: other@school.edu\npublic class Q3 { }\n");
         Path companion = root.resolve("Q3/ShapeComparator.java");
         write(companion, "// Name: Other Person\n// Email ID: other@school.edu\nclass ShapeComparator { }\n");
         StudentSubmission submission = new StudentSubmission(STUDENT, temp.resolve("student.zip"), root);
@@ -241,9 +242,12 @@ class SubmissionIssueFlowTest {
 
         assertTrue(detected.getQuestions().getFirst().getEditableFiles().contains("ShapeComparator.java"));
         assertTrue(attempt(submission, "Q3").getSubmittedFiles().contains(companion.toAbsolutePath().normalize()));
+        assertTrue(attempt(submission, "Q3").getSubmittedFiles().contains(requiredAnswer.toAbsolutePath().normalize()));
         List<SubmissionIssue> issues = issuesWithCode(submission, "mismatched student header");
         assertEquals(2, issues.size());
-        assertTrue(issues.stream().allMatch(issue -> issue.getAffectedPath().equals(companion)));
+        assertTrue(issues.stream().allMatch(issue -> issue.getAffectedPath().equals(requiredAnswer)),
+                "Only required answers receive header warnings, even when an editable companion has mismatched details");
+        assertTrue(issuesWithCode(submission, "missing student header").isEmpty());
         assertTrue(issues.stream().allMatch(issue -> issue.getStage().equals("validation") && !issue.isResolved()));
         assertTrue(attempt(submission, "Q3").getIssues().containsAll(issues));
     }

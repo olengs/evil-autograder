@@ -43,7 +43,7 @@ public class StudentHeaderRule implements ValidationRule { //checks student name
             return issues;
         }
 
-        for (String requiredFile : question.getEditableFiles()) {
+        for (String requiredFile : question.getRequiredFiles()) {
             try {
                 Optional<Path> file = fileLocator.findExact(questionFolder, requiredFile);
                 if (file.isEmpty()) file = fileLocator.findIgnoringCase(questionFolder, requiredFile);

@@ -38,10 +38,12 @@ scoresheet-reader JSONL logger remains separate.
 ## Compatibility with editable-file detection
 
 The branch's existing detector runs after normalization and before validation. Header
-validation checks its editable-file list, including companion files such as ShapeComparator.java.
-Editable does not imply required: missing-file errors still use requiredFiles. Header checks
-also inspect case-insensitive filename candidates and tolerate a UTF-8 BOM while retaining
-the branch's non-UTF-8 comment handling.
+validation checks only requiredFiles, matching the files whose headers normalization repairs.
+Detected editable companions such as ShapeComparator.java do not receive identity-header
+warnings, but remain in each attempt's submittedFiles for the grading handoff. Editable does
+not imply required: missing-file errors also use requiredFiles. Header checks inspect
+case-insensitive filename candidates and tolerate a UTF-8 BOM while retaining the branch's
+non-UTF-8 comment handling.
 
 ## Exact pipeline handoff
 
