@@ -45,6 +45,22 @@ not imply required: missing-file errors also use requiredFiles. Header checks in
 case-insensitive filename candidates and tolerate a UTF-8 BOM while retaining the branch's
 non-UTF-8 comment handling.
 
+## Shared identity-comment reader
+
+StudentHeaderReader is the single read-only parser used by normalization, editable-file
+detection and validation. It reads complete leading line/block comments up to the first
+Java token, including headers longer than 15 lines. It recognizes Name, Email and Email ID
+without case sensitivity, strips a UTF-8 BOM for inspection, and tolerates malformed UTF-8.
+Header.names()/emails() preserve blank and repeated values in immutable lists. Blank identity
+fields identify template sections; populated conflicting fields are never discarded.
+
+The reader does not modify source files, compare roster details or create SubmissionIssues.
+StudentHeaderNormalizer fills missing required-answer details while retaining original source
+bytes and BOM; inserted comments follow the existing CRLF/LF style. EditableFileDetector checks hasCommentSection() to keep
+its existing union behavior. StudentHeaderRule checks required answers against the roster;
+blank placeholders alongside corrected values are ignored, while any conflicting populated
+value produces a warning. Identity text inside Java code is excluded from header parsing.
+
 ## Exact pipeline handoff
 
 SubmissionPreparer.prepare returns List<StudentSubmission>. Each contains the matched
@@ -89,7 +105,7 @@ supports nested answer-file lookup and fixes FileUtils calls to a nonexistent Va
 Run from the repository root with Maven and JDK 25 or newer:
 
 ```powershell
-mvn '-Dtest=SubmissionNormalizerTest,EditableFileDetectorTest,SubmissionIssueFlowTest,SubmissionGradingHandoffTest,FileUtilsExtractionTest' test
+mvn '-Dtest=SubmissionNormalizerTest,EditableFileDetectorTest,SubmissionIssueFlowTest,SubmissionGradingHandoffTest,FileUtilsExtractionTest,StudentHeaderReaderTest,SharedHeaderWorkflowTest' test
 ```
 
 The tests use temporary synthetic submissions, including real ZIP preparation, normalization,
@@ -98,4 +114,4 @@ compare synthetic clean/messy submission grades. No grading source is changed. T
 QuestionGraderTest requires a complete external assessment dataset and is not part of this run.
 
 AI assistance: Codex assisted with issue handoff metadata, path rebasing, validation review,
-ZIP utility delegation, protection retraction and regression tests.
+ZIP utility delegation, protection retraction, shared header parsing and regression tests.

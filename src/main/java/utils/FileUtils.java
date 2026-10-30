@@ -18,6 +18,14 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class FileUtils { //copies files & folders & deletes temporary folders
+    public static byte[] readBytes(Path file) throws IOException {
+        return Files.readAllBytes(file);
+    }
+
+    public static void writeBytes(Path file, byte[] content) throws IOException {
+        Files.write(file, content);
+    }
+
     /** Resolve an assessment-relative path without accepting traversal or linked ancestors. */
     public static Path resolveContained(Path root, String relative) throws IOException {
         Path base = root.toAbsolutePath().normalize();

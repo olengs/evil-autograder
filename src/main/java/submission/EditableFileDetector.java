@@ -12,6 +12,7 @@ import model.QuestionDefinition;
 import model.StudentSubmission;
 import model.SubmissionIssue;
 import model.IssueSeverity;
+import utils.StudentHeaderReader;
 
 public class EditableFileDetector { //works out which template files students may change from their name & email comment section
     private static final String JAVA_EXTENSION = ".java";
@@ -43,14 +44,14 @@ public class EditableFileDetector { //works out which template files students ma
     }
 
     private static boolean hasCommentSection(QuestionDefinition question, String resource) throws IOException {
-        return StudentHeaderNormalizer.hasCommentSection(question.getResourceDirectory().resolve(resource));
+        return StudentHeaderReader.read(question.getResourceDirectory().resolve(resource)).hasCommentSection();
     }
 
     private static boolean anyHasCommentSection(List<StudentSubmission> submissions, QuestionDefinition question, String resource) {
         for (StudentSubmission submission : submissions) {
             Path file = submission.getRootDirectory().resolve(question.getExpectedFolder()).resolve(resource);
             try {
-                if (Files.isRegularFile(file) && StudentHeaderNormalizer.hasCommentSection(file)) {
+                if (Files.isRegularFile(file) && StudentHeaderReader.read(file).hasCommentSection()) {
                     return true;
                 }
             } catch (IOException error) {
