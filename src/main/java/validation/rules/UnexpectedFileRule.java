@@ -8,6 +8,7 @@ import model.SubmissionIssue;
 import validation.SubmissionValidationRule;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -30,20 +31,19 @@ public class UnexpectedFileRule implements SubmissionValidationRule { //warns ab
             Set<String> expectedFiles = entry.getValue();
             Path questionDirectory = submission.getRootDirectory().resolve(questionFolderName);
 
-            if (!Files.isDirectory(questionDirectory)) {
-                continue;
-            }
+            try {
+                if (!Files.isDirectory(questionDirectory)) continue;
+                try (Stream<Path> files = Files.list(questionDirectory)) {
+                    files.filter(Files::isRegularFile).forEach(file -> {
+                        String actualName = file.getFileName().toString();
 
-            try (Stream<Path> files = Files.list(questionDirectory)) {
-                files.filter(Files::isRegularFile).forEach(file -> {
-                    String actualName = file.getFileName().toString();
-
-                    if (expectedFiles.stream().noneMatch(expected -> expected.equalsIgnoreCase(actualName))) {
-                        addFolderIssues(issues, assessment, questionFolderName, "unexpected file", IssueSeverity.WARNING,
-                                "unexpected file " + actualName + " found in " + questionFolderName + ".", file);
-                    }
-                });
-            } catch (IOException error) {
+                        if (expectedFiles.stream().noneMatch(expected -> expected.equalsIgnoreCase(actualName))) {
+                            addFolderIssues(issues, assessment, questionFolderName, "unexpected file", IssueSeverity.WARNING,
+                                    "unexpected file " + actualName + " found in " + questionFolderName + ".", file);
+                        }
+                    });
+                }
+            } catch (IOException | UncheckedIOException | SecurityException error) {
                 addFolderIssues(issues, assessment, questionFolderName, "folder read error", IssueSeverity.ERROR,
                         "Unable to inspect folder " + questionFolderName + ": " + error.getMessage(), questionDirectory);
             }

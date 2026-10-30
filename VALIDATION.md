@@ -35,6 +35,15 @@ which intentionally share relevant records. These records are in memory and Main
 prints them; this change does not introduce persistent JSONL/CSV output. The existing
 scoresheet-reader JSONL logger remains separate.
 
+## Validation file-access failures
+
+Expected filesystem failures (including lazy UncheckedIOException and access-denied
+SecurityException) are recorded as unresolved validation errors. Question-rule and file-lookup
+failures affect that question; folder enumeration failures affect questions sharing that folder.
+A submission-rule failure without question information affects only its student submission.
+Validation continues with the remaining rules/questions and later students. Programming errors
+such as IllegalStateException are not swallowed by this handling.
+
 ## Compatibility with editable-file detection
 
 The branch's existing detector runs after normalization and before validation. Header
@@ -105,7 +114,7 @@ supports nested answer-file lookup and fixes FileUtils calls to a nonexistent Va
 Run from the repository root with Maven and JDK 25 or newer:
 
 ```powershell
-mvn '-Dtest=SubmissionNormalizerTest,EditableFileDetectorTest,SubmissionIssueFlowTest,SubmissionGradingHandoffTest,FileUtilsExtractionTest,StudentHeaderReaderTest,SharedHeaderWorkflowTest' test
+mvn '-Dtest=SubmissionNormalizerTest,EditableFileDetectorTest,SubmissionIssueFlowTest,SubmissionGradingHandoffTest,FileUtilsExtractionTest,StudentHeaderReaderTest,SharedHeaderWorkflowTest,ValidationFailureIsolationTest' test
 ```
 
 The tests use temporary synthetic submissions, including real ZIP preparation, normalization,

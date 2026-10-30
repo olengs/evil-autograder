@@ -47,6 +47,8 @@ public class FileUtils { //copies files & folders & deletes temporary folders
         try (var entries = Files.list(directory)) {
             return entries.filter(path -> Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS))
                     .sorted().toList();
+        } catch (java.io.UncheckedIOException error) {
+            throw error.getCause();
         }
     }
 

@@ -8,6 +8,7 @@ import model.StudentSubmission;
 import model.SubmissionIssue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,8 +46,12 @@ public class SubmissionValidator { //runs validation rules & builds one ~questio
 
         //@1ejun6 > step 1 > rules that need to inspect entire submission
         for (SubmissionValidationRule rule : submissionRules) {
-            List<SubmissionIssue> issues = rule.validate(submission, assessment);
-            submission.addIssues(issues);
+            try {
+                submission.addIssues(rule.validate(submission, assessment));
+            } catch (UncheckedIOException | SecurityException error) {
+                submission.addIssues(List.of(fileAccessIssue(rule.getClass().getSimpleName(), error,
+                        null, submission.getRootDirectory())));
+            }
         }
 
         //@1ejun6 > step 2 > validate every question
@@ -62,11 +67,15 @@ public class SubmissionValidator { //runs validation rules & builds one ~questio
         List<SubmissionIssue> inherited = upstreamIssues.stream()
                 .filter(issue -> issue.getQuestionId() == null || issue.getQuestionId().equals(question.getId())).toList();
         List<SubmissionIssue> issues = new ArrayList<>(inherited);
+        Path questionDirectory = submission.getRootDirectory().resolve(question.getExpectedFolder()).toAbsolutePath().normalize();
         for (ValidationRule rule : questionRules) {
-            issues.addAll(rule.validate(submission, question));
+            try {
+                issues.addAll(rule.validate(submission, question));
+            } catch (UncheckedIOException | SecurityException error) {
+                issues.add(fileAccessIssue(rule.getClass().getSimpleName(), error, question.getId(), questionDirectory));
+            }
         }
 
-        Path questionDirectory = submission.getRootDirectory().resolve(question.getExpectedFolder()).toAbsolutePath().normalize();
         List<Path> submittedFiles = locateFiles(submission, question, issues);
         QuestionAttempt attempt = new QuestionAttempt(question, questionDirectory, submittedFiles, issues);
 
@@ -79,9 +88,14 @@ public class SubmissionValidator { //runs validation rules & builds one ~questio
         
         try {
             return fileLocator.findSubmissionFiles(questionFolder, question.getEditableFiles());
-        } catch (IOException e) {
+        } catch (IOException | UncheckedIOException | SecurityException e) {
             issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR, "unable to locate answer files > " + e.getMessage(), question.getId(), questionFolder));
             return new ArrayList<>();
         }
+    }
+
+    private static SubmissionIssue fileAccessIssue(String rule, RuntimeException error, String questionId, Path path) {
+        return new SubmissionIssue("validation file access error", IssueSeverity.ERROR,
+                "Unable to inspect files in " + rule + ": " + error.getMessage(), questionId, path);
     }
 }
