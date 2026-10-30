@@ -34,7 +34,13 @@ public class StudentHeaderRule implements ValidationRule { //checks student name
         StudentDetails student = submission.getStudent();
 
         if (student == null) {
-            issues.add(new SubmissionIssue("unknown student", IssueSeverity.WARNING, "cannot check headers without a matched student", question.getId(), questionFolder));
+            boolean alreadyReported = submission.getSubmissionIssues().stream().anyMatch(issue ->
+                    issue.getSeverity() == IssueSeverity.ERROR
+                    && (issue.getCode().equals("unknown student") || issue.getCode().equals("ambiguous student")));
+            if (!alreadyReported) {
+                issues.add(new SubmissionIssue("unknown student", IssueSeverity.WARNING,
+                        "cannot check headers without a matched student", question.getId(), questionFolder));
+            }
             return issues;
         }
 

@@ -105,6 +105,25 @@ existing grading compiler enumerates top-level Java files only. Recursive/packag
 compilation and execution are still the grading team's responsibility; grading source is
 unchanged here.
 
+## Duplicate identity and submission policy
+
+StudentCsvReader retains all otherwise valid roster rows and records repeated canonical
+usernames/emails in its existing scoresheet log. StudentIdentifier.findMatches exposes every
+case-insensitive username match; identify returns a student only for exactly one match.
+SubmissionPreparer records a submission-wide unresolved preparation ERROR for ambiguous roster
+matches, without assigning a person or inserting their identity details. Unrelated students
+continue normally. The legacy SubmissionLoader is unchanged and reports nonunique matches
+through its existing unknown-student handling; Main uses SubmissionPreparer.
+
+Multiple ZIPs matching one known student are all preserved in separate working folders. Every
+copy receives a duplicate submission ERROR naming the conflicting ZIPs. No submission timestamp
+is inferred from filesystem dates and no first/last ZIP is silently selected. The instructor
+must select the intended ZIP (or correct duplicate roster records), remove conflicting inputs
+and rerun. Existing grading blocks these global errors without changes to grading code.
+
+The existing CSV log persistence limitation remains separate; this change does not implement
+the previously discussed permanent batch audit report.
+
 ## Exact pipeline handoff
 
 SubmissionPreparer.prepare returns List<StudentSubmission>. Each contains the matched

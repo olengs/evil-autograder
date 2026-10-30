@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import model.AssessmentDefinition;
 import model.IssueSeverity;
 import model.StudentDetails;
@@ -28,10 +31,19 @@ public class SubmissionPreparer { //extracts & normalizes every student zip > on
         StudentIdentifier studentIdentifier = new StudentIdentifier();
 
         for (Path zipFile : SubmissionLoader.findZipFiles(submissionFolder)) {
-            StudentDetails student = studentIdentifier.identify(zipFile, students);
+            List<StudentDetails> matches = studentIdentifier.findMatches(zipFile, students);
+            StudentDetails student = matches.size() == 1 ? matches.getFirst() : null;
             Path extractionDirectory = Files.createTempDirectory(workspaceFolder, "submission-");
-            submissions.add(prepareOne(new StudentSubmission(student, zipFile, extractionDirectory), assessment));
+            StudentSubmission extracted = new StudentSubmission(student, zipFile, extractionDirectory);
+            if (matches.size() > 1) {
+                extracted.addIssues(List.of(new SubmissionIssue("ambiguous student", IssueSeverity.ERROR,
+                        matches.size() + " scoresheet records match " + zipFile.getFileName()
+                                + "; no student selected. Resolve duplicate scoresheet records and rerun.",
+                        null, zipFile, "preparation", false)));
+            }
+            submissions.add(prepareOne(extracted, assessment));
         }
+        markDuplicateSubmissions(submissions);
         return submissions;
     }
 
@@ -51,10 +63,34 @@ public class SubmissionPreparer { //extracts & normalizes every student zip > on
         }
 
         StudentSubmission normalized = SubmissionNormalizer.normalize(extracted, assessment);
-        if (normalized.getStudent() == null) {
+        if (normalized.getStudent() == null && normalized.getSubmissionIssues().stream()
+                .noneMatch(issue -> issue.getCode().equals("ambiguous student"))) {
             normalized.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.ERROR,
                     "no match for " + zipFile.getFileName(), null, zipFile, "preparation", false)));
         }
         return normalized;
+    }
+
+    /** Never guess a winning ZIP: preserve all copies and require an explicit input selection. */
+    private static void markDuplicateSubmissions(List<StudentSubmission> submissions) {
+        Map<String, List<StudentSubmission>> byUsername = new LinkedHashMap<>();
+        for (StudentSubmission submission : submissions) {
+            if (submission.getStudent() != null) {
+                String username = submission.getStudent().getUsername().strip().toLowerCase(Locale.ROOT);
+                byUsername.computeIfAbsent(username, key -> new ArrayList<>()).add(submission);
+            }
+        }
+        for (var entry : byUsername.entrySet()) {
+            List<StudentSubmission> duplicates = entry.getValue();
+            if (duplicates.size() < 2) continue;
+            List<String> zipNames = duplicates.stream()
+                    .map(submission -> submission.getOriginalZip().getFileName().toString()).toList();
+            for (StudentSubmission duplicate : duplicates) {
+                duplicate.addIssues(List.of(new SubmissionIssue("duplicate submission", IssueSeverity.ERROR,
+                        "Multiple ZIPs for " + entry.getKey() + ": " + zipNames
+                                + ". No submission selected; select one ZIP, remove the others from the input folder, and rerun.",
+                        null, duplicate.getOriginalZip(), "preparation", false)));
+            }
+        }
     }
 }

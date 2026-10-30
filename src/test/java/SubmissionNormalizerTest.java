@@ -405,14 +405,20 @@ class SubmissionNormalizerTest {
     }
 
     @Test
-    void twoZipsForOneStudentDoNotOverwriteEachOther() throws IOException {
+    void twoZipsForOneStudentRemainSeparateAndAreFlaggedForSelection() throws IOException {
         writeZip("2024-2025-" + USERNAME + ".zip", answers(USERNAME + "/"));
         writeZip(USERNAME + ".zip", answers("RenameToYourUsername/"));
 
         List<StudentSubmission> submissions = loadAll();
 
         assertNotEquals(submissions.getFirst().getRootDirectory(), submissions.getLast().getRootDirectory());
-        submissions.forEach(this::assertWorkingStructure);
+        for (StudentSubmission submission : submissions) {
+            assertHasIssue(submission, "duplicate submission");
+            assertBlockedQuestions(submission, "Q1a", "Q1b", "Q2", "Q3");
+            for (String file : ANSWER_FILES) {
+                assertEquals(source(className(file)), Files.readString(submission.getRootDirectory().resolve(file)));
+            }
+        }
     }
 
     //#endregion
