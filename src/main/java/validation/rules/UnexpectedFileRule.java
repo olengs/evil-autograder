@@ -17,7 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
+import utils.FileUtils;
 
 public class UnexpectedFileRule implements SubmissionValidationRule { //warns about extra files across all question folders in a submission
     @Override
@@ -33,15 +33,12 @@ public class UnexpectedFileRule implements SubmissionValidationRule { //warns ab
 
             try {
                 if (!Files.isDirectory(questionDirectory)) continue;
-                try (Stream<Path> files = Files.list(questionDirectory)) {
-                    files.filter(Files::isRegularFile).forEach(file -> {
-                        String actualName = file.getFileName().toString();
-
-                        if (expectedFiles.stream().noneMatch(expected -> expected.equalsIgnoreCase(actualName))) {
-                            addFolderIssues(issues, assessment, questionFolderName, "unexpected file", IssueSeverity.WARNING,
-                                    "unexpected file " + actualName + " found in " + questionFolderName + ".", file);
-                        }
-                    });
+                for (Path file : FileUtils.listFilesRecursively(questionDirectory)) {
+                    String actualName = questionDirectory.relativize(file).toString().replace('\\', '/');
+                    if (expectedFiles.stream().noneMatch(expected -> expected.replace('\\', '/').equalsIgnoreCase(actualName))) {
+                        addFolderIssues(issues, assessment, questionFolderName, "unexpected file", IssueSeverity.WARNING,
+                                "unexpected file " + actualName + " found in " + questionFolderName + ".", file);
+                    }
                 }
             } catch (IOException | UncheckedIOException | SecurityException error) {
                 addFolderIssues(issues, assessment, questionFolderName, "folder read error", IssueSeverity.ERROR,
@@ -67,6 +64,7 @@ public class UnexpectedFileRule implements SubmissionValidationRule { //warns ab
             String questionDirectory = question.getExpectedFolder();
             expectedFilesByFolder.computeIfAbsent(questionDirectory, key -> new HashSet<>()).addAll(question.getRequiredFiles());
             expectedFilesByFolder.get(questionDirectory).addAll(question.getAllowedResourceFiles());
+            expectedFilesByFolder.get(questionDirectory).addAll(question.getEditableFiles());
         }
         return expectedFilesByFolder;
     }

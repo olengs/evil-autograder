@@ -52,6 +52,16 @@ public class FileUtils { //copies files & folders & deletes temporary folders
         }
     }
 
+    /** Enumerate leaf entries without traversing symbolic links. */
+    public static java.util.List<Path> listFilesRecursively(Path directory) throws IOException {
+        try (var entries = Files.walk(directory)) {
+            return entries.filter(path -> !Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                    .sorted().toList();
+        } catch (java.io.UncheckedIOException error) {
+            throw error.getCause();
+        }
+    }
+
     public static Path extractZip(Path archive, Path destination) throws IOException {
         Files.createDirectories(destination);
         Path root = destination.toRealPath();

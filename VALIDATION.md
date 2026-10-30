@@ -102,7 +102,9 @@ not a promise that extracted files remain available after Main.run returns.
 ## File protection retracted
 
 The earlier validation ProtectedFileRule, automatic restoration, restoration helpers and
-restoration regression runner were removed. Unexpected files remain warnings. Validation
+restoration regression runner were removed. Unexpected files remain warnings. The check walks nested question directories without following
+symbolic links and compares complete relative paths, so allowing src/Solution.java does not
+authorize other/Solution.java. Declared nested answer/resource paths are recognized. Validation
 preserves supplied helper edits and extra files for the grading team to handle. Existing
 GradingWorkspace behavior on Jerxl's branch is unchanged by this integration.
 
@@ -114,7 +116,7 @@ supports nested answer-file lookup and fixes FileUtils calls to a nonexistent Va
 Run from the repository root with Maven and JDK 25 or newer:
 
 ```powershell
-mvn '-Dtest=SubmissionNormalizerTest,EditableFileDetectorTest,SubmissionIssueFlowTest,SubmissionGradingHandoffTest,FileUtilsExtractionTest,StudentHeaderReaderTest,SharedHeaderWorkflowTest,ValidationFailureIsolationTest' test
+mvn '-Dtest=SubmissionNormalizerTest,EditableFileDetectorTest,SubmissionIssueFlowTest,SubmissionGradingHandoffTest,FileUtilsExtractionTest,StudentHeaderReaderTest,SharedHeaderWorkflowTest,ValidationFailureIsolationTest,NestedUnexpectedFileTest' test
 ```
 
 The tests use temporary synthetic submissions, including real ZIP preparation, normalization,
