@@ -2,6 +2,8 @@ package validation.rules;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -78,7 +80,8 @@ public class StudentHeaderRule implements ValidationRule { //checks student name
     private String readHeader(Path file) throws IOException {
         StringBuilder header = new StringBuilder();
 
-        try (BufferedReader reader = Files.newBufferedReader(file)) {
+        //inputstreamreader replaces bytes that are not utf-8 > a non utf-8 comment must not block grading
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8))) {
             String line;
             int count = 0;
 

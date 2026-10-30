@@ -12,7 +12,8 @@ import java.util.List;
 import java.util.Map;
 import model.*;
 import submission.StudentCsvReader;
-import submission.SubmissionLoader;
+import submission.EditableFileDetector;
+import submission.SubmissionPreparer;
 import utils.FileUtils;
 import validation.SubmissionFileFinder;
 import validation.SubmissionValidator;
@@ -50,14 +51,15 @@ public class Main { //loads project files & validates submissions & grades each 
 
             //@1ejun6 > 4 > extract zips > validate each extracted submission
             //@1ejun6 > validation creates ~questionattempt~ objects consumed by grading
-            var submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace, students, assessment);
+            var submissions = SubmissionPreparer.prepare(config.getSubmissionsDirectory(), workspace, students, assessment);
             if (submissions.isEmpty()) throw new IOException("no submission ZIP files found");
+            var editableAssessment = EditableFileDetector.detect(assessment, submissions);
             for (var submission : submissions) {
-                validator.validate(submission, assessment);
+                validator.validate(submission, editableAssessment);
             }
 
             //@1ejun6 > 5 > pass prepared submissions to grading > each question gets its answer & requirements & tester & compilation/execution limits.
-            results = new AssessmentGrader(new QuestionGrader(config.getCompilationTimeout(), config.getExecutionTimeout())).grade(submissions, assessment, testers);
+            results = new AssessmentGrader(new QuestionGrader(config.getCompilationTimeout(), config.getExecutionTimeout())).grade(submissions, editableAssessment, testers);
         } catch (IOException | RuntimeException | Error failure) {
             //@1ejun6 > keep original failure if cleanup also fails
             try {
