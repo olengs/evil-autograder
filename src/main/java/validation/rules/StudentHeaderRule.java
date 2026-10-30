@@ -43,9 +43,10 @@ public class StudentHeaderRule implements ValidationRule { //checks student name
             return issues;
         }
 
-        for (String requiredFile : question.getRequiredFiles()) {
+        for (String requiredFile : question.getEditableFiles()) {
             try {
                 Optional<Path> file = fileLocator.findExact(questionFolder, requiredFile);
+                if (file.isEmpty()) file = fileLocator.findIgnoringCase(questionFolder, requiredFile);
 
                 if (file.isEmpty()) {
                     continue;
@@ -90,7 +91,8 @@ public class StudentHeaderRule implements ValidationRule { //checks student name
                 count++;
             }
         }
-        Matcher comments = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)").matcher(header);
+        String text = header.toString().replaceFirst("^\\uFEFF", "");
+        Matcher comments = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)").matcher(text);
         return comments.find() ? comments.group(1) : "";
     }
 }

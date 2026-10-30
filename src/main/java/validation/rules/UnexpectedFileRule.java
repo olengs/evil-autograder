@@ -39,17 +39,25 @@ public class UnexpectedFileRule implements SubmissionValidationRule { //warns ab
                     String actualName = file.getFileName().toString();
 
                     if (expectedFiles.stream().noneMatch(expected -> expected.equalsIgnoreCase(actualName))) {
-                        issues.add(new SubmissionIssue("unexpected file", IssueSeverity.WARNING,
-                                "unexpected file " + actualName + " found in " + questionFolderName + ".", null,
-                                file));
+                        addFolderIssues(issues, assessment, questionFolderName, "unexpected file", IssueSeverity.WARNING,
+                                "unexpected file " + actualName + " found in " + questionFolderName + ".", file);
                     }
                 });
             } catch (IOException error) {
-                issues.add(new SubmissionIssue("folder read error", IssueSeverity.ERROR,
-                        "Unable to inspect folder " + questionFolderName + ": " + error.getMessage(), null, questionDirectory));
+                addFolderIssues(issues, assessment, questionFolderName, "folder read error", IssueSeverity.ERROR,
+                        "Unable to inspect folder " + questionFolderName + ": " + error.getMessage(), questionDirectory);
             }
         }
         return issues;
+    }
+
+    private static void addFolderIssues(List<SubmissionIssue> issues, AssessmentDefinition assessment,
+            String folder, String code, IssueSeverity severity, String message, Path path) {
+        for (QuestionDefinition question : assessment.getQuestions()) {
+            if (question.getExpectedFolder().equals(folder)) {
+                issues.add(new SubmissionIssue(code, severity, message, question.getId(), path));
+            }
+        }
     }
 
     private Map<String, Set<String>> buildExpectedFilesMap(AssessmentDefinition assessment) {

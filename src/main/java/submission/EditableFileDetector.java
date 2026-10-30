@@ -10,6 +10,8 @@ import java.util.Set;
 import model.AssessmentDefinition;
 import model.QuestionDefinition;
 import model.StudentSubmission;
+import model.SubmissionIssue;
+import model.IssueSeverity;
 
 public class EditableFileDetector { //works out which template files students may change from their name & email comment section
     private static final String JAVA_EXTENSION = ".java";
@@ -52,7 +54,10 @@ public class EditableFileDetector { //works out which template files students ma
                     return true;
                 }
             } catch (IOException error) {
-                continue; //one unreadable submission only means one less sample
+                submission.addIssues(List.of(new SubmissionIssue("editable file read error", IssueSeverity.WARNING,
+                        "Unable to inspect editable-file header: " + error.getMessage(), question.getId(), file,
+                        "editable detection", false)));
+                // One unreadable sample does not prevent inspection of the remaining students.
             }
         }
         return false;

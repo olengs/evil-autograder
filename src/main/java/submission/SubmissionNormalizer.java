@@ -35,21 +35,27 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
         Path extractedRoot = extracted.getRootDirectory().toAbsolutePath().normalize();
         Path root = extractedRoot;
         List<SubmissionIssue> issues = new ArrayList<>();
+        Path answerRoot = extractedRoot;
 
         try {
             Map<String, List<QuestionDefinition>> questions = groupByFolder(assessment);
             root = findAnswerRoot(extractedRoot, questions, extracted.getStudent(), assessment.getName());
+            answerRoot = root;
             arrangeQuestionFolders(root, questions, issues);
             relocateStrayAnswers(extractedRoot, root, questions, issues);
             correctFileNames(root, questions, issues);
+            Path previousRoot = root;
             root = moveToStudentFolder(extractedRoot, root, extracted.getStudent(), issues);
+            rebaseIssues(issues, previousRoot, root);
             addMissingHeaders(root, questions, extracted.getStudent(), issues);
         } catch (IOException | RuntimeException error) {
-            issues.add(new SubmissionIssue("normalization error", IssueSeverity.ERROR, error.toString(), null, root));
+            issues.add(normalizationIssue("normalization error", IssueSeverity.ERROR, error.toString(), null, root));
         }
 
         StudentSubmission normalized = new StudentSubmission(extracted.getStudent(), extracted.getOriginalZip(), root);
-        normalized.addIssues(extracted.getSubmissionIssues());
+        List<SubmissionIssue> earlier = new ArrayList<>(extracted.getSubmissionIssues());
+        rebaseIssues(earlier, answerRoot, root);
+        normalized.addIssues(earlier);
         normalized.addIssues(issues);
         return normalized;
     }
@@ -197,12 +203,12 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
                     }
                     List<Path> copies = filesNamed(folders, requiredFile);
                     if (copies.size() > 1) {
-                        issues.add(new SubmissionIssue("ambiguous answer file", IssueSeverity.ERROR,
+                        issues.add(normalizationIssue("ambiguous answer file", IssueSeverity.ERROR,
                                 copies.size() + " copies of " + requiredFile + " found outside " + entry.getKey(), question.getId(), root));
                     } else if (copies.size() == 1) {
                         Path target = Files.createDirectories(questionFolder).resolve(requiredFile);
                         Files.move(copies.getFirst(), target);
-                        issues.add(new SubmissionIssue("answer file relocated", IssueSeverity.WARNING,
+                        issues.add(normalizationIssue("answer file relocated", IssueSeverity.WARNING,
                                 extractedRoot.relativize(copies.getFirst()) + " > " + entry.getKey() + "/" + requiredFile, question.getId(), target));
                     }
                 }
@@ -270,7 +276,7 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
 
         if (!root.getFileName().toString().equals(student.getUsername())) {
             String original = root.equals(extractedRoot) ? "top level of zip" : extractedRoot.relativize(root).toString();
-            issues.add(new SubmissionIssue("submission root normalized", IssueSeverity.WARNING,
+            issues.add(normalizationIssue("submission root normalized", IssueSeverity.WARNING,
                     original + " > " + student.getUsername(), null, target));
         }
         return target;
@@ -288,13 +294,30 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
                     try {
                         if (requiredFile.endsWith(".java") && Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
                                 && StudentHeaderNormalizer.addMissingFields(file, student)) {
-                            issues.add(new SubmissionIssue("student header normalized", IssueSeverity.WARNING,
+                            issues.add(normalizationIssue("student header normalized", IssueSeverity.WARNING,
                                     "added missing details from scoresheet > " + requiredFile, question.getId(), file));
                         }
                     } catch (IOException error) {
-                        issues.add(new SubmissionIssue("normalization error", IssueSeverity.ERROR, error.toString(), question.getId(), file));
+                        issues.add(normalizationIssue("normalization error", IssueSeverity.ERROR, error.toString(), question.getId(), file));
                     }
                 }
+            }
+        }
+    }
+
+    private static SubmissionIssue normalizationIssue(String code, IssueSeverity severity,
+            String message, String questionId, Path path) {
+        return new SubmissionIssue(code, severity, message, questionId, path,
+                "normalization", severity != IssueSeverity.ERROR);
+    }
+
+    private static void rebaseIssues(List<SubmissionIssue> issues, Path previousRoot, Path newRoot) {
+        if (previousRoot.equals(newRoot)) return;
+        for (int i = 0; i < issues.size(); i++) {
+            SubmissionIssue issue = issues.get(i);
+            Path path = issue.getAffectedPath();
+            if (path != null && path.toAbsolutePath().normalize().startsWith(previousRoot)) {
+                issues.set(i, issue.withAffectedPath(newRoot.resolve(previousRoot.relativize(path.toAbsolutePath().normalize()))));
             }
         }
     }
@@ -351,7 +374,7 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
     private static void addIssue(List<SubmissionIssue> issues, List<QuestionDefinition> questions, String code,
             IssueSeverity severity, String message, Path path) {
         for (QuestionDefinition question : questions) {
-            issues.add(new SubmissionIssue(code, severity, message, question.getId(), path));
+            issues.add(normalizationIssue(code, severity, message, question.getId(), path));
         }
     }
 

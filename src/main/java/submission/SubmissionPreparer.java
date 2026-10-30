@@ -45,13 +45,15 @@ public class SubmissionPreparer { //extracts & normalizes every student zip > on
             } catch (IOException cleanupError) {
                 error.addSuppressed(cleanupError);
             }
-            extracted.addIssues(List.of(new SubmissionIssue("submission preparation error", IssueSeverity.ERROR, error.toString(), null, zipFile)));
+            extracted.addIssues(List.of(new SubmissionIssue("submission preparation error", IssueSeverity.ERROR,
+                    error.toString(), null, zipFile, "preparation", false)));
             return extracted;
         }
 
         StudentSubmission normalized = SubmissionNormalizer.normalize(extracted, assessment);
         if (normalized.getStudent() == null) {
-            normalized.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.ERROR, "no match for " + zipFile.getFileName(), null, zipFile)));
+            normalized.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.ERROR,
+                    "no match for " + zipFile.getFileName(), null, zipFile, "preparation", false)));
         }
         return normalized;
     }
