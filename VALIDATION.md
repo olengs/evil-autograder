@@ -70,6 +70,41 @@ its existing union behavior. StudentHeaderRule checks required answers against t
 blank placeholders alongside corrected values are ignored, while any conflicting populated
 value produces a warning. Identity text inside Java code is excluded from header parsing.
 
+## Explicit and nested assessment layouts
+
+Place assessment.json in the trusted resource root to describe arbitrary required filenames:
+
+```json
+{
+  "questions": [
+    {
+      "id": "Q1a",
+      "folder": "Q1a",
+      "requiredFiles": ["src/Solution.java", "src/Node.java"]
+    }
+  ]
+}
+```
+
+Paths are relative to the question folder and retain their directory structure. Configuration
+is validated against trusted template files before processing submissions. Declared paths must
+match template capitalization exactly; conflicting shared-prefix capitalization and overlapping
+question directories are rejected. Multiple questions may share the same directory. Support resources
+are discovered recursively; required answers shared by questions in the same folder are
+excluded from the supplied-support list. Without assessment.json the existing Q1/Q1a.java
+filename convention still works, with nested support resources included.
+
+Normalization recognizes declared relative answer paths, corrects nested capitalization and
+creates missing destination parents when relocating unambiguous answers. It never borrows
+another question's correctly placed same-named answer. Required and editable remain separate:
+header detection may select a supplied companion, while only required answers receive the
+required-file and identity checks. Validation hands off full question-relative paths.
+
+This supports submission preparation, detection and validation for nested layouts. The
+existing grading compiler enumerates top-level Java files only. Recursive/package-aware
+compilation and execution are still the grading team's responsibility; grading source is
+unchanged here.
+
 ## Exact pipeline handoff
 
 SubmissionPreparer.prepare returns List<StudentSubmission>. Each contains the matched
@@ -116,7 +151,7 @@ supports nested answer-file lookup and fixes FileUtils calls to a nonexistent Va
 Run from the repository root with Maven and JDK 25 or newer:
 
 ```powershell
-mvn '-Dtest=SubmissionNormalizerTest,EditableFileDetectorTest,SubmissionIssueFlowTest,SubmissionGradingHandoffTest,FileUtilsExtractionTest,StudentHeaderReaderTest,SharedHeaderWorkflowTest,ValidationFailureIsolationTest,NestedUnexpectedFileTest' test
+mvn '-Dtest=*Test,!QuestionGraderTest' test
 ```
 
 The tests use temporary synthetic submissions, including real ZIP preparation, normalization,

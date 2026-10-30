@@ -1,0 +1,20 @@
+{
+  "name": "Example assessment",
+  "questions": [
+    {
+      "id": "Q1a",
+      "folder": "Q1a",
+      "requiredFiles": [
+        "src/Solution.java",
+        "src/Node.java"
+      ]
+    },
+    {
+      "id": "Q2",
+      "folder": "sections/Q2",
+      "requiredFiles": [
+        "Answer.java"
+      ]
+    }
+  ]
+}
