@@ -14,21 +14,29 @@ public final class StudentPanel { //student panel
 
     public static void drawStudent(Frame frame, Rect area, ProgressSnapshot snapshot, long displayedSecond) {
         //@1ejun6 > show current student and grading stage
-        drawLine(frame, area, 0, snapshot.student().isEmpty() ? "waiting for submissions" : snapshot.student(), base);
+        if (snapshot.student().isEmpty()) {
+            drawLine(frame, area, 0, snapshot.message(), cyan);
+            drawLine(frame, area, 1, "waiting for submissions", muted);
+            return;
+        }
+        drawLine(frame, area, 0, snapshot.student(), base);
+        if (area.height() == 2 && !snapshot.question().isEmpty()) {
+            drawQuestion(frame, area, 1, snapshot.question(), snapshot);
+            return;
+        }
         String timing = snapshot.stage().name() + " · " + displayedSecond + "s";
         if (!snapshot.timeout().isZero()) timing += " / " + snapshot.timeout().toSeconds() + "s limit";
         drawLine(frame, area, 1, timing, muted);
 
+        int questionRow = area.height() < snapshot.questions().size() + 3 && !snapshot.question().isEmpty() ? 2 : 3;
         if (snapshot.question().isEmpty()) drawLine(frame, area, 2, snapshot.message(), cyan);
-        int visibleRows = Math.max(0, area.height() - 3);
+        int visibleRows = Math.max(0, area.height() - questionRow);
         //@1ejun6 > follow active question automatically when whole list does not fit
 
         int start = Math.max(0, Math.min(snapshot.questions().indexOf(snapshot.question()), snapshot.questions().size() - visibleRows));
-        if (snapshot.questions().isEmpty()) drawLine(frame, area, 3, "waiting for assessment", muted);
-
         int end = Math.min(snapshot.questions().size(), start + visibleRows);
         for (int index = start; index < end; index++) {
-            drawQuestion(frame, area, index - start + 3, snapshot.questions().get(index), snapshot);
+            drawQuestion(frame, area, index - start + questionRow, snapshot.questions().get(index), snapshot);
         }
     }
 

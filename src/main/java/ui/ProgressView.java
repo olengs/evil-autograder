@@ -17,7 +17,7 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
     private final Path project;
     private ProgressSnapshot snapshot;
     private long displayedSecond;
-    private String resources = "jvm > measuring";
+    private ResourceUsage.Sample resources = new ResourceUsage.Sample("measuring", 0, 0, 0, 0, 0);
 
     public ProgressView(Path project, ProgressSnapshot initial) {
         this.project = project;
@@ -32,7 +32,7 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
         return true;
     }
 
-    public boolean updateResources(String next) {
+    boolean updateResources(ResourceUsage.Sample next) {
         if (resources.equals(next)) return false;
         resources = next;
         return true;
@@ -44,6 +44,11 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
         if (area.width() < 32 || area.height() < 16) {
             frame.renderWidget(Paragraph.builder().text("terminal too small\nresize to at least 32 x 16")
                     .style(base).build(), area);
+            return;
+        }
+
+        if (area.width() >= 79 && area.height() >= 20) {
+            FramedLayout.draw(frame, area, project, snapshot, displayedSecond, resources);
             return;
         }
 
@@ -76,9 +81,9 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
     }
 
     private void drawResources(Frame frame, Rect content) {
-        String[] lines = resources.split("\n", 3);
-        drawLine(frame, content, content.height() - 5, lines[0], muted);
-        if (lines.length > 1) drawLine(frame, content, content.height() - 4, lines[1], muted);
-        if (lines.length > 2) drawLine(frame, content, content.height() - 3, lines[2], muted);
+        drawLine(frame, content, content.height() - 5, resources.summary(), muted);
+        drawLine(frame, content, content.height() - 4, "threads > ui  prepare & validate  compile & test  results & cleanup  other", muted);
+        drawLine(frame, content, content.height() - 3, String.format(java.util.Locale.ROOT,
+                "          %-4d%-20d%-16d%-19d%d", resources.ui(), resources.prepare(), resources.grading(), resources.results(), resources.other()), muted);
     }
 }
