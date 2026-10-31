@@ -1,6 +1,6 @@
 package ui;
 
-import app.Main;
+import app.GradingRun;
 import config.Config;
 import dev.tamboui.tui.TuiConfig;
 import dev.tamboui.tui.TuiRunner;
@@ -18,7 +18,7 @@ public class AutograderTui { //manages terminal interface while grading runs in 
     public void run(Config config) throws Exception {
         GradingProgress progress = new GradingProgress();
         ProgressView view = new ProgressView(config.getInputDirectory(), progress.getSnapshot());
-        var task = new FutureTask<>(() -> Main.run(config, progress));
+        var task = new FutureTask<>(() -> GradingRun.run(config, progress));
         Thread worker = new Thread(task, "worker"); //@1ejun6 > lambda > execute > store grades > task object
 
         //@1ejun6 > tamboui check progress every 250ms on its render thread

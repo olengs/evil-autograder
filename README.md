@@ -1,5 +1,7 @@
 # evil-autograder
 
 ```bash
-mvn test
+./tui.sh
+
+./tui.sh --notui
 ```
