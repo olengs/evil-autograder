@@ -1,4 +1,4 @@
-package ui;
+package ui.panel;
 
 import static ui.UiDrawing.*;
 import dev.tamboui.layout.Rect;
@@ -6,10 +6,10 @@ import dev.tamboui.terminal.Frame;
 import progress.ProgressSnapshot;
 import dev.tamboui.widgets.gauge.Gauge;
 
-final class BatchPanel { //@1ejun6 > overall batch progress > progress bar & percentage & question count & student count
+public final class BatchPanel { //@1ejun6 > overall batch progress > progress bar & percentage & question count & student count
     private BatchPanel() {}
 
-    static void drawBatch(Frame frame, Rect area, boolean heading, ProgressSnapshot snapshot) {
+    public static void drawBatch(Frame frame, Rect area, boolean heading, ProgressSnapshot snapshot) {
         if (!snapshot.totalsKnown()) { //@1ejun6 > if program doesnt know totals yet
             drawLine(frame, area, 0, "preparing", cyan);
             drawLine(frame, area, 1, "totals not available yet", muted);

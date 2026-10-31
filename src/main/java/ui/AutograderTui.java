@@ -20,6 +20,7 @@ public class AutograderTui { //manages terminal interface while grading runs in 
         ProgressView view = new ProgressView(config.getInputDirectory(), progress.getSnapshot());
         var task = new FutureTask<>(() -> GradingRun.run(config, progress));
         Thread worker = new Thread(task, "worker"); //@1ejun6 > lambda > execute > store grades > task object
+        ResourceUsage resources = new ResourceUsage();
 
         //@1ejun6 > tamboui check progress every 250ms on its render thread
         TuiConfig terminalConfig = TuiConfig.builder().tickRate(Duration.ofMillis(250)).build();
@@ -30,7 +31,12 @@ public class AutograderTui { //manages terminal interface while grading runs in 
                     //@1ejun6 > redraw only when progress \ elapsed time changes
 
                     //@1ejun6 > on each tick > read latest grading progress > redraw if changed
-                    if (event instanceof TickEvent) return view.update(progress.getSnapshot());
+                    if (event instanceof TickEvent) {
+                        var snapshot = progress.getSnapshot();
+                        boolean progressChanged = view.update(snapshot);
+                        boolean resourcesChanged = view.updateResources(resources.sample(Thread.currentThread(), worker, snapshot));
+                        return progressChanged || resourcesChanged;
+                    }
                     //@1ejun6 > ignore non keyboard events > otherwise store event as key
                     if (!(event instanceof KeyEvent key)) return false;
 
