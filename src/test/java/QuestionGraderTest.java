@@ -1,6 +1,6 @@
 import static org.junit.jupiter.api.Assertions.*;
 
-import app.Main;
+import app.GradingRun;
 import progress.GradingProgress;
 import config.AssessmentLoader;
 import config.Config;
@@ -15,6 +15,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
 import submission.SubmissionLoader;
 
+//@1ejun6 > !update
 //@1ejun6 > reuse one test instance > all checks share results from one grading run
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class QuestionGraderTest { //@1ejun6 > runs integration tests using real project submissions
@@ -31,8 +32,8 @@ class QuestionGraderTest { //@1ejun6 > runs integration tests using real project
         zipCount = SubmissionLoader.findZipFiles(config.getSubmissionsDirectory()).size();
 
         //@1ejun6 > run extraction & validation & compilation & testing together
-        results = Main.run(config, new GradingProgress());
-        Main.printResults(results);
+        results = GradingRun.run(config, new GradingProgress());
+        GradingRun.printResults(results);
     }
 
     //@1ejun6 > 2 > check that every submission zip has a result for every question
