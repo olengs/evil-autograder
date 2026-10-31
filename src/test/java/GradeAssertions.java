@@ -30,13 +30,13 @@ class GradeAssertions { //@1ejun6 > checks one question grade according to its s
             }
         }
         if (blocked) {
-            assertEquals(GradeStatus.SKIPPED, grade.getStatus());
+            assertEquals(GradeStatus.skipped, grade.getStatus());
         }
 
         //@1ejun6 > 3 > check expected behaviour for each grading status
         switch (grade.getStatus()) {
-            case SKIPPED -> checkSkipped(grade, blocked);
-            case COMPLETED -> checkCompleted(grade);
+            case skipped -> checkSkipped(grade, blocked);
+            case completed -> checkCompleted(grade);
             default -> checkFailed(grade);
         }
     }
@@ -64,11 +64,11 @@ class GradeAssertions { //@1ejun6 > checks one question grade according to its s
 
     //@1ejun6 > compilation failures & runtime failures earn zero > timeouts may retain completed test marks
     private static void checkFailed(QuestionGrade grade) {
-        assertTrue(List.of(GradeStatus.COMPILE_ERROR, GradeStatus.RUNTIME_ERROR, GradeStatus.TIMEOUT).contains(grade.getStatus()));
+        assertTrue(List.of(GradeStatus.compile_error, GradeStatus.runtime_error, GradeStatus.timeout).contains(grade.getStatus()));
 
         var process = grade.getProcessResult().orElseThrow();
         assertFalse(process.isSuccessful());
-        assertEquals(grade.getStatus() == GradeStatus.TIMEOUT, process.isTimedOut());
+        assertEquals(grade.getStatus() == GradeStatus.timeout, process.isTimedOut());
         checkMarks(grade);
 
         //@1ejun6 > each printed Passed outcome earns one mark > retain these marks after a timeout

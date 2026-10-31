@@ -1,6 +1,7 @@
 package submission;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -35,6 +36,9 @@ public class SubmissionLoader { //find & extracts student zip files > keeping tr
         StudentIdentifier studentIdentifier = new StudentIdentifier();
 
         for (Path zipFile : findZipFiles(submissionFolder)) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new InterruptedIOException("submission loading interrupted");
+            }
             StudentDetails student = studentIdentifier.identify(zipFile, students);
             Path extractionDirectory = Files.createTempDirectory(workspaceFolder, "submission-");
             StudentSubmission submission = new StudentSubmission(student, zipFile, extractionDirectory);

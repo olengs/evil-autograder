@@ -14,6 +14,7 @@ import model.QuestionDefinition;
 import model.QuestionGrade;
 import model.TestCaseResult;
 import model.TesterDefinition;
+import progress.ProgressListener;
 import utils.JavaProcessUtils;
 import utils.ProcessExecutor;
 
@@ -27,11 +28,11 @@ public class QuestionGrader { //compiles & runs tester & calculates marks for on
         this.executionTimeout = executionTimeout;
     }
 
-    public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester) throws IOException {
+    public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester, ProgressListener progress) throws IOException {
         //prepare temporary files > workspace closes & cleans up even if grading fails
         try (GradingWorkspace workspace = new GradingWorkspace()) {
             workspace.prepare(question, attempt, tester);
-            return gradeInWorkspace(question.getId(), tester.getMainClassName(), workspace.getDirectory());
+            return gradeInWorkspace(question.getId(), tester.getMainClassName(), workspace.getDirectory(), progress);
         }
     }
 
@@ -73,21 +74,23 @@ public class QuestionGrader { //compiles & runs tester & calculates marks for on
         return ProcessExecutor.run(builder, executionTimeout, "prc-002", "java execution failed");
     }
 
-    private QuestionGrade gradeInWorkspace(String questionId, String mainClassName, Path workspaceDirectory) throws IOException {
+    private QuestionGrade gradeInWorkspace(String questionId, String mainClassName, Path workspaceDirectory, ProgressListener progress) throws IOException {
         //compile first > stop if compilation times out or fails
+        progress.compilationStarted(questionId, compilationTimeout);
         ProcessResult compilationResult = compile(workspaceDirectory);
 
         if (compilationResult.isTimedOut()) {
-            return failedGrade(questionId, GradeStatus.TIMEOUT, compilationResult, "compilation timed out");
+            return failedGrade(questionId, GradeStatus.timeout, compilationResult, "compilation timed out");
         }
         if (!compilationResult.isSuccessful()) {
-            return failedGrade(questionId, GradeStatus.COMPILE_ERROR, compilationResult, "compilation failed");
+            return failedGrade(questionId, GradeStatus.compile_error, compilationResult, "compilation failed");
         }
 
         //run tester only after successful compilation
+        progress.executionStarted(questionId, executionTimeout);
         ProcessResult executionResult = executeTester(workspaceDirectory, mainClassName);
         if (!executionResult.isTimedOut() && !executionResult.isSuccessful()) {
-            return failedGrade(questionId, GradeStatus.RUNTIME_ERROR, executionResult, "tester failed");
+            return failedGrade(questionId, GradeStatus.runtime_error, executionResult, "tester failed");
         }
 
         //parse tester output & add marks from each test case
@@ -98,7 +101,7 @@ public class QuestionGrader { //compiles & runs tester & calculates marks for on
         for (TestCaseResult testCase : testResults) {
             marks += testCase.getEarnedMarks();
         }
-        return new QuestionGrade(questionId, executionResult.isTimedOut() ? GradeStatus.TIMEOUT : GradeStatus.COMPLETED,
+        return new QuestionGrade(questionId, executionResult.isTimedOut() ? GradeStatus.timeout : GradeStatus.completed,
                 marks, testResults, executionResult,
                 executionResult.isTimedOut() ? "execution timed out > completed-test marks retained" : "grading completed");
     }

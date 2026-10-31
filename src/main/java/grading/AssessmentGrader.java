@@ -1,6 +1,7 @@
 package grading;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import model.QuestionGrade;
 import model.StudentSubmission;
 import model.SubmissionIssue;
 import model.TesterDefinition;
+import progress.ProgressListener;
 
 public class AssessmentGrader {
     private final QuestionGrader questionGrader;
@@ -25,14 +27,22 @@ public class AssessmentGrader {
     }
 
     //@1ejun6 > connect validated submissions to QuestionGrader > handle one question at a time
-    public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, AssessmentDefinition assessment, Map<String, TesterDefinition> testers) throws IOException {
+    public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, AssessmentDefinition assessment,
+            Map<String, TesterDefinition> testers, ProgressListener progress) throws IOException {
         //@1ejun6 > keep student results in submission order for reporting
         Map<StudentSubmission, List<QuestionGrade>> results = new LinkedHashMap<>();
+        List<String> questionIds = new ArrayList<>();
+        for (QuestionDefinition question : assessment.getQuestions()) questionIds.add(question.getId());
+        progress.batchStarted(submissions.size(), questionIds);
 
         for (StudentSubmission submission : submissions) {
+            checkInterrupted();
+            progress.submissionStarted(submission.getStudent() == null ? submission.getOriginalZip().getFileName().toString() : submission.getStudent().getUsername());
             List<QuestionGrade> grades = new ArrayList<>();
 
             for (QuestionDefinition question : assessment.getQuestions()) {
+                checkInterrupted();
+                progress.questionStarted(question.getId());
                 //@1ejun6 > 1 > match this question with its validated attempt & tester
                 String skipReason = findBlockingIssue(submission, question.getId());
                 QuestionAttempt attempt = findAttempt(submission, question.getId());
@@ -49,14 +59,22 @@ public class AssessmentGrader {
                 //@1ejun6 > 3 > record a result even when a question is skipped
                 //@1ejun6 > otherwise pass its answer to QuestionGrader > compile & run tests & calculate marks
                 if (skipReason != null) {
-                    grades.add(new QuestionGrade(question.getId(), GradeStatus.SKIPPED, 0, List.of(), null, skipReason));
+                    grades.add(new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), null, skipReason));
                 } else {
-                    grades.add(questionGrader.grade(question, attempt, tester));
+                    grades.add(questionGrader.grade(question, attempt, tester, progress));
                 }
+                progress.questionFinished(question.getId(), grades.getLast().getStatus());
             }
             results.put(submission, grades);
+            progress.submissionFinished();
         }
         return results;
+    }
+
+    private void checkInterrupted() throws InterruptedIOException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedIOException("grading interrupted");
+        }
     }
 
     //@1ejun6 > find this question attempt among attempts saved during validation

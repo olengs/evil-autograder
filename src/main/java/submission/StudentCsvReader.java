@@ -13,7 +13,7 @@ import utils.Logger;
 
 public class StudentCsvReader { //read scoresheet & corrects usernames from email & records row issues without stopping for ordinary invalid records
     public List<StudentDetails> read(Path scoresheet) throws IOException { //@1ejun6 > checked
-        return read(scoresheet, scoresheet.toAbsolutePath().getParent().resolve("csv.log.jsonl"));
+        return read(scoresheet, Path.of("log", "csv.log.jsonl"));
     }
 
     public List<StudentDetails> read(Path scoresheet, Path logFile) throws IOException {
