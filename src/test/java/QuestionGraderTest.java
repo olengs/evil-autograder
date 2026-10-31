@@ -1,6 +1,7 @@
 import static org.junit.jupiter.api.Assertions.*;
 
 import app.Main;
+import progress.GradingProgress;
 import config.AssessmentLoader;
 import config.Config;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ class QuestionGraderTest { //@1ejun6 > runs integration tests using real project
         zipCount = SubmissionLoader.findZipFiles(config.getSubmissionsDirectory()).size();
 
         //@1ejun6 > run extraction & validation & compilation & testing together
-        results = Main.run(config);
+        results = Main.run(config, new GradingProgress());
         Main.printResults(results);
     }
 
@@ -54,7 +55,7 @@ class QuestionGraderTest { //@1ejun6 > runs integration tests using real project
             }
             assertEquals(questionids, gradedquestionids);
             for (var grade : grades) {
-                if (grade.getStatus() == GradeStatus.COMPLETED && grade.getEarnedMarks() > 0) {
+                if (grade.getStatus() == GradeStatus.completed && grade.getEarnedMarks() > 0) {
                     hasPassingGrade = true;
                 }
             }
