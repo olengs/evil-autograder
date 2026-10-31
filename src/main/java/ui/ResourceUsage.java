@@ -9,11 +9,12 @@ final class ResourceUsage { //cpu & heap & threads
     private final java.lang.management.ThreadMXBean threads = ManagementFactory.getThreadMXBean();
     private long lastSample;
     private long lastRevision = -1;
-    private String text = "jvm > measuring";
+    record Sample(String summary, int ui, int prepare, int grading, int results, int other) {}
+    private Sample sample = new Sample("measuring", 0, 0, 0, 0, 0);
 
-    String sample(Thread ui, Thread worker, ProgressSnapshot snapshot) {
+    Sample sample(Thread ui, Thread worker, ProgressSnapshot snapshot) {
         long now = System.nanoTime();
-        if (now - lastSample < 1_000_000_000L && snapshot.revision() == lastRevision) return text;
+        if (now - lastSample < 1_000_000_000L && snapshot.revision() == lastRevision) return sample;
         double load = os == null ? -1 : os.getProcessCpuLoad();
         String cpu = load < 0 ? "n/a" : String.format(Locale.ROOT, "%.1f%%", load * 100);
 
@@ -34,11 +35,10 @@ final class ResourceUsage { //cpu & heap & threads
         int prepare = !cleanup && !snapshot.totalsKnown() ? workerCount : 0;
         int grading = !cleanup && snapshot.totalsKnown() ? workerCount : 0;
         int results = cleanup ? workerCount : 0;
-        text = "jvm > cpu " + cpu + " | heap " + heapBytes / (1024 * 1024) + " MiB · " + heapPercent + " ram"
-                + "\nthreads > ui  prepare & validate  compile & test  results & cleanup  background"
-                + String.format(Locale.ROOT, "\n          %-4d%-20d%-16d%-19d%d", uiCount, prepare, grading, results, otherCount);
+        String summary = "cpu " + cpu + " | heap " + heapBytes / (1024 * 1024) + " MiB · " + heapPercent + " ram";
+        sample = new Sample(summary, uiCount, prepare, grading, results, otherCount);
         lastSample = now;
         lastRevision = snapshot.revision();
-        return text;
+        return sample;
     }
 }
