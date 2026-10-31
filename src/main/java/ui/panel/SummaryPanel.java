@@ -1,4 +1,4 @@
-package ui;
+package ui.panel;
 
 import static ui.UiDrawing.*;
 import dev.tamboui.layout.Rect;
@@ -8,10 +8,10 @@ import dev.tamboui.style.Overflow;
 import dev.tamboui.widgets.paragraph.Paragraph;
 import progress.ProgressStage;
 
-final class SummaryPanel {
+public final class SummaryPanel {
     private SummaryPanel() {}
 
-    static void drawSummary(Frame frame, Rect area, boolean columns, ProgressSnapshot snapshot) { //@1ejun6 > summary panel
+    public static void drawSummary(Frame frame, Rect area, boolean columns, ProgressSnapshot snapshot) { //@1ejun6 > summary panel
         boolean failed = snapshot.stage() == ProgressStage.failed;
 
         drawLine(frame, area, 3, failed ? "grading stopped" : "grading complete", failed ? red : green);
@@ -21,10 +21,12 @@ final class SummaryPanel {
         drawTotal(frame, new Rect(columns ? area.x() + columnWidth : area.x(), area.y() + (columns ? 5 : 8), columnWidth, 2),
                 "questions", snapshot.processedQuestions(), snapshot.totalQuestions(), snapshot.totalsKnown());
 
-        int messageRow = columns ? 8 : 11;
-        frame.renderWidget(Paragraph.builder().text(safeText(failed ? snapshot.message() : "processed includes all question outcomes"))
-                .style(failed ? red : muted).overflow(Overflow.WRAP_CHARACTER).build(),
-                new Rect(area.x(), area.y() + messageRow, area.width(), area.height() - messageRow - 1));
+        if (failed) {
+            int messageRow = columns ? 8 : 11;
+            frame.renderWidget(Paragraph.builder().text(safeText(snapshot.message()))
+                    .style(red).overflow(Overflow.WRAP_CHARACTER).build(),
+                    new Rect(area.x(), area.y() + messageRow, area.width(), area.height() - messageRow - 1));
+        }
     }
 
     private static void drawTotal(Frame frame, Rect area, String name, int processed, int total, boolean totalsKnown) {

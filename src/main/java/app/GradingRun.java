@@ -72,6 +72,7 @@ public class GradingRun { //loads, validates and grades submissions
         } catch (IOException | RuntimeException | Error failure) {
             //@1ejun6 > keep original failure if cleanup also fails
             try {
+                progress.preparing("cleaning up temporary files");
                 FileUtils.deleteDirectory(workspace);
             } catch (IOException cleanupFailure) {
                 failure.addSuppressed(cleanupFailure);
@@ -79,6 +80,7 @@ public class GradingRun { //loads, validates and grades submissions
             throw failure;
         }
         //@1ejun6 > 6 > clean up extracted files after grading > keep results for printing
+        progress.preparing("cleaning up temporary files");
         FileUtils.deleteDirectory(workspace);
         return results;
     }
