@@ -3,6 +3,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.List;
 import model.*;
 
+//@1ejun6 > !update
 class GradeAssertions { //@1ejun6 > checks one question grade according to its status
     static void check(StudentSubmission submission, QuestionGrade grade) {
         assertTrue(grade.getEarnedMarks() >= 0);
