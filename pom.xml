@@ -23,6 +23,12 @@
             <version>5.12.0</version>
         </dependency>
         <dependency>
+            <!-- extract text from the exam pdf for llm tester generation-->
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.5</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.13.4</version>
