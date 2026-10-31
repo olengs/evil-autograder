@@ -46,6 +46,7 @@ class NestedUnexpectedFileTest {
 
         List<SubmissionIssue> issues = submission.getSubmissionIssues();
         assertEquals(2, issues.size());
+        assertEquals(1, submission.getDistinctIssues().size());
         assertEquals(List.of("Q1a", "Q1b"), issues.stream().map(SubmissionIssue::getQuestionId).sorted().toList());
         for (SubmissionIssue issue : issues) {
             assertUnexpectedWarning(issue, extra);

@@ -1,4 +1,5 @@
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import config.AssessmentLoader;
 import grading.AssessmentGrader;
@@ -335,6 +336,56 @@ class SubmissionNormalizerTest {
     }
 
     @Test
+    void answersDifferingOnlyByCaseBlockOnlyTheirQuestionFolder() throws IOException {
+        assumeCaseSensitiveFileSystem();
+        Map<String, Object> entries = answers(USERNAME + "/");
+        entries.put(USERNAME + "/Q1/q1a.java", source("Q1a"));
+
+        StudentSubmission submission = load(USERNAME + ".zip", entries);
+
+        assertBlockedQuestions(submission, "Q1a", "Q1b");
+        assertHasIssue(submission, "normalization error");
+        assertEquals(USERNAME, submission.getRootDirectory().getFileName().toString());
+    }
+
+    @Test
+    void questionFoldersDifferingOnlyByCaseBlockOnlyThatQuestion() throws IOException {
+        assumeCaseSensitiveFileSystem();
+        Map<String, Object> entries = answers(USERNAME + "/");
+        entries.put(USERNAME + "/q2/Notes.txt", "notes");
+
+        StudentSubmission submission = load(USERNAME + ".zip", entries);
+
+        assertBlockedQuestions(submission, "Q2");
+    }
+
+    @Test
+    void caseCollisionInAnUnrelatedFolderBlocksNothing() throws IOException {
+        assumeCaseSensitiveFileSystem();
+        Map<String, Object> entries = answers(USERNAME + "/");
+        entries.put(USERNAME + "/backup/Q1a.java", source("Q1a"));
+        entries.put(USERNAME + "/backup/q1a.java", source("Q1a"));
+
+        StudentSubmission submission = load(USERNAME + ".zip", entries);
+
+        assertWorkingStructure(submission);
+    }
+
+    @Test
+    void looseCopiesDifferingOnlyByCaseAreNotGuessedBetween() throws IOException {
+        assumeCaseSensitiveFileSystem();
+        Map<String, Object> entries = answers(USERNAME + "/");
+        entries.remove(USERNAME + "/Q1/Q1a.java");
+        entries.put(USERNAME + "/backup/Q1a.java", source("Q1a"));
+        entries.put(USERNAME + "/backup/q1a.java", source("Q1a"));
+
+        StudentSubmission submission = load(USERNAME + ".zip", entries);
+
+        assertBlockedQuestions(submission, "Q1a");
+        assertHasIssue(submission, "ambiguous answer file");
+    }
+
+    @Test
     void usernameFolderWinsOverLeftoverResourceFolder() throws IOException {
         Map<String, Object> entries = new LinkedHashMap<>();
         for (String file : ANSWER_FILES) {
@@ -646,6 +697,12 @@ class SubmissionNormalizerTest {
             assertTrue(attempt.isValid(), attempt.getQuestionDefinition().getId());
             assertEquals(attempt.getQuestionDefinition().getRequiredFiles().size(), attempt.getSubmittedFiles().size());
         }
+    }
+
+    //windows & mac folders usually cannot hold both spellings > these cases need a case sensitive temp folder
+    private void assumeCaseSensitiveFileSystem() throws IOException {
+        Files.createFile(temp.resolve("CaseProbe"));
+        assumeFalse(Files.exists(temp.resolve("caseprobe")));
     }
 
     private static void assertHasIssue(StudentSubmission submission, String code) {

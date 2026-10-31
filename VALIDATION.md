@@ -30,10 +30,11 @@ and its new validation findings. Only new findings are appended to the submissio
 inherited issues are not appended again for every attempt. Folder findings are scoped to all
 questions sharing that folder, rather than unrelated questions.
 
-CSV/reporting code should iterate the submission list once, not flatten all attempt lists,
-which intentionally share relevant records. These records are in memory and Main currently
-prints them; this change does not introduce persistent JSONL/CSV output. The existing
-scoresheet-reader JSONL logger remains separate.
+CSV/reporting code should iterate getDistinctIssues() once, not flatten all attempt lists,
+which intentionally share relevant records. A finding for a folder shared by several questions
+has one record per question in getSubmissionIssues(); getDistinctIssues() keeps one of them.
+These records are in memory and Main currently prints them; this change does not introduce
+persistent JSONL/CSV output. The existing scoresheet-reader JSONL logger remains separate.
 
 ## Validation file-access failures
 
@@ -104,7 +105,9 @@ filename convention still works, with nested support resources included.
 
 Normalization recognizes declared relative answer paths, corrects nested capitalization and
 creates missing destination parents when relocating unambiguous answers. It never borrows
-another question's correctly placed same-named answer. Required and editable remain separate:
+another question's correctly placed same-named answer. On a case-sensitive filesystem, two
+spellings of a declared path block only the questions in that folder, and spellings elsewhere in
+the ZIP block nothing unless a missing answer would need a guess. Required and editable remain separate:
 header detection may select a supplied companion, while only required answers receive the
 required-file and identity checks. Validation hands off full question-relative paths.
 
@@ -185,6 +188,3 @@ The tests use temporary synthetic submissions, including real ZIP preparation, n
 detection and validation. Existing branch tests also check temporary grading workspaces and
 compare synthetic clean/messy submission grades. No grading source is changed. The separate
 QuestionGraderTest requires a complete external assessment dataset and is not part of this run.
-
-AI assistance: Codex assisted with issue handoff metadata, path rebasing, validation review,
-ZIP utility delegation, protection retraction, shared header parsing and regression tests.

@@ -78,7 +78,7 @@ public class Main { //loads project files & validates submissions & grades each 
         for (var entry : results.entrySet()) {
             var student = entry.getKey().getStudent();
             System.out.println("\n" + (student == null ? entry.getKey().getOriginalZip().getFileName() : student.getUsername()));
-            for (var issue : entry.getKey().getSubmissionIssues()) System.out.println("  " + issue);
+            for (var issue : entry.getKey().getDistinctIssues()) System.out.println("  " + issue);
             for (var grade : entry.getValue()) {
                 System.out.println("  " + grade.getQuestionId() + ": " + grade.getEarnedMarks() + " [" + grade.getStatus() + "]");
                 if (grade.getStatus() != GradeStatus.COMPLETED) System.out.println("    " + grade.getMessage());
