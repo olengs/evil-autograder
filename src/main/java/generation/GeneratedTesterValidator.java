@@ -41,6 +41,9 @@ public class GeneratedTesterValidator { //checks a generated tester actually com
             Files.writeString(workspace.resolve(spec.getId() + ".java"), spec.getAnswerTemplateSource());
             Files.writeString(workspace.resolve(spec.getTesterFileName()), testerSource);
 
+            // copy the question's support files (e.g. DataException.class, persons.txt) like the real grader
+            copySupportFiles(spec, workspace);
+
             // 1 > compile both together > reject on compile failure or timeout
             ProcessResult compile = compile(workspace);
             if (compile.isTimedOut()) {
@@ -79,6 +82,29 @@ public class GeneratedTesterValidator { //checks a generated tester actually com
             } catch (IOException ignored) {
                 // cleanup failure must not mask the validation result
             }
+        }
+    }
+
+    // copy the question's declared support files into the workspace > skip the answer template itself
+    private void copySupportFiles(QuestionSpec spec, Path workspace) throws IOException {
+        Path resourceDir = spec.getResourceDirectory();
+        if (resourceDir == null) {
+            return;
+        }
+        String templateName = spec.getId() + ".java"; // written from source already > never overwrite it
+        for (String name : spec.getSupportFiles()) {
+            if (name.equals(templateName)) {
+                continue;
+            }
+            Path source = resourceDir.resolve(name);
+            if (!Files.isRegularFile(source)) {
+                continue; // missing support file > let compilation surface the real error
+            }
+            Path destination = workspace.resolve(name);
+            if (destination.getParent() != null) {
+                Files.createDirectories(destination.getParent());
+            }
+            FileUtils.copyFile(source, destination, FileUtils.CopyOptions.REPLACE_EXISTING);
         }
     }
 
