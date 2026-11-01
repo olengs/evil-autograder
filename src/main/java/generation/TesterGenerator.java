@@ -72,6 +72,7 @@ public class TesterGenerator { //orchestrates pdf -> prompt -> llm -> validate -
             String userPrompt, String exemplar, byte[] pdfBytes, Path outputDirectory) {
         int maxRetries = config.getGenerationMaxRetries();
         String lastFailure = "";
+        String lastTesterSource = null; // keep the most recent generated source so a failed one is still written
 
         // one initial attempt plus up to maxRetries more
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
@@ -89,12 +90,18 @@ public class TesterGenerator { //orchestrates pdf -> prompt -> llm -> validate -
                 if (attempt < maxRetries) {
                     continue;
                 }
+                // nothing usable was ever produced > fall back to any earlier source, else report generation failure
+                if (lastTesterSource != null) {
+                    return writeFlagged(spec, lastTesterSource, outputDirectory,
+                            "generation failed on final attempt > " + lastFailure);
+                }
                 return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.GENERATION_FAILED,
                         null, "generation failed > " + lastFailure);
             }
 
+            lastTesterSource = testerSource; // remember the latest source even if it fails validation
+
             // validate the generated tester against the real answer template
-            // TODO needed for high quality tester, unnecessary for partial complate tester
             ValidationResult validation = validator.validate(spec, testerSource);
             if (validation.isValid()) {
                 try {
@@ -110,13 +117,28 @@ public class TesterGenerator { //orchestrates pdf -> prompt -> llm -> validate -
             // invalid > keep the failure detail for the next retry prompt
             lastFailure = validation.getFailedStage() + " > " + validation.getMessage();
             if (attempt >= maxRetries) {
-                return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.VALIDATION_FAILED,
-                        null, "failed validation after " + (maxRetries + 1) + " attempt(s) > " + lastFailure);
+                // still write the best-effort (invalid) tester so it can be inspected & fixed by hand > but flag it
+                return writeFlagged(spec, testerSource, outputDirectory,
+                        "failed validation after " + (maxRetries + 1) + " attempt(s) > " + lastFailure);
             }
         }
 
         // unreachable > the loop always returns > kept for the compiler
         return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.GENERATION_FAILED, null, "no attempt made");
+    }
+
+    // write a tester that did not pass validation so it is not thrown away > status stays VALIDATION_FAILED
+    private QuestionGenerationOutcome writeFlagged(QuestionSpec spec, String testerSource,
+            Path outputDirectory, String reason) {
+        try {
+            Path written = writer.write(spec, testerSource, outputDirectory);
+            return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.VALIDATION_FAILED,
+                    written, reason + " > written anyway for manual review");
+        } catch (IOException error) {
+            // writing the flagged tester itself failed > report that, keeping the validation failure context
+            return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.VALIDATION_FAILED,
+                    null, reason + " > and could not be written > " + error.getMessage());
+        }
     }
 
     // append the previous failure so the model can correct it on a retry
