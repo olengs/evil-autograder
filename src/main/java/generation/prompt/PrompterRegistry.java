@@ -16,16 +16,43 @@ public final class PrompterRegistry { //the fixed built-in set of add-on prompte
     // preserve declaration order so prompts are assembled deterministically
     private final Map<String, AddOnPrompter> addOns = new LinkedHashMap<>();
 
-    public PrompterRegistry() {
-        register(new AddOnPrompter(TIMEOUT_RESISTANT, 
-                "make test cases timeout resistant",
+    // the per-test-case timeout used by the timeout-resistance add-on > comes from execution.timeout.seconds
+    private final long testCaseTimeoutSeconds;
+
+    // build the registry straight from config > reads execution.timeout.seconds for the timeout add-on
+    public PrompterRegistry(Config config) {
+        this(config.getExecutionTimeout().toSeconds());
+    }
+
+    public PrompterRegistry(long testCaseTimeoutSeconds) {
+        // clamp to at least one second so the generated Future.get timeout is always valid
+        this.testCaseTimeoutSeconds = Math.max(1, testCaseTimeoutSeconds);
+        register(new AddOnPrompter(TIMEOUT_RESISTANT,
+                "detect student infinite loops with a per-test-case timeout",
+                // TODO idk abt this, need actual testing + introduce new thread
                 """
-                TIMEOUT RESISTANCE:
-                - A student method may loop forever. Never let one test case block the others.
-                - Keep each test case independent; do not share mutable state between cases.
-                - Avoid unbounded loops, sleeps, or waiting on input in the tester itself.
-                - Prefer small, fast inputs that still exercise the required behaviour.
-                """));
+                TIMEOUT RESISTANCE (detect student infinite loops):
+                - A student method may contain an infinite loop. The tester must deliberately detect this and
+                  treat it as a failed test case, not hang forever.
+                - Run the student method call for EACH test case on a separate thread and bound how long you wait:
+                    import java.util.concurrent.*;
+                    ExecutorService executor = Executors.newSingleThreadExecutor();
+                    try {
+                        Future<ResultType> future = executor.submit(() -> methodUnderTest(inputs));
+                        ResultType result = future.get(%d, TimeUnit.SECONDS); // timeout from execution.timeout.seconds
+                        // compare result to expected, then print Passed or Failed
+                    } catch (TimeoutException e) {
+                        future.cancel(true);
+                        System.out.println("Failed -> timeout");
+                    } catch (Exception e) {
+                        System.out.println("Failed -> Exception");
+                    } finally {
+                        executor.shutdownNow();
+                    }
+                - Use a timeout of %d seconds for the Future.get(...) call.
+                - A timed-out test case must print exactly one outcome line: "Failed -> timeout".
+                - Keep each test case independent so one hung call never blocks the others.
+                """.formatted(this.testCaseTimeoutSeconds, this.testCaseTimeoutSeconds)));
         register(new AddOnPrompter(STRICT_OUTPUT_FORMAT,
                 "enforce strict grader output format",
                 """
