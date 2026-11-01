@@ -30,7 +30,9 @@ public class QuestionSpecCollector { //turns answer-template folders + exam text
             String templateSource = Files.readString(templateFile);
 
             String excerpt = sliceExcerpt(exam.getText(), id);
-            specs.add(new QuestionSpec(id, question.getExpectedFolder(), templateFile, templateSource, excerpt));
+            // carry the question folder & its support files so validation can compile like the real grader
+            specs.add(new QuestionSpec(id, question.getExpectedFolder(), templateFile, templateSource, excerpt,
+                    question.getResourceDirectory(), question.getAllowedResourceFiles()));
         }
         return specs;
     }
