@@ -16,7 +16,7 @@ import model.ProcessResult;
 
 public class ProcessExecutor {
 
-    public static ExecutorService outputReaderThreads = Executors.newFixedThreadPool(4, Thread.ofPlatform().daemon().factory());
+    public static ExecutorService outputReaderThreads = Executors.newFixedThreadPool(10, Thread.ofPlatform().daemon().factory());
 
     public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorCode, String startErrorMessage) {
         if (timeout.isZero() || timeout.isNegative()) {
