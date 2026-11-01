@@ -15,6 +15,9 @@ import exceptions.ProcessExecutionException;
 import model.ProcessResult;
 
 public class ProcessExecutor {
+
+    public static ExecutorService outputReaderThreads = Executors.newFixedThreadPool(4, Thread.ofPlatform().daemon().factory());
+
     public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorCode, String startErrorMessage) {
         if (timeout.isZero() || timeout.isNegative()) {
             throw new IllegalArgumentException("Process timeout must be positive");
@@ -26,14 +29,13 @@ public class ProcessExecutor {
         } catch (IOException error) {
             throw new ProcessExecutionException(startErrorCode, startErrorMessage, error);
         }
-
-        ExecutorService outputReaders = Executors.newFixedThreadPool(2, Thread.ofPlatform().daemon().factory());
+        
         try {
             process.getOutputStream().close();
             //streams have limited memory > background threads drain them to prevent deadlock
             //when process is generating large amounts of data during execution
-            Future<String> standardOutputTask = outputReaders.submit(() -> readStream(process.getInputStream()));
-            Future<String> errorOutputTask = outputReaders.submit(() -> readStream(process.getErrorStream()));
+            Future<String> standardOutputTask = outputReaderThreads.submit(() -> readStream(process.getInputStream()));
+            Future<String> errorOutputTask = outputReaderThreads.submit(() -> readStream(process.getErrorStream()));
 
             //enforce timeout
             boolean finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
@@ -58,7 +60,6 @@ public class ProcessExecutor {
             destroyProcessTree(process);
             closeQuietly(process.getInputStream());
             closeQuietly(process.getErrorStream());
-            outputReaders.shutdownNow();
         }
     }
 
