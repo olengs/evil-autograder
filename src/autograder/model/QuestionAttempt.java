@@ -21,6 +21,7 @@ public class QuestionAttempt {
     }
 
     public List<Path> getAnswerFiles() {
+        // Existing selected editable files, including optional companions; not just required answers.
         return Collections.unmodifiableList(answerFiles);
     }
 

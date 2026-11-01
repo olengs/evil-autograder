@@ -63,7 +63,7 @@ public class SubmissionValidator {
         Path questionFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
         
         try {
-            return fileLocator.locateAnswerFiles(questionFolder, question.getRequiredFiles());
+            return fileLocator.locateAnswerFiles(questionFolder, question.getEditableFiles());
         } catch (IOException e) {
             issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR,
                     "unable to locate answer files > " + e.getMessage(), question.getId(), questionFolder));

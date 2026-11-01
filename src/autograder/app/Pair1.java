@@ -7,6 +7,7 @@ import autograder.model.QuestionDefinition;
 import autograder.model.Student;
 import autograder.model.StudentSubmission;
 import autograder.model.SubmissionIssue;
+import autograder.submission.EditableFileDetector;
 import autograder.submission.StudentIdentifier;
 import autograder.submission.SubmissionLoader;
 import autograder.validation.AnswerFileLocator;
@@ -50,7 +51,8 @@ public class Pair1 {
                 new QuestionDefinition("Q2b", "Q2", List.of("Q2b.java"), List.of("students.txt", "persons.txt")),
                 new QuestionDefinition("Q3", "Q3", List.of("Q3.java"), List.of("ShapeComparator.java"))));
         Path workspace = Files.createTempDirectory("pair1-");
-        run(submissionFolder, workspace, students, assessment);
+        Path template = projectFolder.resolve("RenameToYourUsername");
+        run(submissionFolder, workspace, students, assessment, Files.isDirectory(template) ? template : null);
         System.out.println("extraction workspace > " + workspace);
     }
 
@@ -73,6 +75,11 @@ public class Pair1 {
 
     public static List<StudentSubmission> run(Path submissionFolder, Path workspaceFolder,
                 List<Student> students, AssessmentDefinition assessment) throws IOException {
+        return run(submissionFolder, workspaceFolder, students, assessment, null);
+    }
+
+    public static List<StudentSubmission> run(Path submissionFolder, Path workspaceFolder,
+                List<Student> students, AssessmentDefinition assessment, Path templateRoot) throws IOException {
 
         List<Path> zipFiles = SubmissionLoader.findZipFiles(submissionFolder);
         StudentIdentifier identifier = new StudentIdentifier();
@@ -87,26 +94,30 @@ public class Pair1 {
         for (Path folder : SubmissionLoader.loadSubmissions(submissionFolder, workspaceFolder)) {
             Path zip = zipFiles.stream().filter(path -> {
                 String name = path.getFileName().toString();
-                return name.substring(0, name.length() - 4).equals(folder.getFileName().toString());
+                return name.substring(0, name.length() - 4).equalsIgnoreCase(folder.getFileName().toString());
             }).findFirst().orElseThrow(() -> new IOException("cannot find original ZIP for " + folder));
             Student student = identifier.identify(zip, students);
-            StudentSubmission submission;
-            try {
-                if (student == null) {
-                    throw new IOException("no roster match for " + zip.getFileName());
-                }
-                submission = new StudentSubmission(student, zip, folder);
-                validator.validate(submission, assessment);
-            } catch (IOException error) {
-                submission = new StudentSubmission(student, zip, folder);
+            StudentSubmission submission = new StudentSubmission(student, zip, folder);
+            if (student == null) {
                 SubmissionIssue issue = new SubmissionIssue("submission preparation error", IssueSeverity.ERROR,
-                        error.getMessage(), null, folder);
+                        "no roster match for " + zip.getFileName(), null, folder);
                 submission.addIssues(List.of(issue));
-                for (QuestionDefinition question : assessment.getQuestions()) {
-                    submission.addQuestionAttempt(new QuestionAttempt(question, List.of(), List.of(issue)));
-                }
             }
             submissions.add(submission);
+        }
+
+        // Inspect the complete batch before validating anyone, so later headers can
+        // establish that a companion is editable even if earlier students omitted them.
+        AssessmentDefinition detected = EditableFileDetector.detect(assessment, templateRoot, submissions);
+        for (StudentSubmission submission : submissions) {
+            if (submission.getStudent() == null) {
+                for (QuestionDefinition question : detected.getQuestions()) {
+                    submission.addQuestionAttempt(new QuestionAttempt(question, List.of(),
+                            submission.getSubmissionIssues()));
+                }
+            } else {
+                validator.validate(submission, detected);
+            }
             printSubmission(submission);
         }
         long ready = submissions.stream().filter(submission -> submission.getQuestionAttempts().stream()
