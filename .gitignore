@@ -28,6 +28,10 @@ replay_pid*
 .vscode
 .DS_Store
 
+# secrets > never commit the real .env (api keys live here)
+.env
+.env.local
+
 #juny
 rawr/
 target/
