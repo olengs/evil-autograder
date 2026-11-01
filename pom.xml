@@ -29,6 +29,12 @@
             <version>3.0.5</version>
         </dependency>
         <dependency>
+            <!-- read the api key from a git-ignored .env file > host env vars take precedence-->
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.13.4</version>
