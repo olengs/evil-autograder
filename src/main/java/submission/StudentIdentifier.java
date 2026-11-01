@@ -2,29 +2,30 @@ package submission;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Locale;
 import model.StudentDetails;
 
-/** Matches a submitted ZIP filename against every relevant scoresheet record. */
-public class StudentIdentifier {
-    /** Returns a student only when the scoresheet contains exactly one matching record. */
-    public StudentDetails identify(Path zipFile, List<StudentDetails> students) {
-        List<StudentDetails> matches = findMatches(zipFile, students);
-        return matches.size() == 1 ? matches.getFirst() : null;
-    }
+/**
+ * identifies a student using zip filename
+ *
+ * @param zipFile > students zip submission
+ * @param students > list of known students
+ * @return > matched submissionstudent
+ */
 
-    /**
-     * Keeps duplicate records visible so callers can report ambiguity instead of
-     * silently selecting the first student. The optional academic-year prefix is
-     * excluded from the username, as it is in the original ZIP matching behavior.
-     */
-    public List<StudentDetails> findMatches(Path zipFile, List<StudentDetails> students) {
+public class StudentIdentifier { //matches a submitted zip filename to a student in scoresheet
+    //@1ejun6 > jc > might need to refactor for better solve to the problem > maybe compare against inputted class list of student ids
+    //@1ejun6 > addressed above > compare zip username against students loaded from scoresheet
+    //@1ejun6 > remove academic year prefix before matching > return null when no student matches
+    public StudentDetails identify(Path zipFile, List<StudentDetails> students) {
         String fileName = zipFile.getFileName().toString();
-        if (!fileName.toLowerCase(Locale.ROOT).endsWith(".zip")) return List.of();
-        String username = fileName.substring(0, fileName.length() - 4)
-                .replaceFirst("^\\d{4}-\\d{4}-", "").strip();
-        return students.stream()
-                .filter(student -> student.getUsername().strip().equalsIgnoreCase(username))
-                .toList();
+        String username = fileName.substring(0, fileName.length() - 4);
+        username = username.replaceFirst("^\\d{4}-\\d{4}-", ""); //@1ejun6 > provided zips include an academic year prefix
+
+        for (StudentDetails student : students) {
+            if (student.getUsername().equalsIgnoreCase(username)) {
+                return student;
+            }
+        }
+        return null;
     }
 }

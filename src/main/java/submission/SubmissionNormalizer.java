@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
-import utils.FileUtils;
 import model.AssessmentDefinition;
 import model.IssueSeverity;
 import model.QuestionDefinition;
@@ -25,14 +24,22 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
     private static final String MAC_ARCHIVE_FOLDER = "__MACOSX";
 
     /**
-     * only touches the extracted working copy > never the original zip
+     * only touches the extracted working copies > never the original zips
      * corrections become warnings so grading continues > anything that would need a guess becomes an error
      *
-     * @param extracted > submission whose root directory is the freshly extracted zip
-     * @param assessment > folders & files this submission should contain
-     * @return > submission rooted at the normalized folder \ at the extracted folder if the layout cannot be resolved
+     * @param extracted > submissions from the loader > a zip that failed to extract keeps its issue & passes through
+     * @param assessment > folders & files each submission should contain
+     * @return > same order > each rooted at its normalized folder \ at its extracted folder if the layout cannot be resolved
      */
-    public static StudentSubmission normalize(StudentSubmission extracted, AssessmentDefinition assessment) {
+    public static List<StudentSubmission> normalize(List<StudentSubmission> extracted, AssessmentDefinition assessment) {
+        List<StudentSubmission> normalized = new ArrayList<>();
+        for (StudentSubmission submission : extracted) {
+            normalized.add(Files.isDirectory(submission.getRootDirectory()) ? normalizeOne(submission, assessment) : submission);
+        }
+        return normalized;
+    }
+
+    private static StudentSubmission normalizeOne(StudentSubmission extracted, AssessmentDefinition assessment) {
         Path extractedRoot = extracted.getRootDirectory().toAbsolutePath().normalize();
         Path root = extractedRoot;
         List<SubmissionIssue> issues = new ArrayList<>();
@@ -82,10 +89,10 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
 
     private static void validatePaths(Path root, Map<String, List<QuestionDefinition>> questions) throws IOException {
         for (var entry : questions.entrySet()) {
-            Path folder = FileUtils.resolveContained(root, entry.getKey());
+            Path folder = resolveContained(root, entry.getKey());
             for (QuestionDefinition question : entry.getValue()) {
-                for (String required : question.getRequiredFiles()) FileUtils.resolveContained(folder, required);
-                for (String resource : question.getAllowedResourceFiles()) FileUtils.resolveContained(folder, resource);
+                for (String required : question.getRequiredFiles()) resolveContained(folder, required);
+                for (String resource : question.getAllowedResourceFiles()) resolveContained(folder, resource);
             }
         }
     }
@@ -213,7 +220,7 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
             } else if (matches.size() == 1) {
                 Path folder = matches.getFirst();
                 try {
-                    Path destination = FileUtils.resolveContained(root, expected);
+                    Path destination = resolveContained(root, expected);
                     Files.createDirectories(destination.getParent());
                     if (!folder.equals(destination)) {
                         Files.move(folder, destination);
@@ -268,7 +275,7 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
                         issues.add(normalizationIssue("ambiguous answer file", IssueSeverity.ERROR,
                                 copies.size() + " copies of " + requiredFile + " found outside " + entry.getKey(), question.getId(), root));
                     } else if (copies.size() == 1) {
-                        Path target = FileUtils.resolveContained(questionFolder, requiredFile);
+                        Path target = resolveContained(questionFolder, requiredFile);
                         Files.createDirectories(target.getParent());
                         Files.move(copies.getFirst(), target);
                         issues.add(normalizationIssue("answer file relocated", IssueSeverity.WARNING,
@@ -353,7 +360,7 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
     // Resolve and repair each component; renaming src/Solution.java must not flatten it into one filename.
     private static Path correctPathCase(Path root, String relative, List<QuestionDefinition> questions,
             String code, List<SubmissionIssue> issues) throws IOException {
-        FileUtils.resolveContained(root, relative);
+        resolveContained(root, relative);
         Path current = root;
         for (Path component : Path.of(relative)) {
             Path actual = matchingEntry(current, component.toString());
@@ -369,7 +376,7 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
 
     //searching keeps every spelling > only renaming a declared path treats two spellings as a collision
     private static List<Path> entriesIgnoringCase(Path root, String relative) throws IOException {
-        FileUtils.resolveContained(root, relative);
+        resolveContained(root, relative);
         List<Path> current = List.of(root);
         for (Path component : Path.of(relative)) {
             List<Path> next = new ArrayList<>();
@@ -392,7 +399,7 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
         List<Path> matches = visibleEntries(parent).stream()
                 .filter(path -> path.getFileName().toString().equalsIgnoreCase(name)).toList();
         for (Path match : matches) {
-            FileUtils.resolveContained(parent, match.getFileName().toString());
+            resolveContained(parent, match.getFileName().toString());
         }
         return matches;
     }
@@ -442,8 +449,7 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
 
     private static SubmissionIssue normalizationIssue(String code, IssueSeverity severity,
             String message, String questionId, Path path) {
-        return new SubmissionIssue(code, severity, message, questionId, path,
-                "normalization", severity != IssueSeverity.ERROR);
+        return new SubmissionIssue(code, severity, message, questionId, path);
     }
 
     private static void rebaseIssues(List<SubmissionIssue> issues, Path previousRoot, Path newRoot) {
@@ -452,12 +458,31 @@ public class SubmissionNormalizer { //rearranges one extracted zip into <usernam
             SubmissionIssue issue = issues.get(i);
             Path path = issue.getAffectedPath();
             if (path != null && path.toAbsolutePath().normalize().startsWith(previousRoot)) {
-                issues.set(i, issue.withAffectedPath(newRoot.resolve(previousRoot.relativize(path.toAbsolutePath().normalize()))));
+                Path moved = newRoot.resolve(previousRoot.relativize(path.toAbsolutePath().normalize()));
+                issues.set(i, new SubmissionIssue(issue.getCode(), issue.getSeverity(), issue.getMessage(), issue.getQuestionId(), moved));
             }
         }
     }
 
     //#region file helpers
+
+    //an assessment path must stay inside root & never pass through a link
+    private static Path resolveContained(Path root, String relative) throws IOException {
+        Path base = root.toAbsolutePath().normalize();
+        Path name = Path.of(relative);
+        Path result = base.resolve(name).normalize();
+        if (name.isAbsolute() || !result.startsWith(base)) {
+            throw new IOException("path escapes root > " + relative);
+        }
+        Path current = base;
+        for (Path part : base.relativize(result)) {
+            current = current.resolve(part);
+            if (Files.isSymbolicLink(current)) {
+                throw new IOException("linked path > " + current);
+            }
+        }
+        return result;
+    }
 
     //@return > true when the name changed
     private static boolean rename(Path source, String expected) throws IOException {

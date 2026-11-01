@@ -24,7 +24,6 @@ public class QuestionAttempt { //stores a students answer files & any problems f
         return questionDirectory;
     }
 
-    /** Existing student files selected by the assessment's editable-file list, as absolute paths. */
     public List<Path> getSubmittedFiles() {
         return submittedFiles;
     }

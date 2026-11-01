@@ -8,7 +8,6 @@ import model.SubmissionIssue;
 import validation.SubmissionValidationRule;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -17,7 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import utils.FileUtils;
+import java.util.stream.Stream;
 
 public class UnexpectedFileRule implements SubmissionValidationRule { //warns about extra files across all question folders in a submission
     @Override
@@ -31,30 +30,26 @@ public class UnexpectedFileRule implements SubmissionValidationRule { //warns ab
             Set<String> expectedFiles = entry.getValue();
             Path questionDirectory = submission.getRootDirectory().resolve(questionFolderName);
 
-            try {
-                if (!Files.isDirectory(questionDirectory)) continue;
-                for (Path file : FileUtils.listFilesRecursively(questionDirectory)) {
-                    String actualName = questionDirectory.relativize(file).toString().replace('\\', '/');
-                    if (expectedFiles.stream().noneMatch(expected -> expected.replace('\\', '/').equalsIgnoreCase(actualName))) {
-                        addFolderIssues(issues, assessment, questionFolderName, "unexpected file", IssueSeverity.WARNING,
-                                "unexpected file " + actualName + " found in " + questionFolderName + ".", file);
+            if (!Files.isDirectory(questionDirectory)) {
+                continue;
+            }
+
+            try (Stream<Path> files = Files.list(questionDirectory)) {
+                files.filter(Files::isRegularFile).forEach(file -> {
+                    String actualName = file.getFileName().toString();
+
+                    if (expectedFiles.stream().noneMatch(expected -> expected.equalsIgnoreCase(actualName))) {
+                        issues.add(new SubmissionIssue("unexpected file", IssueSeverity.WARNING,
+                                "unexpected file " + actualName + " found in " + questionFolderName + ".", null,
+                                file));
                     }
-                }
-            } catch (IOException | UncheckedIOException | SecurityException error) {
-                addFolderIssues(issues, assessment, questionFolderName, "folder read error", IssueSeverity.ERROR,
-                        "Unable to inspect folder " + questionFolderName + ": " + error.getMessage(), questionDirectory);
+                });
+            } catch (IOException error) {
+                issues.add(new SubmissionIssue("folder read error", IssueSeverity.ERROR,
+                        "Unable to inspect folder " + questionFolderName + ": " + error.getMessage(), null, questionDirectory));
             }
         }
         return issues;
-    }
-
-    private static void addFolderIssues(List<SubmissionIssue> issues, AssessmentDefinition assessment,
-            String folder, String code, IssueSeverity severity, String message, Path path) {
-        for (QuestionDefinition question : assessment.getQuestions()) {
-            if (question.getExpectedFolder().equals(folder)) {
-                issues.add(new SubmissionIssue(code, severity, message, question.getId(), path));
-            }
-        }
     }
 
     private Map<String, Set<String>> buildExpectedFilesMap(AssessmentDefinition assessment) {
@@ -64,7 +59,6 @@ public class UnexpectedFileRule implements SubmissionValidationRule { //warns ab
             String questionDirectory = question.getExpectedFolder();
             expectedFilesByFolder.computeIfAbsent(questionDirectory, key -> new HashSet<>()).addAll(question.getRequiredFiles());
             expectedFilesByFolder.get(questionDirectory).addAll(question.getAllowedResourceFiles());
-            expectedFilesByFolder.get(questionDirectory).addAll(question.getEditableFiles());
         }
         return expectedFilesByFolder;
     }

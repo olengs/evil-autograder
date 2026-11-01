@@ -6,9 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import model.StudentDetails;
 import utils.Logger;
@@ -20,8 +18,6 @@ public class StudentCsvReader { //read scoresheet & corrects usernames from emai
 
     public List<StudentDetails> read(Path scoresheet, Path logFile) throws IOException {
         List<StudentDetails> students = new ArrayList<>(); //@1ejun6 > grow in size
-        Map<String, Long> firstUsernameRows = new HashMap<>();
-        Map<String, Long> firstEmailRows = new HashMap<>();
 
         //@1ejun6 > open file as utf-8 > csvreader split it into csv rows
         try (CSVReader csvReader = new CSVReader(Files.newBufferedReader(scoresheet))) {
@@ -64,9 +60,6 @@ public class StudentCsvReader { //read scoresheet & corrects usernames from emai
                     Logger.logError(logFile, Map.of("status", "fixed", "row", recordNumber, "issue", "username mismatch > email username used", "studentid", studentId, "name", name, "listedusername", listedUsername, "emailusername", username));
                 }
 
-                logDuplicate(logFile, firstUsernameRows, "username", username, recordNumber);
-                logDuplicate(logFile, firstEmailRows, "email", email, recordNumber);
-                // Retain every valid record: dropping a duplicate would hide ambiguity from ZIP identification.
                 students.add(new StudentDetails(name, username, email));
             }
         } catch (CsvValidationException error) {
@@ -74,16 +67,5 @@ public class StudentCsvReader { //read scoresheet & corrects usernames from emai
         }
 
         return students;
-    }
-
-    private static void logDuplicate(Path logFile, Map<String, Long> firstRows, String field,
-            String value, long row) throws IOException {
-        String canonical = value.strip().toLowerCase(Locale.ROOT);
-        Long firstRow = firstRows.putIfAbsent(canonical, row);
-        if (firstRow != null) {
-            Logger.logError(logFile, Map.of("status", "ambiguous", "row", row, "firstrow", firstRow,
-                    "issue", "duplicate roster " + field, field, value,
-                    "details", "Records retained; resolve duplicate scoresheet records before grading this student"));
-        }
     }
 }

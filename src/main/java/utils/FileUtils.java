@@ -18,68 +18,6 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class FileUtils { //copies files & folders & deletes temporary folders
-    public static byte[] readBytes(Path file) throws IOException {
-        return Files.readAllBytes(file);
-    }
-
-    public static void writeBytes(Path file, byte[] content) throws IOException {
-        Files.write(file, content);
-    }
-
-    /** Resolve an assessment-relative path without accepting traversal or linked ancestors. */
-    public static Path resolveContained(Path root, String relative) throws IOException {
-        Path base = root.toAbsolutePath().normalize();
-        Path name = Path.of(relative);
-        Path result = base.resolve(name).normalize();
-        if (name.isAbsolute() || !result.startsWith(base)) {
-            throw new IOException("Path escapes root: " + relative);
-        }
-        Path current = base;
-        if (Files.isSymbolicLink(current)) throw new IOException("Linked root: " + current);
-        for (Path part : base.relativize(result)) {
-            current = current.resolve(part);
-            if (Files.isSymbolicLink(current)) throw new IOException("Linked path: " + current);
-        }
-        return result;
-    }
-
-    public static java.util.List<Path> listFiles(Path directory) throws IOException {
-        try (var entries = Files.list(directory)) {
-            return entries.filter(path -> Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS))
-                    .sorted().toList();
-        } catch (java.io.UncheckedIOException error) {
-            throw error.getCause();
-        }
-    }
-
-    /** Enumerate leaf entries without traversing symbolic links. */
-    public static java.util.List<Path> listFilesRecursively(Path directory) throws IOException {
-        try (var entries = Files.walk(directory)) {
-            return entries.filter(path -> !Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS))
-                    .sorted().toList();
-        } catch (java.io.UncheckedIOException error) {
-            throw error.getCause();
-        }
-    }
-
-    public static Path extractZip(Path archive, Path destination) throws IOException {
-        Files.createDirectories(destination);
-        Path root = destination.toRealPath();
-        try (var zip = new java.util.zip.ZipFile(archive.toFile())) {
-            var entries = zip.entries();
-            while (entries.hasMoreElements()) {
-                var entry = entries.nextElement();
-                String name = entry.getName().replace('\\', '/');
-                Path output = resolveContained(root, name);
-                if (entry.isDirectory()) Files.createDirectories(output);
-                else {
-                    Files.createDirectories(output.getParent());
-                    try (var input = zip.getInputStream(entry)) { Files.copy(input, output); }
-                }
-            }
-        }
-        return root;
-    }
     public enum CopyOptions {
         DEFAULT,
         REPLACE_EXISTING
@@ -172,7 +110,7 @@ public class FileUtils { //copies files & folders & deletes temporary folders
     }
 
     public static void CopyFileSafe(Path source, Path destinationFolder, CopyOptions option) throws IOException {
-        Path sourceKey = resolveExistingPath(source);
+        Path sourceKey = ValidatePath(source);
         if (!Files.isRegularFile(sourceKey)) {
             throw new IOException("Copy source is not a regular file: " + source);
         }
@@ -181,7 +119,7 @@ public class FileUtils { //copies files & folders & deletes temporary folders
             throw new IOException("Copy destination folder path is required");
         }
  
-        Path dest = resolveExistingPath(destinationFolder);
+        Path dest = ValidatePath(destinationFolder);
         if (dest == null || !Files.isDirectory(dest)) {
             throw new IOException("Copy destination parent is not a directory: " + dest);
         }

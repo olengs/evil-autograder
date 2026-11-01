@@ -12,8 +12,7 @@ import java.util.List;
 import java.util.Map;
 import model.*;
 import submission.StudentCsvReader;
-import submission.EditableFileDetector;
-import submission.SubmissionPreparer;
+import submission.SubmissionLoader;
 import utils.FileUtils;
 import validation.SubmissionFileFinder;
 import validation.SubmissionValidator;
@@ -51,15 +50,14 @@ public class Main { //loads project files & validates submissions & grades each 
 
             //@1ejun6 > 4 > extract zips > validate each extracted submission
             //@1ejun6 > validation creates ~questionattempt~ objects consumed by grading
-            var submissions = SubmissionPreparer.prepare(config.getSubmissionsDirectory(), workspace, students, assessment);
+            var submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace, students, assessment);
             if (submissions.isEmpty()) throw new IOException("no submission ZIP files found");
-            var editableAssessment = EditableFileDetector.detect(assessment, submissions);
             for (var submission : submissions) {
-                validator.validate(submission, editableAssessment);
+                validator.validate(submission, assessment);
             }
 
             //@1ejun6 > 5 > pass prepared submissions to grading > each question gets its answer & requirements & tester & compilation/execution limits.
-            results = new AssessmentGrader(new QuestionGrader(config.getCompilationTimeout(), config.getExecutionTimeout())).grade(submissions, editableAssessment, testers);
+            results = new AssessmentGrader(new QuestionGrader(config.getCompilationTimeout(), config.getExecutionTimeout())).grade(submissions, assessment, testers);
         } catch (IOException | RuntimeException | Error failure) {
             //@1ejun6 > keep original failure if cleanup also fails
             try {
@@ -78,7 +76,7 @@ public class Main { //loads project files & validates submissions & grades each 
         for (var entry : results.entrySet()) {
             var student = entry.getKey().getStudent();
             System.out.println("\n" + (student == null ? entry.getKey().getOriginalZip().getFileName() : student.getUsername()));
-            for (var issue : entry.getKey().getDistinctIssues()) System.out.println("  " + issue);
+            for (var issue : entry.getKey().getSubmissionIssues()) System.out.println("  " + issue);
             for (var grade : entry.getValue()) {
                 System.out.println("  " + grade.getQuestionId() + ": " + grade.getEarnedMarks() + " [" + grade.getStatus() + "]");
                 if (grade.getStatus() != GradeStatus.COMPLETED) System.out.println("    " + grade.getMessage());

@@ -25,11 +25,10 @@ public class GradingWorkspace implements AutoCloseable { //creates & cleans up t
             Files.createDirectories(destination.getParent());
             FileUtils.copyFile(question.getResourceDirectory().resolve(name), destination, FileUtils.CopyOptions.REPLACE_EXISTING);
         }
+        //TODO > iteration 2 > validate which files students may change so answers cannot overwrite given files
+        //@1ejun6 > overwrite validation remains pending > student files currently replace matching support files
         //@1ejun6 > keep students helper classes & tester data with their answers > same flow as pair 2
         FileUtils.copyDirectory(attempt.getQuestionDirectory(), directory, FileUtils.CopyOptions.REPLACE_EXISTING);
-        for (String name : question.getLockedResourceFiles()) { //put back anything a student changed by accident
-            FileUtils.copyFile(question.getResourceDirectory().resolve(name), directory.resolve(name), FileUtils.CopyOptions.REPLACE_EXISTING);
-        }
         Path testerFile = tester.getSourceFile(); //@1ejun6 > copy tester as a file not a directory
         FileUtils.copyFile(testerFile, directory.resolve(testerFile.getFileName()), FileUtils.CopyOptions.REPLACE_EXISTING);
     }
