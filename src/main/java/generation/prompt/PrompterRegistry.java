@@ -29,29 +29,54 @@ public final class PrompterRegistry { //the fixed built-in set of add-on prompte
         this.testCaseTimeoutSeconds = Math.max(1, testCaseTimeoutSeconds);
         register(new AddOnPrompter(TIMEOUT_RESISTANT,
                 "detect student infinite loops with a per-test-case timeout",
-                // TODO idk abt this, need actual testing + introduce new thread
                 """
-                TIMEOUT RESISTANCE (detect student infinite loops):
-                - A student method may contain an infinite loop. The tester must deliberately detect this and
-                  treat it as a failed test case, not hang forever.
-                - Run the student method call for EACH test case on a separate thread and bound how long you wait:
-                    import java.util.concurrent.*;
-                    ExecutorService executor = Executors.newSingleThreadExecutor();
-                    try {
-                        Future<ResultType> future = executor.submit(() -> methodUnderTest(inputs));
-                        ResultType result = future.get(%d, TimeUnit.SECONDS); // timeout from execution.timeout.seconds
-                        // compare result to expected, then print Passed or Failed
-                    } catch (TimeoutException e) {
-                        future.cancel(true);
-                        System.out.println("Failed -> timeout");
-                    } catch (Exception e) {
-                        System.out.println("Failed -> Exception");
-                    } finally {
-                        executor.shutdownNow();
-                    }
-                - Use a timeout of %d seconds for the Future.get(...) call.
-                - A timed-out test case must print exactly one outcome line: "Failed -> timeout".
-                - Keep each test case independent so one hung call never blocks the others.
+                TIMEOUT RESISTANCE (detect student infinite loops without hanging the program):
+                - A student method may contain an infinite loop. The tester must detect this per test case,
+                  mark that case as failed, continue to the remaining cases, and still EXIT at the end.
+
+                CRITICAL JVM FACTS you must account for:
+                - future.cancel(true) and shutdownNow() only set the thread's interrupt flag. They CANNOT stop a
+                  student thread stuck in a tight loop like `while(true){}` that never checks interruption.
+                  That worker thread will keep running in the background after the timeout. Do not assume it dies.
+                - A normal (non-daemon) worker thread that is still running will KEEP THE JVM ALIVE, so the
+                  program hangs after the last test instead of exiting. You MUST avoid this.
+
+                REQUIRED PATTERN:
+                1. Create ONE shared executor that uses DAEMON threads, so leftover runaway threads cannot keep
+                   the JVM alive:
+                       import java.util.concurrent.*;
+                       ExecutorService executor = Executors.newCachedThreadPool(r -> {
+                           Thread t = new Thread(r);
+                           t.setDaemon(true);   // daemon > JVM can exit even if this thread is still looping
+                           return t;
+                       });
+                2. Submit EACH test case's student call as its own task and bound the wait:
+                       Future<ResultType> future = executor.submit(() -> methodUnderTest(inputs));
+                       try {
+                           ResultType result = future.get(%d, TimeUnit.SECONDS); // per-case timeout
+                           // compare result to expected, then print "Passed" or "Failed"
+                       } catch (TimeoutException e) {
+                           future.cancel(true);            // best-effort only; the thread may keep running
+                           System.out.println("Failed -> timeout");
+                       } catch (Exception e) {
+                           System.out.println("Failed -> Exception");
+                       }
+                3. Do NOT create a new executor inside each test case, and do NOT call shutdownNow() between cases.
+                   A fresh per-case executor plus lingering runaway threads is what makes later cases slow down
+                   and also time out. Use the one shared daemon executor for every case.
+                4. Build a brand-new, independent input for every test case. Never reuse or mutate an input object
+                   from a previous case, so one case's state can never affect the next.
+                5. At the very end of main(), after printing the score, FORCE the program to exit so any leftover
+                   runaway daemon thread cannot make it hang:
+                       executor.shutdownNow();  // best effort
+                       System.out.println(score);
+                       System.out.flush();
+                       System.exit(0);          // guarantees the JVM terminates
+
+                OUTCOME RULES:
+                - Use a timeout of %d seconds for each future.get(...) call.
+                - A timed-out case prints exactly one outcome line: "Failed -> timeout".
+                - Each test case stays fully independent so one hung call never blocks or slows the others.
                 """.formatted(this.testCaseTimeoutSeconds, this.testCaseTimeoutSeconds)));
         register(new AddOnPrompter(STRICT_OUTPUT_FORMAT,
                 "enforce strict grader output format",
