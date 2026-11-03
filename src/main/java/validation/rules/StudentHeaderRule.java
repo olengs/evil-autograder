@@ -19,10 +19,15 @@ import validation.ValidationRule;
 
 public class StudentHeaderRule implements ValidationRule { //checks student name & email in comments at the top of each required answer
     private static final int headerLineMax = 15; //@1ejun6 > sets how many lines to inspect student java file
+    private static final Pattern headerField = Pattern.compile("^\\h*(?://|/\\*|\\*)?\\h*(?:Name|Email(?:\\h+ID)?)\\h*:", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
     private final SubmissionFileFinder fileLocator;
 
     public StudentHeaderRule(SubmissionFileFinder fileLocator) {
         this.fileLocator = fileLocator;
+    }
+
+    public static boolean hasHeaderSection(Path file) throws IOException { //a template file with a name \ email section is one students are meant to edit
+        return headerField.matcher(readHeader(file)).find();
     }
 
     @Override
@@ -75,7 +80,7 @@ public class StudentHeaderRule implements ValidationRule { //checks student name
         }
     }
 
-    private String readHeader(Path file) throws IOException {
+    private static String readHeader(Path file) throws IOException {
         StringBuilder header = new StringBuilder();
 
         try (BufferedReader reader = Files.newBufferedReader(file)) {

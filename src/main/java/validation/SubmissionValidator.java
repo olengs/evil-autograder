@@ -6,6 +6,7 @@ import model.QuestionAttempt;
 import model.QuestionDefinition;
 import model.StudentSubmission;
 import model.SubmissionIssue;
+import validation.rules.StudentHeaderRule;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -59,10 +60,21 @@ public class SubmissionValidator { //runs validation rules & builds one ~questio
         Path questionFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
         
         try {
-            return fileLocator.findSubmissionFiles(questionFolder, question.getRequiredFiles());
+            return fileLocator.findSubmissionFiles(questionFolder, editableFiles(question));
         } catch (IOException e) {
             issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR, "unable to locate answer files > " + e.getMessage(), question.getId(), questionFolder));
             return new ArrayList<>();
         }
+    }
+
+    //required answers & any template java file with a name \ email section > a missing optional file is just left out
+    private List<String> editableFiles(QuestionDefinition question) throws IOException {
+        List<String> files = new ArrayList<>(question.getRequiredFiles());
+        for (String resource : question.getAllowedResourceFiles()) {
+            if (resource.endsWith(".java") && StudentHeaderRule.hasHeaderSection(question.getResourceDirectory().resolve(resource))) {
+                files.add(resource);
+            }
+        }
+        return files;
     }
 }
