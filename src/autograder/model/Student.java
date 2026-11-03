@@ -1,3 +1,6 @@
+// Stores the roster identity used to identify submissions.
+// Provides student name, username, and email details.
+
 package autograder.model;
 
 public class Student {

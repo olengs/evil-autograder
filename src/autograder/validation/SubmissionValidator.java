@@ -1,3 +1,6 @@
+// Coordinates submission-wide and per-question validation.
+// Collects findings and creates question attempts with answer paths.
+
 package autograder.validation;
 
 import autograder.model.AssessmentDefinition;
@@ -6,6 +9,7 @@ import autograder.model.QuestionAttempt;
 import autograder.model.QuestionDefinition;
 import autograder.model.StudentSubmission;
 import autograder.model.SubmissionIssue;
+import autograder.utils.StudentHeaderReader;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -13,11 +17,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SubmissionValidator {
-    private final List<ValidationRule> questionRules;
+    private final List<QuestionValidationRule> questionRules;
     private final List<SubmissionValidationRule> submissionRules;
     private final AnswerFileLocator fileLocator;
 
-    public SubmissionValidator(List<ValidationRule> questionRules, List<SubmissionValidationRule> submissionRules, AnswerFileLocator fileLocator) {
+    public SubmissionValidator(List<QuestionValidationRule> questionRules, List<SubmissionValidationRule> submissionRules, AnswerFileLocator fileLocator) {
         this.questionRules = questionRules;
         this.submissionRules = submissionRules;
         this.fileLocator = fileLocator;
@@ -45,13 +49,13 @@ public class SubmissionValidator {
         List<SubmissionIssue> issues = new ArrayList<>();
         
         //run all question level validation rules
-        for (ValidationRule rule : questionRules) {
+        for (QuestionValidationRule rule : questionRules) {
             List<SubmissionIssue> ruleIssues = rule.validate(submission, question);
             issues.addAll(ruleIssues);
         }
 
         //locate submitted answer files
-        List<Path> answerFiles = locateFiles(submission, question, issues);
+        List<Path> answerFiles = locateSubmittedAnswerFiles(submission, question, issues);
 
         //build ~questionattempt~
         QuestionAttempt attempt = new QuestionAttempt(question, answerFiles, issues);
@@ -59,15 +63,28 @@ public class SubmissionValidator {
         submission.addIssues(issues);
     }
 
-    private List<Path> locateFiles(StudentSubmission submission, QuestionDefinition question, List<SubmissionIssue> issues) {
+    private List<Path> locateSubmittedAnswerFiles(StudentSubmission submission, QuestionDefinition question, List<SubmissionIssue> issues) {
         Path questionFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
         
         try {
-            return fileLocator.locateAnswerFiles(questionFolder, question.getRequiredFiles());
+            return fileLocator.locateAnswerFiles(questionFolder, selectEditableFileNames(question));
         } catch (IOException e) {
             issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR,
                     "unable to locate answer files > " + e.getMessage(), question.getId(), questionFolder));
             return new ArrayList<>();
         }
+    }
+
+    // Required answers plus declared Java companions with an identity section in the trusted template.
+    private List<String> selectEditableFileNames(QuestionDefinition question) throws IOException {
+        List<String> files = new ArrayList<>(question.getRequiredFiles());
+        Path resources = question.getResourceDirectory();
+        if (resources == null) return files;
+        for (String resource : question.getAllowedResourceFiles()) {
+            if (resource.endsWith(".java") && StudentHeaderReader.hasHeaderSection(resources.resolve(resource))) {
+                files.add(resource);
+            }
+        }
+        return files;
     }
 }

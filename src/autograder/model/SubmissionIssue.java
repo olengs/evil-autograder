@@ -1,8 +1,9 @@
+// Represents one submission or validation finding.
+// Stores its code, severity, message, question, and affected path.
+
 package autograder.model;
 
 import java.nio.file.Path;
-
-//stores one error &&& warning &&& note found while checking a students submission
 
 public class SubmissionIssue {
 

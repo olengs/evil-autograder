@@ -1,3 +1,6 @@
+// Tracks one student archive, working root, and results.
+// Collects validation issues and per-question attempts.
+
 package autograder.model;
 
 import java.nio.file.Path;

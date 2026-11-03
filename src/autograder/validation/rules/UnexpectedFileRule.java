@@ -1,3 +1,6 @@
+// Checks question folders for undeclared direct files.
+// Combines shared-folder requirements and reports extra-file warnings.
+
 package autograder.validation.rules;
 
 import autograder.model.AssessmentDefinition;
@@ -5,6 +8,7 @@ import autograder.model.IssueSeverity;
 import autograder.model.QuestionDefinition;
 import autograder.model.StudentSubmission;
 import autograder.model.SubmissionIssue;
+import autograder.utils.FileUtils;
 import autograder.validation.SubmissionValidationRule;
 
 import java.io.IOException;
@@ -35,14 +39,14 @@ public class UnexpectedFileRule implements SubmissionValidationRule {
             Set<String> expectedFiles = entry.getValue();
             Path folder = submission.getRootDirectory().resolve(folderName);
 
-            //missing folders are handled by ~questionfolderrule~
+            // Missing folders are handled by AnswerFileRule.
 
             if (!Files.isDirectory(folder)) {
                 continue;
             }
 
-            try (Stream<Path> files = Files.list(folder)) {
-                files.filter(Files::isRegularFile).forEach(file -> {
+            try (Stream<Path> files = FileUtils.streamRegularFiles(folder)) {
+                files.forEach(file -> {
                     String actualName = file.getFileName().toString();
 
                     if (expectedFiles.stream().noneMatch(expected -> expected.equalsIgnoreCase(actualName))) {

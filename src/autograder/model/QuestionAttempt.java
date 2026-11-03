@@ -1,3 +1,6 @@
+// Stores the files and validation findings for one question.
+// Reports whether its own findings contain an error.
+
 package autograder.model;
 
 import java.nio.file.Path;

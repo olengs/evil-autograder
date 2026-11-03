@@ -1,3 +1,6 @@
+// Locates answer files in a question folder.
+// Prefers exact names and rejects ambiguous fallback matches.
+
 package autograder.validation;
 
 import java.io.IOException;
@@ -40,21 +43,17 @@ public class AnswerFileLocator {
         }
     }
 
+    /** Prefer an exact spelling; inspect case-insensitive candidates only if it is absent. */
+    public Optional<Path> findCandidate(Path directory, String requiredFileName) throws IOException {
+        Optional<Path> exact = findExact(directory, requiredFileName);
+        return exact.isPresent() ? exact : findIgnoringCase(directory, requiredFileName);
+    }
+
     public List<Path> locateAnswerFiles(Path directory, List<String> requiredFiles) throws IOException {
         List<Path> answerFiles = new ArrayList<>();
 
         for (String requiredFile : requiredFiles) {
-            Optional<Path> exact = findExact(directory, requiredFile);
-
-            if (exact.isPresent()) {
-                answerFiles.add(exact.get());
-                continue;
-            }
-
-            //if exact name is absent > keep a case insensitive candidate so we still know what student submitted
-
-            Optional<Path> caseInsensitive = findIgnoringCase(directory, requiredFile);
-            caseInsensitive.ifPresent(answerFiles::add);
+            findCandidate(directory, requiredFile).ifPresent(answerFiles::add);
         }
         return answerFiles;
     }

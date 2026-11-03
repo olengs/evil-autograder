@@ -1,3 +1,6 @@
+// Extracts one ZIP into its supplied working directory.
+// Checks entry paths remain inside the destination.
+
 package autograder.submission;
 
 import java.io.IOException;
@@ -15,11 +18,11 @@ public class ZipExtractor {
      *
      * @param zipFile > zip file to extract
      * @param destinationFolder > where zip will be extracted
-     * @return > extracted destination folder
+     * @return > extracted explicit directory entries
      * @throws IOException > if zip cannot be read ||| extracted
      */
-    public static ArrayList<Path> ExtractZipFiles(Path zipFile, Path destinationFolder) throws IOException {
-        ArrayList<Path> extractedTopLevelFolders = new ArrayList<>();
+    public static ArrayList<Path> extractZip(Path zipFile, Path destinationFolder) throws IOException {
+        ArrayList<Path> extractedDirectories = new ArrayList<>();
         Path normalizedDestinationPath = destinationFolder.toAbsolutePath().normalize(); //make destination path absolute &&& normalise
         Files.createDirectories(normalizedDestinationPath); //create destination folder if it does not exist
 
@@ -36,7 +39,7 @@ public class ZipExtractor {
 
                 if (entry.isDirectory()) { //eg. q1
                     Files.createDirectories(outputPath);
-                    extractedTopLevelFolders.add(outputPath);
+                    extractedDirectories.add(outputPath);
                 } 
                 else { //eg. q1/q1a.java
                     Path parentFolder = outputPath.getParent();
@@ -52,6 +55,6 @@ public class ZipExtractor {
             }
         }
 
-        return extractedTopLevelFolders;
+        return extractedDirectories;
     }
 }

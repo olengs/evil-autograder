@@ -1,3 +1,6 @@
+// Describes one assessment and its question definitions.
+// Stores the assessment name and read-only question list.
+
 package autograder.model;
 
 import java.util.ArrayList;

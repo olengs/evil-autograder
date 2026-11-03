@@ -1,3 +1,6 @@
+// Validates required-answer identity headers against the roster.
+// Reports missing details and file-read failures.
+
 package autograder.validation.rules;
 
 import autograder.model.IssueSeverity;
@@ -5,25 +8,28 @@ import autograder.model.QuestionDefinition;
 import autograder.model.Student;
 import autograder.model.StudentSubmission;
 import autograder.model.SubmissionIssue;
+import autograder.utils.StudentHeaderReader;
 import autograder.validation.AnswerFileLocator;
-import autograder.validation.ValidationRule;
+import autograder.validation.QuestionValidationRule;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class StudentHeaderRule implements ValidationRule {
-    private static final int headerLineMax = 15; //sets how many lines to inspect student java file
+public class StudentHeaderRule implements QuestionValidationRule {
     private final AnswerFileLocator fileLocator;
 
     public StudentHeaderRule(AnswerFileLocator fileLocator) {
         this.fileLocator = fileLocator;
+    }
+
+    /** A trusted template with a name or email section is intended to be edited. */
+    public static boolean hasHeaderSection(Path file) throws IOException {
+        return StudentHeaderReader.hasHeaderSection(file);
     }
 
     @Override
@@ -51,10 +57,10 @@ public class StudentHeaderRule implements ValidationRule {
                     continue;
                 }
 
-                String header = readHeader(file.get());
+                String header = StudentHeaderReader.readLeadingComments(file.get());
 
-                boolean containsName = containsField(header, "Name", student.getName());
-                boolean containsEmail = containsField(header, "Email(?:\\h+ID)?", student.getEmail());
+                boolean containsName = containsExpectedFieldValue(header, "Name", student.getName());
+                boolean containsEmail = containsExpectedFieldValue(header, "Email(?:\\h+ID)?", student.getEmail());
 
                 if (!containsName || !containsEmail) {
                     issues.add(new SubmissionIssue("missing student header", IssueSeverity.WARNING, "student name ||| email "
@@ -70,28 +76,11 @@ public class StudentHeaderRule implements ValidationRule {
         return issues;
     }
 
-    private boolean containsField(String header, String label, String expected) {
+    private boolean containsExpectedFieldValue(String header, String label, String expected) {
         return expected != null && !expected.isBlank()
                 && Pattern.compile("^\\h*(?://|/\\*|\\*)?\\h*" + label + "\\h*:\\h*"
                         + Pattern.quote(expected.strip()) + "\\h*(?:\\*/)?\\h*$",
                         Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE)
                         .matcher(header).find();
-    }
-
-    private String readHeader(Path file) throws IOException {
-        StringBuilder header = new StringBuilder();
-
-        try (BufferedReader reader = Files.newBufferedReader(file)) {
-            String line;
-            int count = 0;
-
-            while (count < headerLineMax && (line = reader.readLine()) != null) {
-                header.append(line).append(System.lineSeparator());
-                count++;
-            }
-        }
-        Matcher comments = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)")
-                .matcher(header);
-        return comments.find() ? comments.group(1) : "";
     }
 }

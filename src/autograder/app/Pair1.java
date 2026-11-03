@@ -1,3 +1,6 @@
+// Connects extraction, roster matching, and validation.
+// Builds sample assessment inputs and prints collected findings.
+
 package autograder.app;
 
 import autograder.model.AssessmentDefinition;
@@ -7,13 +10,12 @@ import autograder.model.QuestionDefinition;
 import autograder.model.Student;
 import autograder.model.StudentSubmission;
 import autograder.model.SubmissionIssue;
+import autograder.submission.ExtractedSubmission;
 import autograder.submission.StudentIdentifier;
 import autograder.submission.SubmissionLoader;
 import autograder.validation.AnswerFileLocator;
 import autograder.validation.SubmissionValidator;
-import autograder.validation.rules.FileNamingRule;
-import autograder.validation.rules.QuestionFolderRule;
-import autograder.validation.rules.RequiredFileRule;
+import autograder.validation.rules.AnswerFileRule;
 import autograder.validation.rules.StudentHeaderRule;
 import autograder.validation.rules.UnexpectedFileRule;
 import java.io.IOException;
@@ -43,12 +45,14 @@ public class Pair1 {
             Files.createFile(Path.of("IS442-ScoreSheet.csv"));
         }
         List<Student> students = readSampleRoster(projectFolder.resolve("IS442-ScoreSheet.csv"));
+        Path templateFolder = projectFolder.resolve("RenameToYourUsername");
+        Path resourceRoot = Files.isDirectory(templateFolder) ? templateFolder : null;
         AssessmentDefinition assessment = new AssessmentDefinition("CS102 sample", List.of(
-                new QuestionDefinition("Q1a", "Q1", List.of("Q1a.java")),
-                new QuestionDefinition("Q1b", "Q1", List.of("Q1b.java")),
-                new QuestionDefinition("Q2a", "Q2", List.of("Q2a.java"), List.of("students.txt", "persons.txt")),
-                new QuestionDefinition("Q2b", "Q2", List.of("Q2b.java"), List.of("students.txt", "persons.txt")),
-                new QuestionDefinition("Q3", "Q3", List.of("Q3.java"), List.of("ShapeComparator.java"))));
+                new QuestionDefinition("Q1a", "Q1", resourceRoot, List.of("Q1a.java"), List.of()),
+                new QuestionDefinition("Q1b", "Q1", resourceRoot, List.of("Q1b.java"), List.of()),
+                new QuestionDefinition("Q2a", "Q2", resourceRoot, List.of("Q2a.java"), List.of("students.txt", "persons.txt")),
+                new QuestionDefinition("Q2b", "Q2", resourceRoot, List.of("Q2b.java"), List.of("students.txt", "persons.txt")),
+                new QuestionDefinition("Q3", "Q3", resourceRoot, List.of("Q3.java"), List.of("ShapeComparator.java"))));
         Path workspace = Files.createTempDirectory("pair1-");
         run(submissionFolder, workspace, students, assessment);
         System.out.println("extraction workspace > " + workspace);
@@ -77,18 +81,16 @@ public class Pair1 {
         List<Path> zipFiles = SubmissionLoader.findZipFiles(submissionFolder);
         StudentIdentifier identifier = new StudentIdentifier();
         AnswerFileLocator locator = new AnswerFileLocator();
-        SubmissionValidator validator = new SubmissionValidator(List.of(new QuestionFolderRule(),
-                new RequiredFileRule(locator), new FileNamingRule(locator), new StudentHeaderRule(locator)),
+        SubmissionValidator validator = new SubmissionValidator(List.of(
+                new AnswerFileRule(locator), new StudentHeaderRule(locator)),
                 List.of(new UnexpectedFileRule()), locator);
         List<StudentSubmission> submissions = new ArrayList<>();
         System.out.println("\nchecking " + zipFiles.size() + " submissions");
         System.out.println("ready = passed file validation; answers have not been graded");
 
-        for (Path folder : SubmissionLoader.loadSubmissions(submissionFolder, workspaceFolder)) {
-            Path zip = zipFiles.stream().filter(path -> {
-                String name = path.getFileName().toString();
-                return name.substring(0, name.length() - 4).equals(folder.getFileName().toString());
-            }).findFirst().orElseThrow(() -> new IOException("cannot find original ZIP for " + folder));
+        for (ExtractedSubmission extracted : SubmissionLoader.loadExtractedSubmissions(zipFiles, workspaceFolder)) {
+            Path zip = extracted.originalZip();
+            Path folder = extracted.rootDirectory();
             Student student = identifier.identify(zip, students);
             StudentSubmission submission;
             try {

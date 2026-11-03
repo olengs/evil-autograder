@@ -1,3 +1,6 @@
+// Starts the sample submission and validation workflow.
+// Reads a project path and delegates to Pair1.
+
 package autograder.app;
 
 import java.io.IOException;
