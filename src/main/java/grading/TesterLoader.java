@@ -20,8 +20,7 @@ public class TesterLoader { //find tester files in this folder
         try (DirectoryStream<Path> files = Files.newDirectoryStream(testerDirectoryPath, "*Tester.java")) {
             for (Path file : files) {
 
-                 //TODO > iteration 2 > validate file input
-                //@1ejun6 > addressed below > skip entries that are not regular files & reject unreadable testers
+                //@1ejun6 > skip entries that are not regular files & reject unreadable testers
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }

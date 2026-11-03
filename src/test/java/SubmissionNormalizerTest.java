@@ -580,7 +580,7 @@ class SubmissionNormalizerTest {
         SubmissionValidator validator = new SubmissionValidator(
                 List.of(new QuestionFolderRule(), new RequiredFileRule(finder), new FileNamingRule(finder), new StudentHeaderRule(finder)),
                 List.of(new UnexpectedFileRule()), finder);
-        List<StudentSubmission> submissions = SubmissionNormalizer.normalize(SubmissionLoader.loadSubmissions(zips, workspace, roster), assessment);
+        List<StudentSubmission> submissions = SubmissionNormalizer.normalizeSubmissions(SubmissionLoader.loadSubmissions(zips, workspace, roster), assessment);
         submissions.forEach(submission -> validator.validate(submission, assessment));
         return submissions;
     }

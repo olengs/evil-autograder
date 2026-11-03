@@ -38,8 +38,6 @@ public class AssessmentGrader {
                 QuestionAttempt attempt = findAttempt(submission, question.getId());
                 TesterDefinition tester = testers.get(question.getId().toLowerCase(Locale.ROOT));
 
-                //TODO: handle case where attempt is null.
-
                 //@1ejun6 > 2 > keep whichever blocking reason appears first
                 //@1ejun6 > check for a missing attempt before reading its validation status
                 if (skipReason == null && attempt == null) { skipReason = "no validated attempt"; }
