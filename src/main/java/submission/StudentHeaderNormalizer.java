@@ -1,10 +1,8 @@
 package submission;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -45,9 +43,7 @@ class StudentHeaderNormalizer {
     }
 
     private static boolean fillMissingFields(Path file, StudentDetails student) throws IOException {
-        byte[] original = Files.readAllBytes(file);
-        //decoding is only for reading the header > bytes are kept so a non utf-8 file reaches javac unchanged
-        String source = new String(original, StandardCharsets.UTF_8);
+        String source = Files.readString(file);
         Matcher comments = LEADING_COMMENTS.matcher(source);
         String header = comments.find() ? comments.group() : "";
         String name = fieldValue(header, NAME);
@@ -56,19 +52,17 @@ class StudentHeaderNormalizer {
             return false; //possible copied work > validation reports it
         }
 
-        String newline = source.contains("\r\n") ? "\r\n" : "\n";
         StringBuilder missing = new StringBuilder();
         if (name.isEmpty() && hasText(student.getName())) {
-            missing.append("// Name: ").append(student.getName().strip()).append(newline);
+            missing.append("// Name: ").append(student.getName().strip()).append('\n');
         }
         if (email.isEmpty() && hasText(student.getEmail())) {
-            missing.append("// Email ID: ").append(student.getEmail().strip()).append(newline);
+            missing.append("// Email ID: ").append(student.getEmail().strip()).append('\n');
         }
         if (missing.isEmpty()) {
             return false;
         }
-        Files.write(file, missing.toString().getBytes(StandardCharsets.UTF_8));
-        Files.write(file, original, StandardOpenOption.APPEND);
+        Files.writeString(file, missing.toString() + source);
         return true;
     }
 

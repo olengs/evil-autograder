@@ -25,7 +25,6 @@ import model.SubmissionIssue;
  */
 public class SubmissionNormalizer {
     private static final int MAX_SEARCH_DEPTH = 8; //deepest wrapper folder chain to search
-    private static final String MAC_ARCHIVE_FOLDER = "__MACOSX";
 
     /**
      * only touches the extracted working copies > never the original zips
@@ -332,7 +331,7 @@ public class SubmissionNormalizer {
 
     private static List<Path> visibleEntries(Path folder) throws IOException {
         try (Stream<Path> entries = Files.list(folder)) {
-            return entries.filter(path -> !path.getFileName().toString().startsWith(".")).filter(path -> !path.getFileName().toString().equals(MAC_ARCHIVE_FOLDER)).sorted().toList();
+            return entries.filter(path -> !path.getFileName().toString().startsWith(".")).sorted().toList();
         }
     }
 
