@@ -18,11 +18,11 @@ import model.SubmissionIssue;
  * only edits the working copy > a header naming someone else is left for StudentHeaderRule to report
  */
 class StudentHeaderNormalizer {
-    private static final Pattern LEADING_COMMENTS = Pattern.compile("\\A\\s*(?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+");
-    private static final Pattern NAME = fieldPattern("Name");
-    private static final Pattern EMAIL = fieldPattern("Email(?:\\h+ID)?");
+    private static final Pattern leadingCommentsPattern = Pattern.compile("\\A\\s*(?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+");
+    private static final Pattern namePattern = compileHeaderFieldPattern("Name");
+    private static final Pattern emailPattern = compileHeaderFieldPattern("Email(?:\\h+ID)?");
 
-    static List<SubmissionIssue> fillMissingHeaders(Path root, AssessmentDefinition assessment, StudentDetails student) {
+    static List<SubmissionIssue> fillMissingStudentHeaders(Path root, AssessmentDefinition assessment, StudentDetails student) {
         List<SubmissionIssue> issues = new ArrayList<>();
         if (student == null) {
             return issues; //an unknown student has no scoresheet details to write
@@ -31,7 +31,7 @@ class StudentHeaderNormalizer {
             for (String requiredFile : question.getRequiredFiles()) {
                 Path file = root.resolve(question.getExpectedFolder()).resolve(requiredFile);
                 try {
-                    if (Files.isRegularFile(file) && fillMissingFields(file, student)) {
+                    if (Files.isRegularFile(file) && fillMissingStudentHeaderFields(file, student)) {
                         issues.add(new SubmissionIssue("student header normalized", IssueSeverity.WARNING, "added missing details from scoresheet > " + requiredFile, question.getId(), file));
                     }
                 } catch (IOException error) {
@@ -42,13 +42,13 @@ class StudentHeaderNormalizer {
         return issues;
     }
 
-    private static boolean fillMissingFields(Path file, StudentDetails student) throws IOException {
+    private static boolean fillMissingStudentHeaderFields(Path file, StudentDetails student) throws IOException {
         String source = Files.readString(file);
-        Matcher comments = LEADING_COMMENTS.matcher(source);
+        Matcher comments = leadingCommentsPattern.matcher(source);
         String header = comments.find() ? comments.group() : "";
-        String name = fieldValue(header, NAME);
-        String email = fieldValue(header, EMAIL);
-        if (differs(name, student.getName()) || differs(email, student.getEmail())) {
+        String name = extractHeaderFieldValue(header, namePattern);
+        String email = extractHeaderFieldValue(header, emailPattern);
+        if (hasConflictingHeaderValue(name, student.getName()) || hasConflictingHeaderValue(email, student.getEmail())) {
             return false; //possible copied work > validation reports it
         }
 
@@ -66,17 +66,17 @@ class StudentHeaderNormalizer {
         return true;
     }
 
-    private static Pattern fieldPattern(String label) {
+    private static Pattern compileHeaderFieldPattern(String label) {
         return Pattern.compile("^\\h*(?://|/\\*|\\*)?\\h*" + label + "\\h*:\\h*(.*?)\\h*(?:\\*/)?\\h*$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE);
     }
 
     //a blank field reads as empty > the template ships the section blank
-    private static String fieldValue(String header, Pattern field) {
+    private static String extractHeaderFieldValue(String header, Pattern field) {
         Matcher matcher = field.matcher(header);
         return matcher.find() ? matcher.group(1).strip() : "";
     }
 
-    private static boolean differs(String found, String expected) {
+    private static boolean hasConflictingHeaderValue(String found, String expected) {
         return !found.isEmpty() && hasText(expected) && !found.equalsIgnoreCase(expected.strip());
     }
 

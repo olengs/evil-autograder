@@ -34,7 +34,7 @@ public class SubmissionNormalizer {
      * @param assessment > folders & files each submission should contain
      * @return > same order > each rooted at its normalized folder \ at its extracted folder if the layout cannot be resolved
      */
-    public static List<StudentSubmission> normalize(List<StudentSubmission> extracted, AssessmentDefinition assessment) {
+    public static List<StudentSubmission> normalizeSubmissions(List<StudentSubmission> extracted, AssessmentDefinition assessment) {
         List<StudentSubmission> normalized = new ArrayList<>();
         for (StudentSubmission submission : extracted) {
             normalized.add(Files.isDirectory(submission.getRootDirectory()) ? normalizeSubmission(submission, assessment) : submission);
@@ -49,24 +49,24 @@ public class SubmissionNormalizer {
         List<SubmissionIssue> issues = new ArrayList<>(extracted.getSubmissionIssues());
 
         try {
-            Map<String, List<QuestionDefinition>> questions = groupByFolder(assessment);
-            answerRoot = findAnswerRoot(extractedRoot, questions, extracted.getStudent(), assessment.getName());
+            Map<String, List<QuestionDefinition>> questions = groupQuestionsByExpectedFolder(assessment);
+            answerRoot = findSubmissionAnswerRoot(extractedRoot, questions, extracted.getStudent(), assessment.getName());
             root = answerRoot;
-            arrangeQuestionFolders(root, questions, issues);
-            relocateStrayAnswers(extractedRoot, root, questions, issues);
-            correctFileNames(root, questions, issues);
-            root = moveToStudentFolder(extractedRoot, root, extracted.getStudent(), issues);
-            issues.addAll(StudentHeaderNormalizer.fillMissingHeaders(root, assessment, extracted.getStudent()));
+            normalizeQuestionFolderNames(root, questions, issues);
+            moveMisplacedAnswerFiles(extractedRoot, root, questions, issues);
+            normalizeAnswerFileNameCase(root, questions, issues);
+            root = moveAnswersToStudentFolder(extractedRoot, root, extracted.getStudent(), issues);
+            issues.addAll(StudentHeaderNormalizer.fillMissingStudentHeaders(root, assessment, extracted.getStudent()));
         } catch (IOException | RuntimeException error) {
             issues.add(new SubmissionIssue("normalization error", IssueSeverity.ERROR, error.toString(), null, root));
         }
 
         StudentSubmission normalized = new StudentSubmission(extracted.getStudent(), extracted.getOriginalZip(), root);
-        normalized.addIssues(withMovedPaths(issues, answerRoot, root));
+        normalized.addIssues(remapIssuePathsAfterMove(issues, answerRoot, root));
         return normalized;
     }
 
-    private static Map<String, List<QuestionDefinition>> groupByFolder(AssessmentDefinition assessment) {
+    private static Map<String, List<QuestionDefinition>> groupQuestionsByExpectedFolder(AssessmentDefinition assessment) {
         Map<String, List<QuestionDefinition>> questions = new LinkedHashMap<>();
         for (QuestionDefinition question : assessment.getQuestions()) {
             questions.computeIfAbsent(question.getExpectedFolder(), key -> new ArrayList<>()).add(question);
@@ -77,12 +77,12 @@ public class SubmissionNormalizer {
     //#region answer root
 
     //picks the folder recognising the most questions > shallowest wins so q1/q1/ does not beat its parent
-    private static Path findAnswerRoot(Path extractedRoot, Map<String, List<QuestionDefinition>> questions, StudentDetails student, String templateFolder) throws IOException {
+    private static Path findSubmissionAnswerRoot(Path extractedRoot, Map<String, List<QuestionDefinition>> questions, StudentDetails student, String templateFolder) throws IOException {
         int mostRecognised = 0;
         List<Path> candidates = new ArrayList<>();
 
-        for (Path folder : searchableFolders(extractedRoot)) {
-            int recognised = recognisedQuestions(folder, questions).size();
+        for (Path folder : findFoldersWithinSearchDepth(extractedRoot)) {
+            int recognised = findRecognisedQuestionFolders(folder, questions).size();
             if (recognised > mostRecognised) {
                 mostRecognised = recognised;
                 candidates.clear();
@@ -114,19 +114,19 @@ public class SubmissionNormalizer {
         throw new IOException("ambiguous submission layout > " + candidates.size() + " folders hold the same answers");
     }
 
-    private static Set<String> recognisedQuestions(Path folder, Map<String, List<QuestionDefinition>> questions) throws IOException {
-        Set<String> recognised = foldersOfAnswersIn(folder, questions);
+    private static Set<String> findRecognisedQuestionFolders(Path folder, Map<String, List<QuestionDefinition>> questions) throws IOException {
+        Set<String> recognised = findQuestionFoldersMatchingAnswerFiles(folder, questions);
         String name = folder.getFileName().toString();
         //an answer saved under the wrong question must not make that folder look like the whole submission
         questions.keySet().stream().filter(name::equalsIgnoreCase).findFirst().ifPresent(ownFolder -> recognised.retainAll(Set.of(ownFolder)));
 
         for (String expected : questions.keySet()) {
-            if (entriesNamed(folder, expected).stream().anyMatch(Files::isDirectory)) recognised.add(expected);
+            if (findEntriesIgnoringCase(folder, expected).stream().anyMatch(Files::isDirectory)) recognised.add(expected);
         }
 
-        for (Path child : subfolders(folder)) {
+        for (Path child : listVisibleSubfolders(folder)) {
             //a child holding answers for several questions is a flat answer folder > not one question folder
-            Set<String> answers = foldersOfAnswersIn(child, questions);
+            Set<String> answers = findQuestionFoldersMatchingAnswerFiles(child, questions);
             if (answers.size() == 1) {
                 recognised.addAll(answers);
             }
@@ -134,12 +134,12 @@ public class SubmissionNormalizer {
         return recognised;
     }
 
-    private static Set<String> foldersOfAnswersIn(Path folder, Map<String, List<QuestionDefinition>> questions) throws IOException {
+    private static Set<String> findQuestionFoldersMatchingAnswerFiles(Path folder, Map<String, List<QuestionDefinition>> questions) throws IOException {
         Set<String> found = new LinkedHashSet<>();
         for (var entry : questions.entrySet()) {
             for (QuestionDefinition question : entry.getValue()) {
                 for (String required : question.getRequiredFiles()) {
-                    if (!filesNamed(List.of(folder), required).isEmpty()) found.add(entry.getKey());
+                    if (!findFilesIgnoringCase(List.of(folder), required).isEmpty()) found.add(entry.getKey());
                 }
             }
         }
@@ -150,39 +150,39 @@ public class SubmissionNormalizer {
 
     //#region question folders & files
 
-    private static void arrangeQuestionFolders(Path root, Map<String, List<QuestionDefinition>> questions, List<SubmissionIssue> issues) throws IOException {
+    private static void normalizeQuestionFolderNames(Path root, Map<String, List<QuestionDefinition>> questions, List<SubmissionIssue> issues) throws IOException {
         for (var entry : questions.entrySet()) {
             String expected = entry.getKey();
             Path named;
             try {
-                named = correctCase(root, expected, entry.getValue(), "question folder normalized", issues);
+                named = normalizeEntryNameCase(root, expected, entry.getValue(), "question folder normalized", issues);
             } catch (IOException error) { //only this folder's questions are affected > the rest can still be graded
-                addIssue(issues, entry.getValue(), "normalization error", IssueSeverity.ERROR, error.toString(), root);
+                addIssueForQuestions(issues, entry.getValue(), "normalization error", IssueSeverity.ERROR, error.toString(), root);
                 continue;
             }
             if (named != null && Files.isDirectory(named)) continue;
-            List<Path> folders = subfolders(root); //relisted because earlier questions may have renamed a folder
-            List<Path> matches = foldersAnsweringOnly(expected, folders, questions);
+            List<Path> folders = listVisibleSubfolders(root); //relisted because earlier questions may have renamed a folder
+            List<Path> matches = findMisnamedFoldersForQuestion(expected, folders, questions);
             if (matches.size() > 1) {
-                addIssue(issues, entry.getValue(), "normalization collision", IssueSeverity.ERROR, "multiple folders map to " + expected + " > " + matches.stream().map(Path::getFileName).toList(), root);
+                addIssueForQuestions(issues, entry.getValue(), "normalization collision", IssueSeverity.ERROR, "multiple folders map to " + expected + " > " + matches.stream().map(Path::getFileName).toList(), root);
             } else if (matches.size() == 1) {
                 Path folder = matches.getFirst();
                 Path destination = root.resolve(expected);
                 try {
                     Files.move(folder, destination);
-                    addIssue(issues, entry.getValue(), "question folder normalized", IssueSeverity.WARNING, folder.getFileName() + " > " + expected, destination);
+                    addIssueForQuestions(issues, entry.getValue(), "question folder normalized", IssueSeverity.WARNING, folder.getFileName() + " > " + expected, destination);
                 } catch (IOException error) {
-                    addIssue(issues, entry.getValue(), "normalization error", IssueSeverity.ERROR, error.toString(), folder);
+                    addIssueForQuestions(issues, entry.getValue(), "normalization error", IssueSeverity.ERROR, error.toString(), folder);
                 }
             }
         }
     }
 
-    private static List<Path> foldersAnsweringOnly(String expected, List<Path> folders, Map<String, List<QuestionDefinition>> questions) throws IOException {
+    private static List<Path> findMisnamedFoldersForQuestion(String expected, List<Path> folders, Map<String, List<QuestionDefinition>> questions) throws IOException {
         List<Path> matches = new ArrayList<>();
         for (Path folder : folders) {
             boolean namedForQuestion = questions.keySet().stream().anyMatch(folder.getFileName().toString()::equalsIgnoreCase);
-            if (!namedForQuestion && foldersOfAnswersIn(folder, questions).equals(Set.of(expected))) {
+            if (!namedForQuestion && findQuestionFoldersMatchingAnswerFiles(folder, questions).equals(Set.of(expected))) {
                 matches.add(folder);
             }
         }
@@ -190,18 +190,18 @@ public class SubmissionNormalizer {
     }
 
     //covers loose files & answers saved under the wrong question > a file already in place is never replaced
-    private static void relocateStrayAnswers(Path extractedRoot, Path root, Map<String, List<QuestionDefinition>> questions, List<SubmissionIssue> issues) throws IOException {
-        List<Path> folders = searchableFolders(extractedRoot);
+    private static void moveMisplacedAnswerFiles(Path extractedRoot, Path root, Map<String, List<QuestionDefinition>> questions, List<SubmissionIssue> issues) throws IOException {
+        List<Path> folders = findFoldersWithinSearchDepth(extractedRoot);
 
         for (var entry : questions.entrySet()) {
             Path questionFolder = root.resolve(entry.getKey());
 
             for (QuestionDefinition question : entry.getValue()) {
                 for (String requiredFile : question.getRequiredFiles()) {
-                    if (!filesNamed(List.of(questionFolder), requiredFile).isEmpty()) {
+                    if (!findFilesIgnoringCase(List.of(questionFolder), requiredFile).isEmpty()) {
                         continue;
                     }
-                    List<Path> copies = unassignedFiles(filesNamed(folders, requiredFile), root, questions);
+                    List<Path> copies = findFilesOutsideExpectedLocations(findFilesIgnoringCase(folders, requiredFile), root, questions);
                     if (copies.size() > 1) {
                         issues.add(new SubmissionIssue("ambiguous answer file", IssueSeverity.ERROR, copies.size() + " copies of " + requiredFile + " found outside " + entry.getKey(), question.getId(), root));
                     } else if (copies.size() == 1) {
@@ -215,23 +215,23 @@ public class SubmissionNormalizer {
         }
     }
 
-    private static List<Path> filesNamed(List<Path> folders, String fileName) throws IOException {
+    private static List<Path> findFilesIgnoringCase(List<Path> folders, String fileName) throws IOException {
         List<Path> matches = new ArrayList<>(); //not a set > windows paths compare equal across spellings
         for (Path folder : folders) {
-            for (Path file : entriesNamed(folder, fileName)) {
+            for (Path file : findEntriesIgnoringCase(folder, fileName)) {
                 if (Files.isRegularFile(file)) matches.add(file);
             }
         }
         return matches;
     }
 
-    private static List<Path> unassignedFiles(List<Path> files, Path root, Map<String, List<QuestionDefinition>> questions) throws IOException {
+    private static List<Path> findFilesOutsideExpectedLocations(List<Path> files, Path root, Map<String, List<QuestionDefinition>> questions) throws IOException {
         Set<Path> assigned = new LinkedHashSet<>();
         for (var entry : questions.entrySet()) {
-            for (Path folder : entriesNamed(root, entry.getKey())) {
+            for (Path folder : findEntriesIgnoringCase(root, entry.getKey())) {
                 for (QuestionDefinition question : entry.getValue()) {
                     for (String required : question.getRequiredFiles()) {
-                        assigned.addAll(entriesNamed(folder, required));
+                        assigned.addAll(findEntriesIgnoringCase(folder, required));
                     }
                 }
             }
@@ -239,7 +239,7 @@ public class SubmissionNormalizer {
         return files.stream().filter(file -> !assigned.contains(file)).toList();
     }
 
-    private static void correctFileNames(Path root, Map<String, List<QuestionDefinition>> questions, List<SubmissionIssue> issues) {
+    private static void normalizeAnswerFileNameCase(Path root, Map<String, List<QuestionDefinition>> questions, List<SubmissionIssue> issues) {
         for (var entry : questions.entrySet()) {
             Path folder = root.resolve(entry.getKey());
             if (!Files.isDirectory(folder)) {
@@ -248,9 +248,9 @@ public class SubmissionNormalizer {
             for (QuestionDefinition question : entry.getValue()) {
                 for (String required : question.getRequiredFiles()) {
                     try {
-                        correctCase(folder, required, entry.getValue(), "filename normalized", issues);
+                        normalizeEntryNameCase(folder, required, entry.getValue(), "filename normalized", issues);
                     } catch (IOException error) {
-                        addIssue(issues, entry.getValue(), "normalization error", IssueSeverity.ERROR, error.toString(), folder);
+                        addIssueForQuestions(issues, entry.getValue(), "normalization error", IssueSeverity.ERROR, error.toString(), folder);
                     }
                 }
             }
@@ -258,8 +258,8 @@ public class SubmissionNormalizer {
     }
 
     //@return > the corrected path \ null when nothing has that name
-    private static Path correctCase(Path parent, String expected, List<QuestionDefinition> questions, String code, List<SubmissionIssue> issues) throws IOException {
-        List<Path> matches = entriesNamed(parent, expected);
+    private static Path normalizeEntryNameCase(Path parent, String expected, List<QuestionDefinition> questions, String code, List<SubmissionIssue> issues) throws IOException {
+        List<Path> matches = findEntriesIgnoringCase(parent, expected);
         if (matches.size() > 1) throw new IOException("normalization collision > multiple entries map to " + expected + " in " + parent);
         if (matches.isEmpty()) return null;
 
@@ -270,21 +270,21 @@ public class SubmissionNormalizer {
             Path intermediate = actual.resolveSibling(".normalize-" + UUID.randomUUID());
             Files.move(actual, intermediate);
             Files.move(intermediate, corrected);
-            addIssue(issues, questions, code, IssueSeverity.WARNING, actual.getFileName() + " > " + expected, corrected);
+            addIssueForQuestions(issues, questions, code, IssueSeverity.WARNING, actual.getFileName() + " > " + expected, corrected);
         }
         return corrected;
     }
 
     //searching keeps every spelling > only renaming a declared path treats two spellings as a collision
-    private static List<Path> entriesNamed(Path parent, String name) throws IOException {
+    private static List<Path> findEntriesIgnoringCase(Path parent, String name) throws IOException {
         if (!Files.isDirectory(parent)) return List.of();
-        return visibleEntries(parent).stream().filter(path -> path.getFileName().toString().equalsIgnoreCase(name)).toList();
+        return listVisibleEntries(parent).stream().filter(path -> path.getFileName().toString().equalsIgnoreCase(name)).toList();
     }
 
     //#endregion
 
     //the normalized folder is a sibling of the extraction > a wrapper named after the student can never be in the way
-    private static Path moveToStudentFolder(Path extractedRoot, Path root, StudentDetails student, List<SubmissionIssue> issues) throws IOException {
+    private static Path moveAnswersToStudentFolder(Path extractedRoot, Path root, StudentDetails student, List<SubmissionIssue> issues) throws IOException {
         if (student == null) {
             return root;
         }
@@ -299,7 +299,7 @@ public class SubmissionNormalizer {
         return target;
     }
 
-    private static List<SubmissionIssue> withMovedPaths(List<SubmissionIssue> issues, Path previousRoot, Path newRoot) {
+    private static List<SubmissionIssue> remapIssuePathsAfterMove(List<SubmissionIssue> issues, Path previousRoot, Path newRoot) {
         List<SubmissionIssue> moved = new ArrayList<>();
         for (SubmissionIssue issue : issues) {
             Path path = issue.getAffectedPath();
@@ -314,28 +314,28 @@ public class SubmissionNormalizer {
     //#region file helpers
 
     //breadth first so a folder is always listed before anything inside it
-    private static List<Path> searchableFolders(Path top) throws IOException {
+    private static List<Path> findFoldersWithinSearchDepth(Path top) throws IOException {
         List<Path> folders = new ArrayList<>(List.of(top));
         for (int index = 0; index < folders.size(); index++) {
             Path folder = folders.get(index);
             if (folder.getNameCount() - top.getNameCount() < MAX_SEARCH_DEPTH) {
-                folders.addAll(subfolders(folder));
+                folders.addAll(listVisibleSubfolders(folder));
             }
         }
         return folders;
     }
 
-    private static List<Path> subfolders(Path folder) throws IOException {
-        return visibleEntries(folder).stream().filter(Files::isDirectory).toList();
+    private static List<Path> listVisibleSubfolders(Path folder) throws IOException {
+        return listVisibleEntries(folder).stream().filter(Files::isDirectory).toList();
     }
 
-    private static List<Path> visibleEntries(Path folder) throws IOException {
+    private static List<Path> listVisibleEntries(Path folder) throws IOException {
         try (Stream<Path> entries = Files.list(folder)) {
             return entries.filter(path -> !path.getFileName().toString().startsWith(".")).sorted().toList();
         }
     }
 
-    private static void addIssue(List<SubmissionIssue> issues, List<QuestionDefinition> questions, String code, IssueSeverity severity, String message, Path path) {
+    private static void addIssueForQuestions(List<SubmissionIssue> issues, List<QuestionDefinition> questions, String code, IssueSeverity severity, String message, Path path) {
         for (QuestionDefinition question : questions) {
             issues.add(new SubmissionIssue(code, severity, message, question.getId(), path));
         }
