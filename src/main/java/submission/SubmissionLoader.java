@@ -68,8 +68,7 @@ public class SubmissionLoader { //find & extracts student zip files > keeping tr
             }
             List<Path> children;
             try (var entries = Files.list(candidate)) {
-                children = entries.filter(path -> !path.getFileName().toString().startsWith("."))
-                        .filter(path -> !path.getFileName().toString().equals("__MACOSX")).toList();
+                children = entries.filter(path -> !path.getFileName().toString().startsWith(".")).toList();
             }
             //@1ejun6 > unwrap a single outer folder > never guess between several answer folders
             if (children.size() != 1 || !Files.isDirectory(children.getFirst())) return candidate;

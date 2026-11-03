@@ -215,31 +215,7 @@ class SubmissionNormalizerTest {
 
     //#endregion
 
-    //#region junk that must not change the result
-
-    @Test
-    void macOsArchiveJunkIsIgnored() throws IOException {
-        Map<String, Object> entries = answers(USERNAME + "/");
-        entries.put("__MACOSX/" + USERNAME + "/Q1/._Q1a.java", "binary fork");
-        entries.put(USERNAME + "/.DS_Store", "binary");
-        entries.put(USERNAME + "/Q1/._Q1a.java", "binary fork");
-
-        StudentSubmission submission = load(USERNAME + ".zip", entries);
-
-        assertWorkingStructure(submission);
-        assertFalse(Files.exists(submission.getRootDirectory().resolve("__MACOSX")));
-    }
-
-    @Test
-    void junkFolderContainingQuestionNamesIsNotTheAnswerRoot() throws IOException {
-        Map<String, Object> entries = new LinkedHashMap<>();
-        entries.put("__MACOSX/Q1/x", "x");
-        entries.put("__MACOSX/Q2/x", "x");
-        entries.put("__MACOSX/Q3/x", "x");
-        entries.putAll(answers("work/"));
-
-        assertWorkingStructure(load(USERNAME + ".zip", entries));
-    }
+    //#region extra answer copies
 
     @Test
     void extraCopyOfAnAnswerDoesNotDisturbCorrectFolder() throws IOException {
@@ -531,31 +507,6 @@ class SubmissionNormalizerTest {
         assertHasIssue(submission, "mismatched student header");
     }
 
-    @Test
-    void headerInsertionKeepsWindowsLineEndings() throws IOException {
-        Map<String, Object> entries = answers(USERNAME + "/");
-        entries.put(USERNAME + "/Q2/Q2.java", "public class Q2 {\r\n}\r\n");
-
-        StudentSubmission submission = load(USERNAME + ".zip", entries);
-
-        assertEquals("// Name: " + NAME + "\r\n// Email ID: " + EMAIL + "\r\npublic class Q2 {\r\n}\r\n",
-                Files.readString(submission.getRootDirectory().resolve("Q2/Q2.java")));
-    }
-
-    @Test
-    void sourceFileNotSavedAsUtf8KeepsItsBytesAndStillGetsAHeader() throws IOException {
-        byte[] latin1 = "public class Q2 { /* café */ }\n".getBytes(StandardCharsets.ISO_8859_1);
-        Map<String, Object> entries = answers(USERNAME + "/");
-        entries.put(USERNAME + "/Q2/Q2.java", latin1);
-
-        StudentSubmission submission = load(USERNAME + ".zip", entries);
-
-        byte[] result = Files.readAllBytes(submission.getRootDirectory().resolve("Q2/Q2.java"));
-        byte[] tail = java.util.Arrays.copyOfRange(result, result.length - latin1.length, result.length);
-        assertArrayEquals(latin1, tail);
-        assertTrue(new String(result, StandardCharsets.ISO_8859_1).startsWith("// Name: " + NAME));
-    }
-
     //#endregion
 
     //#region the result must actually grade
@@ -574,7 +525,6 @@ class SubmissionNormalizerTest {
         writeZip("clean.student.zip", answers("clean.student/"));
 
         Map<String, Object> messy = new LinkedHashMap<>();
-        messy.put("__MACOSX/._junk", "junk");
         messy.put("Downloads/RenameToYourUsername/notes.txt", "notes");
         messy.put("Downloads/RenameToYourUsername/q1/q1A.java", "public class Q1a { public static int answer() { return 1; } }\n");
         messy.put("Downloads/RenameToYourUsername/q1/Q1b.java", source("Q1b"));

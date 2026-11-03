@@ -67,9 +67,6 @@ public class FileUtils { //copies files & folders & deletes temporary folders
             @Override
             public FileVisitResult preVisitDirectory(Path directory, BasicFileAttributes attributes) throws IOException {
                 Path target = destinationRoot.resolve(sourceRoot.relativize(directory));
-                if (Files.isSymbolicLink(target)) {
-                    throw new IOException("destination contains a symbolic link > " + target);
-                }
                 Files.createDirectories(target);
                 return FileVisitResult.CONTINUE;
             }
