@@ -20,9 +20,25 @@ public final class StudentHeaderUtils { //reads student header fields for valida
 
     private StudentHeaderUtils() {}
 
+    //@1ejun6 > read name & email from leading comments
     public static Header read(Path file) throws IOException {
         String header = readHeader(file);
         return new Header(readField(header, name), readField(header, email));
+    }
+
+    //@1ejun6 > zip sources > first nonblank name & email for scoresheet
+    public static Header readFields(String source) {
+        return new Header(firstNonBlankField(source, name), firstNonBlankField(source, email));
+    }
+
+    //@1ejun6 > skip blank matches > return first value
+    private static String firstNonBlankField(String source, Pattern pattern) {
+        Matcher match = pattern.matcher(source);
+        while (match.find()) {
+            String value = match.group(1).strip();
+            if (!value.isBlank()) return value;
+        }
+        return "";
     }
 
     //@1ejun6 > detect field labels even when starter templates leave their values blank
@@ -31,15 +47,18 @@ public final class StudentHeaderUtils { //reads student header fields for valida
         return header.name() != null && header.email() != null;
     }
 
+    //@1ejun6 > blank field > empty string > missing field > null
     private static String readField(String header, Pattern pattern) {
         Matcher match = pattern.matcher(header);
         return match.find() ? match.group(1).strip() : null;
     }
 
+    //@1ejun6 > match field label in line or block comment
     private static Pattern fieldPattern(String label) {
         return Pattern.compile("^\\h*(?://|/\\*|\\*)?\\h*" + label + "\\h*:\\h*(.*?)\\h*(?:\\*/)?\\h*$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE);
     }
 
+    //@1ejun6 > first 15 lines > keep leading comments only
     private static String readHeader(Path file) throws IOException {
         StringBuilder source = new StringBuilder();
         try (BufferedReader reader = Files.newBufferedReader(file)) {

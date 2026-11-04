@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import model.QuestionAttempt;
 import model.QuestionDefinition;
@@ -24,17 +25,13 @@ public class GradingWorkspace implements AutoCloseable { //creates & cleans up t
             TesterDefinition tester) throws IOException {
         var finder = new SubmissionFileFinder();
         Map<String, Path> answers = locateRequiredAnswers(question, attempt, finder);
+        List<Path> folders = submissionFolders(attempt, answers);
         for (String name : question.getAllowedResourceFiles()) {
             Path source = question.getResourceDirectory().resolve(name);
             //declared Java helpers may be student work (e.g. ShapeComparator); data & bytecode stay supplied
             if (name.endsWith(".java")) {
-                List<Path> folders = new ArrayList<>();
-                if (Files.isDirectory(attempt.getQuestionDirectory())) {
-                    folders.add(attempt.getQuestionDirectory().toRealPath());
-                }
-                for (Path answer : answers.values()) folders.add(answer.getParent().toRealPath());
                 List<Path> helpers = new ArrayList<>();
-                for (Path folder : folders.stream().distinct().toList()) {
+                for (Path folder : folders) {
                     finder.findIgnoringCase(folder, name).ifPresent(helpers::add);
                 }
                 helpers = helpers.stream().distinct().toList();
@@ -45,7 +42,32 @@ public class GradingWorkspace implements AutoCloseable { //creates & cleans up t
         }
         //normalize only destination names > extracted folders, filenames & source contents stay untouched
         for (var answer : answers.entrySet()) copyFile(answer.getValue(), answer.getKey());
+        copySubmissionData(folders);
         copyTesterResources(question, tester);
+    }
+
+    //@1ejun6 > question folder & relocated answer folders > reuse for helpers & data
+    private List<Path> submissionFolders(QuestionAttempt attempt, Map<String, Path> answers) throws IOException {
+        List<Path> folders = new ArrayList<>();
+        if (Files.isDirectory(attempt.getQuestionDirectory())) {
+            folders.add(attempt.getQuestionDirectory().toRealPath());
+        }
+        for (Path answer : answers.values()) folders.add(answer.getParent().toRealPath());
+        return folders.stream().distinct().toList();
+    }
+
+    //@1ejun6 > restore missing data files > keep supplied resources & copy selected java answers separately
+    private void copySubmissionData(List<Path> folders) throws IOException {
+        for (Path folder : folders) {
+            try (var files = Files.walk(folder)) {
+                for (Path source : files.filter(Files::isRegularFile).toList()) {
+                    String name = source.getFileName().toString().toLowerCase(Locale.ROOT);
+                    if (name.startsWith(".") || name.endsWith(".java") || name.endsWith(".class")) continue;
+                    String relativeName = folder.relativize(source).toString();
+                    if (!Files.exists(directory.resolve(relativeName))) copyFile(source, relativeName);
+                }
+            }
+        }
     }
 
     private Map<String, Path> locateRequiredAnswers(QuestionDefinition question, QuestionAttempt attempt,

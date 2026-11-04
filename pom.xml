@@ -26,7 +26,11 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.13.4</version>
-            <scope>test</scope> <!--@1ejun6 > make junit available only to test code-->
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <version>1.13.4</version>
         </dependency>
     </dependencies>
 
@@ -37,6 +41,15 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration><mainClass>app.Main</mainClass></configuration>
+                <executions>
+                    <execution>
+                        <id>run-tests</id>
+                        <goals><goal>java</goal></goals>
+                        <configuration>
+                            <mainClass>junit.JUnitRunner</mainClass>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

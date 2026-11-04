@@ -15,10 +15,12 @@ import model.StudentDetails;
 import utils.Logger;
 
 public class StudentCsvReader {
+    //@1ejun6 > read students > save log beside scoresheet
     public List<StudentDetails> read(Path scoresheet) throws IOException { //@1ejun6 > checked
         return read(scoresheet, scoresheet.toAbsolutePath().getParent().resolve("csv.log.jsonl"));
     }
 
+    //@1ejun6 > read one row at a time > skip header & blank rows
     public List<StudentDetails> read(Path scoresheet, Path logFile) throws IOException {
         List<StudentDetails> students = new ArrayList<>(); //@1ejun6 > grow in size
 
@@ -38,37 +40,45 @@ public class StudentCsvReader {
                     continue;
                 }
 
-                long recordNumber = csvReader.getRecordsRead();
-                //@1ejun6 > columns > id & username & last name & first name & email
-                if (row.length < 5) {
-                    Logger.logError(logFile, Map.of("status", "skipped", "row", recordNumber, "issue", "invalid record", "details", "fewer than 5 columns"));
-                    continue;
-                }
-                String name = row[3].strip();
-                String studentId = row[0].strip();
-                String listedUsername = row[1].strip().replaceAll("[^\\p{Alnum}.]", "").replaceAll("^\\.+|\\.+$", "");
-                //@1ejun6 > [^\\p{Alnum}.] > removes anything except letters & digits & dots anywhere
-                //@1ejun6 > ^\\.+|\\.+$ > removes one or more dots at the start or end
-                String email = row[4].strip();
-                int atIndex = email.indexOf('@');
-
-                if (atIndex <= 0 || atIndex != email.lastIndexOf('@') || atIndex == email.length() - 1) {
-                    Logger.logError(logFile, Map.of("status", "skipped", "row", recordNumber, "issue", "invalid email; > student skipped", "studentid", studentId, "name", name, "email", email));
-                    continue;
-                }
-
-                //@1ejun6 > username is everything before @ in email > eg. ping.lee.2023
-                String username = email.substring(0, atIndex);
-                if (!listedUsername.equals(username)) {
-                    Logger.logError(logFile, Map.of("status", "fixed", "row", recordNumber, "issue", "username mismatch > email username used", "studentid", studentId, "name", name, "listedusername", listedUsername, "emailusername", username));
-                }
-
-                students.add(new StudentDetails(name, username, email));
+                StudentDetails student = parseStudent(row, csvReader.getRecordsRead(), logFile);
+                if (student != null) students.add(student);
             }
         } catch (CsvValidationException error) {
             throw new IOException("cannot read scoresheet > " + scoresheet, error);
         }
 
         return students;
+    }
+
+    //@1ejun6 > validate row & log issues > return null if skipped
+    private StudentDetails parseStudent(String[] row, long recordNumber, Path logFile) throws IOException {
+        if (row.length < 5) {
+            Logger.logError(logFile, Map.of("status", "skipped", "row", recordNumber,
+                    "issue", "invalid record", "details", "fewer than 5 columns"));
+            return null;
+        }
+
+        String name = row[3].strip();
+        String studentId = row[0].strip();
+        //@1ejun6 > remove username decorations & dots at start or end
+        String listedUsername = row[1].strip().replaceAll("[^\\p{Alnum}.]", "").replaceAll("^\\.+|\\.+$", "");
+        String email = row[4].strip();
+        int atIndex = email.indexOf('@');
+
+        if (atIndex <= 0 || atIndex != email.lastIndexOf('@') || atIndex == email.length() - 1) {
+            Logger.logError(logFile, Map.of("status", "skipped", "row", recordNumber,
+                    "issue", "invalid email; > student skipped", "studentid", studentId,
+                    "name", name, "email", email));
+            return null;
+        }
+
+        //@1ejun6 > use everything before @ as username
+        String username = email.substring(0, atIndex);
+        if (!listedUsername.equals(username)) {
+            Logger.logError(logFile, Map.of("status", "fixed", "row", recordNumber,
+                    "issue", "username mismatch > email username used", "studentid", studentId,
+                    "name", name, "listedusername", listedUsername, "emailusername", username));
+        }
+        return new StudentDetails(name, username, email);
     }
 }
