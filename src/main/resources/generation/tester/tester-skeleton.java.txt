@@ -1,0 +1,25 @@
+{{imports}}
+import java.util.Arrays;
+import java.util.Objects;
+
+public class {{testerClass}} extends {{questionId}} {
+    private static double score = 0;
+
+{{helperCode}}
+    public static void main(String[] args) {
+        grade();
+        System.out.println(score);
+    }
+
+    private static void grade() {
+        int tcNum = 1;
+{{testCases}}
+    }
+
+    // one line only > a value containing a line that looks like Passed or Failed must not confuse the grader
+    private static String formatForLog(Object value) {
+        String text = value != null && value.getClass().isArray()
+                ? Arrays.deepToString(new Object[] { value }) : String.valueOf(value);
+        return text.replace("\r", "\\r").replace("\n", "\\n");
+    }
+}

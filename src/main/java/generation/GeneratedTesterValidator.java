@@ -50,13 +50,13 @@ public class GeneratedTesterValidator { //checks a generated tester actually com
                 return ValidationResult.failed(Stage.COMPILE, "compilation timed out");
             }
             if (!compile.isSuccessful()) {
-                return ValidationResult.failed(Stage.COMPILE, firstLines(compile.getErrorOutput()));
+                return ValidationResult.failed(Stage.COMPILE, truncate(compile.getErrorOutput()));
             }
 
             // 2 > run the tester main class > a timeout here still lets us parse completed cases
             ProcessResult run = executeTester(workspace, spec.getTesterMainClass());
             if (!run.isTimedOut() && !run.isSuccessful()) {
-                return ValidationResult.failed(Stage.RUN, firstLines(run.getErrorOutput()));
+                return ValidationResult.failed(Stage.RUN, truncate(run.getErrorOutput()));
             }
 
             // 3 > parse output the same way the grader will > must yield at least one case
@@ -144,7 +144,7 @@ public class GeneratedTesterValidator { //checks a generated tester actually com
     }
 
     // keep error output short so it fits a retry prompt without flooding it
-    private static String firstLines(String text) {
+    private static String truncate(String text) {
         if (text == null || text.isBlank()) {
             return "(no output)";
         }

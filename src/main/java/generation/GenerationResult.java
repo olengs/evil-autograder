@@ -33,7 +33,6 @@ public final class GenerationResult { //summary of one generation run > every qu
         return "GenerationResult{total=" + outcomes.size()
                 + ", written=" + countByStatus(GenerationStatus.WRITTEN)
                 + ", validationFailed=" + countByStatus(GenerationStatus.VALIDATION_FAILED)
-                + ", generationFailed=" + countByStatus(GenerationStatus.GENERATION_FAILED)
-                + ", skipped=" + countByStatus(GenerationStatus.SKIPPED) + '}';
+                + ", generationFailed=" + countByStatus(GenerationStatus.GENERATION_FAILED) + '}';
     }
 }

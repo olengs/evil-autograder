@@ -2,7 +2,7 @@
   "_comment": [
     "Prompt text used to generate testers. Each text block is an array of lines joined with newlines.",
     "{{name}} placeholders are filled in by the Java code. An unknown placeholder is an error.",
-    "addOns: toggle each one with prompter.<id>.enabled in config.properties. Available placeholder: {{timeoutSeconds}}.",
+    "addOns: toggle each one with prompter.<id>.enabled in config.properties.",
     "sections: assembled in order and separated by a blank line. A section with 'requires' is skipped when that value is blank.",
     "Section placeholders: baseInstructions, addOnInstructions, userPrompt, questionId, testerClass, answerTemplate, examAttached, exemplarTester."
   ],

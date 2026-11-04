@@ -17,14 +17,11 @@ public class QuestionSpecCollector { //turns answer-template folders into one Qu
 
         List<QuestionSpec> specs = new ArrayList<>();
         for (QuestionDefinition question : assessment.getQuestions()) {
-            String id = question.getId();
-
-            // read the template source > this is the authoritative method signature for the llm
-            Path templateFile = resolveTemplateFile(question);
-            String templateSource = Files.readString(templateFile);
+            // the template source is the authoritative method signature for the llm
+            String templateSource = Files.readString(resolveTemplateFile(question));
 
             // carry the question folder & its support files so validation can compile like the real grader
-            specs.add(new QuestionSpec(id, question.getExpectedFolder(), templateFile, templateSource,
+            specs.add(new QuestionSpec(question.getId(), templateSource,
                     question.getResourceDirectory(), question.getAllowedResourceFiles()));
         }
         return specs;

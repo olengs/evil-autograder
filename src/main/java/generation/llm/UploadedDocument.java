@@ -1,6 +1,6 @@
 package generation.llm;
 
-// a pdf already uploaded to a provider > reference is the gemini file uri or the openai file id
-// name is what delete needs back > gemini file name or the openai file id
-public record UploadedDocument(String reference, String name, String mimeType, String displayName) {
+// an exam pdf already uploaded to a provider > reference is what a request points at (gemini file uri / openai file id)
+// name is what delete needs back (gemini file name / openai file id)
+public record UploadedDocument(String reference, String name) {
 }
