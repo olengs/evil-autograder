@@ -1,3 +1,6 @@
+// Represents one submission or validation finding.
+// Stores its code, severity, message, question, and affected path.
+
 package model;
 
 import java.nio.file.Path;

@@ -1,3 +1,6 @@
+// Describes a question's expected folder, answers, and resources.
+// Resolves its trusted template directory from the resource root.
+
 package model;
 
 import java.nio.file.Path;

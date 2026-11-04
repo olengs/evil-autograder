@@ -1,3 +1,6 @@
+// Connects roster loading, submission validation, and grading.
+// Configures the pipeline and prints its collected results.
+
 package app;
 
 import config.AssessmentLoader;
@@ -18,7 +21,7 @@ import utils.SubmissionFileFinder;
 import validation.SubmissionValidator;
 import validation.rules.*;
 
-public class Main { //loads project files & validates submissions & grades each question
+public class Main {
     public static void main(String[] args) {
         try {
             Config config = args.length == 0 ? new Config() : new Config(Path.of(args[0]));
@@ -46,7 +49,8 @@ public class Main { //loads project files & validates submissions & grades each 
             //@1ejun6 > 3 > wire validation rules together using same file finder
             //@1ejun6 > checks collect issues before answers reach grader
             var finder = new SubmissionFileFinder();
-            var validator = new SubmissionValidator(List.of(new QuestionFolderRule(), new RequiredFileRule(), new FileNamingRule(), new StudentHeaderRule()), List.of(new UnexpectedFileRule()), finder);
+            var validator = new SubmissionValidator(List.of(new AnswerFileRule(), new StudentHeaderRule()),
+                    List.of(new UnexpectedFileRule()), finder);
 
             //@1ejun6 > 4 > extract zips > validate each extracted submission
             //@1ejun6 > validation creates ~questionattempt~ objects consumed by grading

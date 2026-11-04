@@ -1,3 +1,6 @@
+// Provides shared file listing, copy, deletion, and path checks for the pipeline.
+// Keeps filesystem operations and their existing error handling in one place.
+
 package utils;
 
 import java.io.IOException;
@@ -8,8 +11,14 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.stream.Stream;
 
-public class FileUtils { //copies files & folders & deletes temporary folders
+public class FileUtils {
+    /** Lists direct regular files; the caller must close the returned stream. */
+    public static Stream<Path> streamRegularFiles(Path directory) throws IOException {
+        return Files.list(directory).filter(Files::isRegularFile);
+    }
+
     public enum CopyOptions {
         DEFAULT,
         REPLACE_EXISTING

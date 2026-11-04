@@ -1,3 +1,6 @@
+// Tracks one student's archive, working root, and results.
+// Collects preparation issues, validation findings, and question attempts.
+
 package model;
 
 import java.nio.file.Path;

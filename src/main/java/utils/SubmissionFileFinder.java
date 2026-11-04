@@ -1,3 +1,6 @@
+// Locates question folders and answer files for validation and grading preparation.
+// Supports exact and case-insensitive searches with optional per-submission caching.
+
 package utils;
 
 import java.io.IOException;

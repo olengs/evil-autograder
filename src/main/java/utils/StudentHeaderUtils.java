@@ -1,3 +1,6 @@
+// Reads student identity fields from leading comments in the first 15 file lines.
+// Shares the same header interpretation between validation and editable-file detection.
+
 package utils;
 
 import java.io.BufferedReader;

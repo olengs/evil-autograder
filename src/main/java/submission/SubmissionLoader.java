@@ -1,3 +1,6 @@
+// Loads student ZIP archives into separate temporary submission workspaces.
+// Associates roster records and retains extraction failures for later reporting.
+
 package submission;
 
 import java.io.IOException;
@@ -5,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 import model.StudentSubmission;
 import model.StudentDetails;
@@ -14,16 +16,7 @@ import model.IssueSeverity;
 import model.AssessmentDefinition;
 import utils.FileUtils;
 
-/**
- * find all student zip submissions & extracts each one into its own folder inside workspace
- *
- * @param submissionFolder > containing student zip files
- * @param workspaceFolder > where submissions will be extracted
- * @return > list of extracted submission folder paths
- * @throws IOException > if files cannot be read \ extracted
- */
-
-public class SubmissionLoader { //find & extracts student zip files > keeping track of any that fail
+public class SubmissionLoader {
     public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> students) throws IOException {
         return loadSubmissions(submissionFolder, workspaceFolder, students, null);
     }
@@ -77,9 +70,8 @@ public class SubmissionLoader { //find & extracts student zip files > keeping tr
     }
 
     public static List<Path> findZipFiles(Path submissionFolder) throws IOException {
-        //@1ejun6 > find all zip files
-        try (Stream<Path> paths = Files.list(submissionFolder)) { //@1ejun6 > lists files directly inside
-            return paths.filter(Files::isRegularFile).filter(path -> path.toString().toLowerCase(Locale.ROOT).endsWith(".zip")).sorted().toList();
+        try (Stream<Path> paths = FileUtils.streamRegularFiles(submissionFolder)) {
+            return paths.filter(SubmissionFileNames::hasZipExtension).sorted().toList();
         }
     }
 
