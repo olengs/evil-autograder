@@ -110,7 +110,7 @@ public class FileUtils { //copies files & folders & deletes temporary folders
     }
 
     public static void CopyFileSafe(Path source, Path destinationFolder, CopyOptions option) throws IOException {
-        Path sourceKey = ValidatePath(source);
+        Path sourceKey = resolveExistingPath(source);
         if (!Files.isRegularFile(sourceKey)) {
             throw new IOException("Copy source is not a regular file: " + source);
         }
@@ -119,7 +119,7 @@ public class FileUtils { //copies files & folders & deletes temporary folders
             throw new IOException("Copy destination folder path is required");
         }
  
-        Path dest = ValidatePath(destinationFolder);
+        Path dest = resolveExistingPath(destinationFolder);
         if (dest == null || !Files.isDirectory(dest)) {
             throw new IOException("Copy destination parent is not a directory: " + dest);
         }
