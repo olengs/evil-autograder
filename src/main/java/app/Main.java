@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import model.*;
+import report.ScoreSheet;
 import submission.StudentCsvReader;
 import submission.SubmissionLoader;
 import utils.FileUtils;
@@ -22,7 +23,13 @@ public class Main { //loads project files & validates submissions & grades each 
     public static void main(String[] args) {
         try {
             Config config = args.length == 0 ? new Config() : new Config(Path.of(args[0]));
-            printResults(run(config));
+            var results = run(config);
+            printResults(results);
+
+            //7 > fill the provided scoresheet with each student's total
+            Path scoresheet = config.getOutputDirectory().resolve(config.getScoresheetFile().getFileName());
+            ScoreSheet.write(config.getScoresheetFile(), results, scoresheet);
+            System.out.println("\nscoresheet saved > " + scoresheet);
         } catch (IOException | RuntimeException error) {
             System.err.println("error > " + error.getMessage());
             System.exit(1);
@@ -40,6 +47,10 @@ public class Main { //loads project files & validates submissions & grades each 
         try {
             //@1ejun6 > logs & extracted submissions stay outside original project files
             //@1ejun6 > 2 > read class list used to identify who submitted each zip
+            //the scoresheet may not be provided > build it from the zips first
+            if (ScoreSheet.createIfMissing(config.getScoresheetFile(), config.getSubmissionsDirectory())) {
+                System.out.println("scoresheet not found > created " + config.getScoresheetFile());
+            }
             var students = new StudentCsvReader().read(config.getScoresheetFile(), workspace.resolve("csv.log.jsonl"));
             if (students.isEmpty()) throw new IOException("no valid students found in scoresheet");
 
