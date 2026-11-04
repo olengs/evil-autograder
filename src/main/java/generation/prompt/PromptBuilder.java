@@ -22,9 +22,9 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
 
     // build the full prompt for one question
     // activeAddOns resolved by PrompterRegistry > userPrompt free-form >
-    // exemplarTester a real tester to imitate
+    // exemplarTester a real tester to imitate > examAttached true when the exam pdf is uploaded with the request
     public String build(QuestionSpec spec, List<AddOnPrompter> activeAddOns,
-            String userPrompt, String exemplarTester) {
+            String userPrompt, String exemplarTester, boolean examAttached) {
         if (spec == null) {
             throw new IllegalArgumentException("spec is required");
         }
@@ -39,7 +39,7 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
         values.put("questionId", spec.getId());
         values.put("testerClass", spec.getTesterMainClass());
         values.put("answerTemplate", spec.getAnswerTemplateSource().strip());
-        values.put("examExcerpt", spec.hasPdfExcerpt() ? spec.getPdfExcerpt().strip() : "");
+        values.put("examAttached", examAttached ? "yes" : "");
         values.put("exemplarTester", strip(exemplarTester));
 
         // render sections in catalog order > skip a section whose required value is blank > blank line between

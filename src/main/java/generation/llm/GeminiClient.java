@@ -1,25 +1,34 @@
 package generation.llm;
 
-import java.net.URI;
-import java.util.Base64;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.genai.Client;
+import com.google.genai.errors.ApiException;
+import com.google.genai.errors.GenAiIOException;
+import com.google.genai.types.Content;
+import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.HttpOptions;
+import com.google.genai.types.Part;
+import com.google.genai.types.UploadFileConfig;
 
-public final class GeminiClient extends AbstractHttpLlmClient { //google gemini generateContent > supports native pdf input
-    private static final String DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com";
+import utils.PdfFileUtils;
 
-    private final String baseUrl;
-    private final String apiKey;
+public final class GeminiClient implements LlmClient { //google gemini generateContent via the google gen ai sdk > exam pdf goes up through the files api
+    private final Client client;
 
+    // blank baseUrl > the sdk's public gemini endpoint > otherwise an override e.g.
+    // a proxy
     public GeminiClient(String apiKey, String baseUrl) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("gemini api key is required");
         }
-        this.apiKey = apiKey;
-        // allow overriding the endpoint > fall back to the public one
-        this.baseUrl = (baseUrl == null || baseUrl.isBlank()) ? DEFAULT_BASE_URL : stripTrailingSlash(baseUrl);
+        HttpOptions.Builder httpOptions = HttpOptions.builder().timeout((int) REQUEST_TIMEOUT.toMillis()); // sdk takes milliseconds
+        if (baseUrl != null && !baseUrl.isBlank()) {
+            httpOptions.baseUrl(baseUrl);
+        }
+        this.client = Client.builder().apiKey(apiKey).httpOptions(httpOptions.build()).build();
     }
 
     @Override
@@ -29,77 +38,73 @@ public final class GeminiClient extends AbstractHttpLlmClient { //google gemini 
 
     @Override
     public String complete(LlmRequest request) {
-        String body = buildRequestBody(request);
-        // key travels as a query param for the generateContent endpoint
-        URI uri = URI.create(baseUrl + "/v1beta/models/" + request.getModel() + ":generateContent?key=" + apiKey);
-        String response = postJson(uri, body);
+        // prompt text first > then the uploaded pdf by reference when one was uploaded
+        List<Part> parts = new ArrayList<>();
+        parts.add(Part.fromText(request.getPrompt()));
+        if (request.hasDocument()) {
+            UploadedDocument document = request.getDocument();
+            parts.add(Part.fromUri(document.reference(), document.mimeType()));
+        }
+
+        GenerateContentResponse response;
+        try {
+            response = client.models.generateContent(request.getModel(),
+                    Content.fromParts(parts.toArray(Part[]::new)), null);
+        } catch (ApiException error) {
+            // http status & provider message
+            throw requestFailed(error);
+        } catch (GenAiIOException error) {
+            // transport failure
+            throw requestFailed(error);
+        }
         return extractText(response);
     }
 
-    // { "contents":[ { "parts":[ {"text":...}, {"inline_data":{...}} ] } ] }
-    String buildRequestBody(LlmRequest request) {
-        JsonArray parts = new JsonArray();
-
-        JsonObject textPart = new JsonObject();
-        textPart.addProperty("text", request.getPrompt());
-        parts.add(textPart);
-
-        // attach the pdf inline when native-pdf mode is on
-        if (request.hasPdf()) {
-            JsonObject inlineData = new JsonObject();
-            inlineData.addProperty("mime_type", "application/pdf");
-            inlineData.addProperty("data", Base64.getEncoder().encodeToString(request.getPdfBytes()));
-            JsonObject pdfPart = new JsonObject();
-            pdfPart.add("inline_data", inlineData);
-            parts.add(pdfPart);
-        }
-
-        JsonObject content = new JsonObject();
-        content.add("parts", parts);
-        JsonArray contents = new JsonArray();
-        contents.add(content);
-
-        JsonObject root = new JsonObject();
-        root.add("contents", contents);
-        return gson.toJson(root);
-    }
-
-    // candidates[0].content.parts[*].text > joined > fail loudly when the shape is unexpected
-    private String extractText(String responseBody) {
+    @Override
+    public UploadedDocument uploadPdf(Path pdf) {
+        UploadFileConfig config = UploadFileConfig.builder()
+                .mimeType(PdfFileUtils.PDF_MIME_TYPE)
+                .displayName(PdfFileUtils.displayName(pdf))
+                .build();
         try {
-            JsonObject root = gson.fromJson(responseBody, JsonObject.class);
-            JsonArray candidates = root.getAsJsonArray("candidates");
-            if (candidates == null || candidates.isEmpty()) {
-                throw new LlmException("gemini response had no candidates > " + trim(responseBody));
-            }
-            JsonObject content = candidates.get(0).getAsJsonObject().getAsJsonObject("content");
-            JsonArray parts = content.getAsJsonArray("parts");
-            StringBuilder text = new StringBuilder();
-            for (JsonElement part : parts) {
-                JsonElement t = part.getAsJsonObject().get("text");
-                if (t != null && !t.isJsonNull()) {
-                    text.append(t.getAsString());
-                }
-            }
-            if (text.isEmpty()) {
-                throw new LlmException("gemini response contained no text > " + trim(responseBody));
-            }
-            return text.toString();
-        } catch (LlmException error) {
-            throw error;
-        } catch (RuntimeException error) {
-            throw new LlmException("could not parse gemini response > " + trim(responseBody), error);
+            com.google.genai.types.File uploaded = client.files.upload(pdf.toString(), config);
+            String uri = uploaded.uri().orElseThrow(() -> new LlmException("gemini upload returned no file uri"));
+            return new UploadedDocument(uri, uploaded.name().orElse(""), PdfFileUtils.PDF_MIME_TYPE,
+                    PdfFileUtils.displayName(pdf));
+        } catch (ApiException error) {
+            throw requestFailed(error);
+        } catch (GenAiIOException error) {
+            throw requestFailed(error);
         }
     }
 
-    private static String trim(String body) {
-        if (body == null) {
-            return "";
+    @Override
+    public void deleteUpload(UploadedDocument document) {
+        if (document == null || document.name().isBlank()) {
+            return;
         }
-        return body.length() > 500 ? body.substring(0, 500) + "..." : body;
+        try {
+            client.files.delete(document.name(), null);
+        } catch (RuntimeException ignored) {
+            // best effort > gemini also expires uploaded files on its own
+        }
     }
 
-    private static String stripTrailingSlash(String url) {
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    // separate catches on purpose > a multi-catch types the variable as the sdk's package-private
+    // BaseException & the jvm then throws IllegalAccessError at runtime
+    private LlmException requestFailed(RuntimeException error) {
+        return new LlmException(providerName() + " request failed > " + error.getMessage(), error);
+    }
+
+    // text of the first candidate's parts joined by the sdk > fail loudly when the reply is empty
+    private String extractText(GenerateContentResponse response) {
+        if (response.candidates().map(List::isEmpty).orElse(true)) {
+            throw new LlmException("gemini response had no candidates");
+        }
+        String text = response.text();
+        if (text == null || text.isBlank()) {
+            throw new LlmException("gemini response contained no text");
+        }
+        return text;
     }
 }

@@ -4,7 +4,7 @@
     "{{name}} placeholders are filled in by the Java code. An unknown placeholder is an error.",
     "addOns: toggle each one with prompter.<id>.enabled in config.properties. Available placeholder: {{timeoutSeconds}}.",
     "sections: assembled in order and separated by a blank line. A section with 'requires' is skipped when that value is blank.",
-    "Section placeholders: baseInstructions, addOnInstructions, userPrompt, questionId, testerClass, answerTemplate, examExcerpt, exemplarTester."
+    "Section placeholders: baseInstructions, addOnInstructions, userPrompt, questionId, testerClass, answerTemplate, examAttached, exemplarTester."
   ],
 
   "base": {
@@ -123,11 +123,11 @@
       ]
     },
     {
-      "name": "exam-excerpt",
-      "requires": "examExcerpt",
+      "name": "exam-reference",
+      "requires": "examAttached",
       "lines": [
         "QUESTION DESCRIPTION FROM THE EXAM:",
-        "{{examExcerpt}}"
+        "The exam paper is attached as a PDF. Find the description of {{questionId}} in it (Question N, part (x)) and write tests that match its requirements and mark allocation."
       ]
     },
     {

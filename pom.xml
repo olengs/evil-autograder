@@ -25,16 +25,22 @@
             <version>5.12.0</version>
         </dependency>
         <dependency>
-            <!-- extract text from the exam pdf for llm tester generation-->
-            <groupId>org.apache.pdfbox</groupId>
-            <artifactId>pdfbox</artifactId>
-            <version>3.0.5</version>
-        </dependency>
-        <dependency>
             <!-- read the api key from a git-ignored .env file > host env vars take precedence-->
             <groupId>io.github.cdimascio</groupId>
             <artifactId>dotenv-java</artifactId>
             <version>3.2.0</version>
+        </dependency>
+        <dependency>
+            <!-- official openai sdk > talks to openai & any openai-compatible endpoint (groq / openrouter / ollama)-->
+            <groupId>com.openai</groupId>
+            <artifactId>openai-java</artifactId>
+            <version>4.85.0</version>
+        </dependency>
+        <dependency>
+            <!-- official google gen ai sdk > gemini generateContent with native pdf input-->
+            <groupId>com.google.genai</groupId>
+            <artifactId>google-genai</artifactId>
+            <version>1.78.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

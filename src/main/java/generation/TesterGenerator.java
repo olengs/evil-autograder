@@ -10,12 +10,13 @@ import config.Config;
 import generation.llm.LlmClient;
 import generation.llm.LlmClientFactory;
 import generation.llm.LlmRequest;
+import generation.llm.UploadedDocument;
 import generation.prompt.AddOnPrompter;
 import generation.prompt.PromptBuilder;
 import generation.prompt.PrompterRegistry;
+import utils.PdfFileUtils;
 
-public class TesterGenerator { //orchestrates pdf -> prompt -> llm -> validate -> write for every question
-    private final PdfTextExtractor pdfExtractor = new PdfTextExtractor();
+public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -> validate -> write for every question
     private final QuestionSpecCollector collector = new QuestionSpecCollector();
     private final PromptBuilder promptBuilder = new PromptBuilder();
     private final TesterCodeExtractor codeExtractor = new TesterCodeExtractor();
@@ -42,9 +43,8 @@ public class TesterGenerator { //orchestrates pdf -> prompt -> llm -> validate -
 
     // run generation for every discovered question > one bad question never aborts the rest
     public GenerationResult generate(GenerationRequest request) throws IOException {
-        // 1 > read the exam once > enumerate questions from the answer-template folders
-        ExamDocument exam = pdfExtractor.extract(request.getExamPdf());
-        List<QuestionSpec> specs = collector.collect(request.getResourcesDirectory(), exam);
+        // 1 > enumerate questions from the answer-template folders
+        List<QuestionSpec> specs = collector.collect(request.getResourcesDirectory());
 
         // 2 > resolve add-ons > explicit request list wins > otherwise fall back to config toggles
         List<AddOnPrompter> addOns = request.getEnabledAddOnPrompters().isEmpty()
@@ -54,22 +54,27 @@ public class TesterGenerator { //orchestrates pdf -> prompt -> llm -> validate -
         // 3 > optional: snapshot one existing tester as a format exemplar before we overwrite anything
         String exemplar = findExemplarTester(request.getOutputDirectory());
 
-        // 4 > send the pdf natively only when configured AND the provider is gemini
-        byte[] pdfBytes = (config.isLlmSendPdf() && "gemini".equals(config.getLlmProvider()))
-                ? Files.readAllBytes(request.getExamPdf())
+        // 4 > upload the exam pdf once when configured > an unsupported provider fails here before any question runs
+        UploadedDocument exam = config.isLlmSendPdf()
+                ? llmClient.uploadPdf(PdfFileUtils.requirePdf(request.getExamPdf()))
                 : null;
 
         List<QuestionGenerationOutcome> outcomes = new ArrayList<>();
-        for (QuestionSpec spec : specs) {
-            outcomes.add(generateOne(spec, addOns, request.getUserPrompt(), exemplar, pdfBytes,
-                    request.getOutputDirectory()));
+        try {
+            for (QuestionSpec spec : specs) {
+                outcomes.add(generateOne(spec, addOns, request.getUserPrompt(), exemplar, exam,
+                        request.getOutputDirectory()));
+            }
+        } finally {
+            // always remove the uploaded copy > even when a question blew up
+            llmClient.deleteUpload(exam);
         }
         return new GenerationResult(outcomes);
     }
 
     // generate & validate one tester > retry feeding the failure back into the prompt
     private QuestionGenerationOutcome generateOne(QuestionSpec spec, List<AddOnPrompter> addOns,
-            String userPrompt, String exemplar, byte[] pdfBytes, Path outputDirectory) {
+            String userPrompt, String exemplar, UploadedDocument exam, Path outputDirectory) {
         int maxRetries = config.getGenerationMaxRetries();
         String lastFailure = "";
         String lastTesterSource = null; // keep the most recent generated source so a failed one is still written
@@ -81,8 +86,8 @@ public class TesterGenerator { //orchestrates pdf -> prompt -> llm -> validate -
 
             String testerSource;
             try {
-                String prompt = promptBuilder.build(spec, addOns, effectiveUserPrompt, exemplar);
-                String reply = llmClient.complete(new LlmRequest(config.getLlmModel(), prompt, pdfBytes));
+                String prompt = promptBuilder.build(spec, addOns, effectiveUserPrompt, exemplar, exam != null);
+                String reply = llmClient.complete(new LlmRequest(config.getLlmModel(), prompt, exam));
                 testerSource = codeExtractor.extract(reply);
             } catch (RuntimeException error) {
                 // llm or extraction failure > record & retry if attempts remain
