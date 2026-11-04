@@ -10,8 +10,7 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipFile;
 
 public class ZipExtractor { //unpacks one zip into destination directory supplied by its caller
-    /** @1ejun6 >
-     * extracts one zip file into given destination folder
+    /** @1ejun6 > extracts one zip file into given destination folder
      *
      * @param zipFile > zip file to extract
      * @param destinationFolder > where zip will be extracted
@@ -41,9 +40,7 @@ public class ZipExtractor { //unpacks one zip into destination directory supplie
 
                 if (entry.isDirectory()) { //@1ejun6 > eg. q1
                     Files.createDirectories(outputPath);
-
-                } 
-                else { //@1ejun6 > eg. q1/q1a.java
+                } else { //@1ejun6 > eg. q1/q1a.java
                     Path parentFolder = outputPath.getParent();
 
                     if (parentFolder != null) {

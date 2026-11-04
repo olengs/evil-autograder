@@ -3,10 +3,15 @@ package grading;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import model.QuestionAttempt;
 import model.QuestionDefinition;
 import model.TesterDefinition;
 import utils.FileUtils;
+import utils.SubmissionFileFinder;
 
 public class GradingWorkspace implements AutoCloseable { //creates & cleans up temporary folder used to grade one question
     private final Path directory;
@@ -17,17 +22,53 @@ public class GradingWorkspace implements AutoCloseable { //creates & cleans up t
 
     public void prepare(QuestionDefinition question, QuestionAttempt attempt,
             TesterDefinition tester) throws IOException {
-        //@1ejun6 > current preparation uses a separate temporary folder per workspace
-        for (String name : question.getAllowedResourceFiles()) { //@1ejun6 > copy only the declared support files.
-            Path destination = directory.resolve(name);
-            Files.createDirectories(destination.getParent());
-            FileUtils.copyFile(question.getResourceDirectory().resolve(name), destination, FileUtils.CopyOptions.REPLACE_EXISTING);
+        var finder = new SubmissionFileFinder();
+        Map<String, Path> answers = locateRequiredAnswers(question, attempt, finder);
+        for (String name : question.getAllowedResourceFiles()) {
+            Path source = question.getResourceDirectory().resolve(name);
+            //declared Java helpers may be student work (e.g. ShapeComparator); data & bytecode stay supplied
+            if (name.endsWith(".java")) {
+                List<Path> folders = new ArrayList<>();
+                if (Files.isDirectory(attempt.getQuestionDirectory())) {
+                    folders.add(attempt.getQuestionDirectory().toRealPath());
+                }
+                for (Path answer : answers.values()) folders.add(answer.getParent().toRealPath());
+                List<Path> helpers = new ArrayList<>();
+                for (Path folder : folders.stream().distinct().toList()) {
+                    finder.findIgnoringCase(folder, name).ifPresent(helpers::add);
+                }
+                helpers = helpers.stream().distinct().toList();
+                if (helpers.size() > 1) throw new IOException("ambiguous support file > " + name);
+                if (!helpers.isEmpty()) source = helpers.getFirst();
+            }
+            copyFile(source, name);
         }
-        //TODO > iteration 2 > validate which files students may change so answers cannot overwrite given files
-        //@1ejun6 > overwrite validation remains pending > student files currently replace matching support files
-        //@1ejun6 > keep students helper classes & tester data with their answers > same flow as pair 2
-        FileUtils.copyDirectory(attempt.getQuestionDirectory(), directory, FileUtils.CopyOptions.REPLACE_EXISTING);
+        //normalize only destination names > extracted folders, filenames & source contents stay untouched
+        for (var answer : answers.entrySet()) copyFile(answer.getValue(), answer.getKey());
         copyTesterResources(question, tester);
+    }
+
+    private Map<String, Path> locateRequiredAnswers(QuestionDefinition question, QuestionAttempt attempt,
+            SubmissionFileFinder finder) throws IOException {
+        Map<String, Path> answers = new LinkedHashMap<>();
+        for (String required : question.getRequiredFiles()) {
+            List<Path> matches = attempt.getSubmittedFiles().stream()
+                    .filter(path -> finder.matchesRequiredPath(path, required)).distinct().toList();
+            if (matches.size() > 1) throw new IOException("ambiguous answer file > " + required);
+            Path source = matches.isEmpty() ? finder.findIgnoringCase(attempt.getQuestionDirectory(), required)
+                    .orElseThrow(() -> new IOException("missing required answer > " + required)) : matches.getFirst();
+            answers.put(required, source);
+        }
+        return answers;
+    }
+
+    private void copyFile(Path source, String relativeName) throws IOException {
+        Path destination = directory.resolve(relativeName).normalize();
+        if (!destination.startsWith(directory) || destination.equals(directory)) {
+            throw new IOException("invalid workspace path > " + relativeName);
+        }
+        Files.createDirectories(destination.getParent());
+        FileUtils.copyFile(source, destination, FileUtils.CopyOptions.REPLACE_EXISTING);
     }
 
     private void copyTesterResources(QuestionDefinition question, TesterDefinition tester) throws IOException {
