@@ -9,8 +9,6 @@
     <properties>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- default main class for exec:java > override with -Dexec.mainClass=generation.TesterGeneratorApp-->
-        <exec.mainClass>app.Main</exec.mainClass>
     </properties>
 
     <dependencies>
@@ -50,8 +48,7 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
-                <!-- default main is the grader > override on the cli with -Dexec.mainClass=... (e.g. the generator)-->
-                <configuration><mainClass>${exec.mainClass}</mainClass></configuration>
+                <configuration><mainClass>app.Main</mainClass></configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
