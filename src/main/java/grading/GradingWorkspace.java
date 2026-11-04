@@ -27,8 +27,32 @@ public class GradingWorkspace implements AutoCloseable { //creates & cleans up t
         //@1ejun6 > overwrite validation remains pending > student files currently replace matching support files
         //@1ejun6 > keep students helper classes & tester data with their answers > same flow as pair 2
         FileUtils.copyDirectory(attempt.getQuestionDirectory(), directory, FileUtils.CopyOptions.REPLACE_EXISTING);
-        Path testerFile = tester.getSourceFile(); //@1ejun6 > copy tester as a file not a directory
-        FileUtils.copyFile(testerFile, directory.resolve(testerFile.getFileName()), FileUtils.CopyOptions.REPLACE_EXISTING);
+        copyTesterResources(question, tester);
+    }
+
+    private void copyTesterResources(QuestionDefinition question, TesterDefinition tester) throws IOException {
+        Path testerFile = tester.getSourceFile();
+        Path testerFolder = testerFile.getParent();
+        try (var entries = Files.walk(testerFolder)) {
+            for (Path source : entries.toList()) {
+                Path relativePath = testerFolder.relativize(source);
+                Path destination = directory.resolve(relativePath);
+                if (Files.isDirectory(source)) {
+                    Files.createDirectories(destination);
+                    continue;
+                }
+                //only this tester belongs in workspace > keep shared helpers & data
+                if (source.getFileName().toString().endsWith("Tester.java") && !source.equals(testerFile)) {
+                    continue;
+                }
+                //a tester side answer template must not replace the student required answer
+                if (question.getRequiredFiles().stream().anyMatch(name ->
+                        Path.of(name).normalize().toString().equalsIgnoreCase(relativePath.toString()))) {
+                    continue;
+                }
+                FileUtils.copyFile(source, destination, FileUtils.CopyOptions.REPLACE_EXISTING);
+            }
+        }
     }
 
     public Path getDirectory() {
