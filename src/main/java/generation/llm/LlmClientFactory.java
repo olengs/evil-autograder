@@ -13,7 +13,9 @@ public final class LlmClientFactory { //builds the configured LlmClient & reads 
 
         return switch (provider) {
             case "gemini" -> new GeminiClient(apiKey, config.getLlmBaseUrl());
-            case "openai", "openai-compatible", "ollama" -> new OpenAiCompatibleClient(apiKey, config.getLlmBaseUrl());
+            // only real openai accepts pdf file parts in chat completions
+            case "openai" -> new OpenAiCompatibleClient(apiKey, config.getLlmBaseUrl(), true);
+            case "openai-compatible", "ollama" -> new OpenAiCompatibleClient(apiKey, config.getLlmBaseUrl(), false);
             default -> throw new LlmException("unknown llm.provider > " + provider
                     + " > expected gemini | openai | openai-compatible | ollama");
         };

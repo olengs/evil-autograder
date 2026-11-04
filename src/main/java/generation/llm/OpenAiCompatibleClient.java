@@ -1,20 +1,39 @@
 package generation.llm;
 
-import java.net.URI;
+import java.nio.file.Path;
+import java.util.List;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.errors.OpenAIException;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionContentPart;
+import com.openai.models.chat.completions.ChatCompletionContentPartText;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
+import com.openai.models.files.FileCreateParams;
+import com.openai.models.files.FileObject;
+import com.openai.models.files.FilePurpose;
 
-public final class OpenAiCompatibleClient extends AbstractHttpLlmClient { //groq / openrouter / ollama chat-completions (text only)
-    private final String baseUrl; // required > e.g. https://api.groq.com/openai/v1
-    private final String apiKey; // may be blank for a local ollama server
+import utils.PdfFileUtils;
 
-    public OpenAiCompatibleClient(String apiKey, String baseUrl) {
-        if (baseUrl == null || baseUrl.isBlank()) {
-            throw new IllegalArgumentException("openai-compatible base url is required (llm.base.url)");
+public final class OpenAiCompatibleClient implements LlmClient { //openai / groq / openrouter / ollama chat-completions via the openai sdk > exam pdf only where the provider accepts file parts
+    // the sdk needs some key > local servers like ollama accept any non-blank value
+    private static final String NO_KEY_PLACEHOLDER = "none";
+
+    private final OpenAIClient client;
+    private final boolean supportsPdf; // only real openai takes pdf file parts > groq / openrouter / ollama do not
+
+    // blank baseUrl > the sdk's default https://api.openai.com/v1 > otherwise e.g. https://api.groq.com/openai/v1
+    public OpenAiCompatibleClient(String apiKey, String baseUrl, boolean supportsPdf) {
+        this.supportsPdf = supportsPdf;
+        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
+                .apiKey(apiKey == null || apiKey.isBlank() ? NO_KEY_PLACEHOLDER : apiKey)
+                .timeout(REQUEST_TIMEOUT); // same budget as the gemini client
+        if (baseUrl != null && !baseUrl.isBlank()) {
+            builder.baseUrl(baseUrl);
         }
-        this.apiKey = apiKey == null ? "" : apiKey;
-        this.baseUrl = stripTrailingSlash(baseUrl);
+        this.client = builder.build();
     }
 
     @Override
@@ -24,60 +43,70 @@ public final class OpenAiCompatibleClient extends AbstractHttpLlmClient { //groq
 
     @Override
     public String complete(LlmRequest request) {
-        String body = buildRequestBody(request);
-        URI uri = URI.create(baseUrl + "/chat/completions");
-        // send bearer auth only when a key is present > local servers may need none
-        String response = apiKey.isBlank()
-                ? postJson(uri, body)
-                : postJson(uri, body, "Authorization", "Bearer " + apiKey);
-        return extractText(response);
-    }
+        ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder().model(request.getModel());
+        if (request.hasDocument()) {
+            // prompt text plus the uploaded pdf by file id
+            builder.addMessage(ChatCompletionUserMessageParam.builder()
+                    .contentOfArrayOfContentParts(List.of(
+                            ChatCompletionContentPart.ofText(
+                                    ChatCompletionContentPartText.builder().text(request.getPrompt()).build()),
+                            ChatCompletionContentPart.ofFile(ChatCompletionContentPart.File.builder()
+                                    .file(ChatCompletionContentPart.File.FileObject.builder()
+                                            .fileId(request.getDocument().reference()).build())
+                                    .build())))
+                    .build());
+        } else {
+            builder.addUserMessage(request.getPrompt());
+        }
+        ChatCompletionCreateParams params = builder.build();
 
-    // { "model":..., "messages":[ {"role":"user","content": prompt} ] }
-    // pdf bytes are ignored here > text-only providers receive extracted pdf text inside the prompt
-    String buildRequestBody(LlmRequest request) {
-        JsonObject message = new JsonObject();
-        message.addProperty("role", "user");
-        message.addProperty("content", request.getPrompt());
-
-        JsonArray messages = new JsonArray();
-        messages.add(message);
-
-        JsonObject root = new JsonObject();
-        root.addProperty("model", request.getModel());
-        root.add("messages", messages);
-        return gson.toJson(root);
-    }
-
-    // choices[0].message.content > fail loudly when the shape is unexpected
-    private String extractText(String responseBody) {
+        ChatCompletion completion;
         try {
-            JsonObject root = gson.fromJson(responseBody, JsonObject.class);
-            JsonArray choices = root.getAsJsonArray("choices");
-            if (choices == null || choices.isEmpty()) {
-                throw new LlmException("response had no choices > " + trim(responseBody));
-            }
-            JsonObject message = choices.get(0).getAsJsonObject().getAsJsonObject("message");
-            String content = message.get("content").getAsString();
-            if (content == null || content.isBlank()) {
-                throw new LlmException("response contained no content > " + trim(responseBody));
-            }
-            return content;
-        } catch (LlmException error) {
-            throw error;
-        } catch (RuntimeException error) {
-            throw new LlmException("could not parse openai-compatible response > " + trim(responseBody), error);
+            completion = client.chat().completions().create(params);
+        } catch (OpenAIException error) {
+            // covers transport failures & non-2xx statuses > the sdk message carries the provider's error
+            throw new LlmException(providerName() + " request failed > " + error.getMessage(), error);
+        }
+        return extractText(completion);
+    }
+
+    @Override
+    public UploadedDocument uploadPdf(Path pdf) {
+        if (!supportsPdf) {
+            throw new LlmException("this provider cannot take a pdf > use llm.provider=openai or gemini, or set llm.send.pdf=false");
+        }
+        try {
+            FileObject uploaded = client.files().create(FileCreateParams.builder()
+                    .file(pdf)
+                    .purpose(FilePurpose.USER_DATA)
+                    .build());
+            return new UploadedDocument(uploaded.id(), uploaded.id(), PdfFileUtils.PDF_MIME_TYPE,
+                    PdfFileUtils.displayName(pdf));
+        } catch (OpenAIException error) {
+            throw new LlmException(providerName() + " pdf upload failed > " + error.getMessage(), error);
         }
     }
 
-    private static String trim(String body) {
-        if (body == null) {
-            return "";
+    @Override
+    public void deleteUpload(UploadedDocument document) {
+        if (document == null || document.name().isBlank()) {
+            return;
         }
-        return body.length() > 500 ? body.substring(0, 500) + "..." : body;
+        try {
+            client.files().delete(document.name());
+        } catch (RuntimeException ignored) {
+            // best effort > a leftover file only costs storage
+        }
     }
 
-    private static String stripTrailingSlash(String url) {
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    // choices[0].message.content > fail loudly when the reply is empty
+    private String extractText(ChatCompletion completion) {
+        List<ChatCompletion.Choice> choices = completion.choices();
+        if (choices.isEmpty()) {
+            throw new LlmException(providerName() + " response had no choices");
+        }
+        return choices.get(0).message().content()
+                .filter(content -> !content.isBlank())
+                .orElseThrow(() -> new LlmException(providerName() + " response contained no content"));
     }
 }
