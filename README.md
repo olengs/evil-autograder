@@ -1,8 +1,8 @@
 # evil-autograder
 
 See [submission and validation](docs/submission-validation.md) for the workflow,
-shared utilities, issue handoff, and development tests.
+shared utilities, and issue handoff.
 
 ```bash
-mvn test
+mvn compile
 ```
