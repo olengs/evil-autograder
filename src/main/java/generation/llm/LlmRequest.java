@@ -19,11 +19,6 @@ public final class LlmRequest { //one call to a model > model name & prompt text
         this.document = Optional.ofNullable(document);
     }
 
-    // text-only convenience constructor
-    public LlmRequest(String model, String prompt) {
-        this(model, prompt, null);
-    }
-
     public String getModel() {
         return model;
     }

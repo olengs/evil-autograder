@@ -20,6 +20,7 @@ public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -
     private final QuestionSpecCollector collector = new QuestionSpecCollector();
     private final PromptBuilder promptBuilder = new PromptBuilder();
     private final TesterCodeExtractor codeExtractor = new TesterCodeExtractor();
+    private final TesterSourceRenderer renderer = new TesterSourceRenderer();
     private final TesterWriter writer = new TesterWriter();
 
     private final Config config;
@@ -28,7 +29,7 @@ public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -
     private final GeneratedTesterValidator validator;
 
     public TesterGenerator(Config config) {
-        this(config, LlmClientFactory.create(config), new PrompterRegistry(config),
+        this(config, LlmClientFactory.create(config), new PrompterRegistry(),
                 new GeneratedTesterValidator(config.getCompilationTimeout(), config.getExecutionTimeout()));
     }
 
@@ -67,7 +68,9 @@ public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -
             }
         } finally {
             // always remove the uploaded copy > even when a question blew up
-            llmClient.deleteUpload(exam);
+            if (exam != null) {
+                llmClient.deleteUpload(exam);
+            }
         }
         return new GenerationResult(outcomes);
     }
@@ -82,13 +85,16 @@ public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -
         // one initial attempt plus up to maxRetries more
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
             // on a retry, append the previous failure so the model can fix it
-            String effectiveUserPrompt = buildRetryPrompt(userPrompt, lastFailure, attempt);
+            String effectiveUserPrompt = buildRetryPrompt(userPrompt, lastFailure);
 
             String testerSource;
             try {
                 String prompt = promptBuilder.build(spec, addOns, effectiveUserPrompt, exemplar, exam != null);
-                String reply = llmClient.complete(new LlmRequest(config.getLlmModel(), prompt, exam));
-                testerSource = codeExtractor.extract(reply);
+                LlmRequest llmRequest = new LlmRequest(config.getLlmModel(), prompt, exam);
+                // structured providers return the test cases as json > the renderer writes the grader-format tester
+                testerSource = llmClient.supportsStructuredOutput()
+                        ? renderer.render(spec, llmClient.completeStructured(llmRequest, GeneratedTesterSpec.class))
+                        : codeExtractor.extract(llmClient.complete(llmRequest));
             } catch (RuntimeException error) {
                 // llm or extraction failure > record & retry if attempts remain
                 lastFailure = error.getMessage();
@@ -97,8 +103,8 @@ public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -
                 }
                 // nothing usable was ever produced > fall back to any earlier source, else report generation failure
                 if (lastTesterSource != null) {
-                    return writeFlagged(spec, lastTesterSource, outputDirectory,
-                            "generation failed on final attempt > " + lastFailure);
+                    return writeTester(spec, lastTesterSource, outputDirectory, GenerationStatus.VALIDATION_FAILED,
+                            "generation failed on final attempt > " + lastFailure + " > written anyway for manual review");
                 }
                 return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.GENERATION_FAILED,
                         null, "generation failed > " + lastFailure);
@@ -109,22 +115,17 @@ public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -
             // validate the generated tester against the real answer template
             ValidationResult validation = validator.validate(spec, testerSource);
             if (validation.isValid()) {
-                try {
-                    Path written = writer.write(spec, testerSource, outputDirectory);
-                    return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.WRITTEN,
-                            written, "validated with " + validation.getTestCaseCount() + " test case(s)");
-                } catch (IOException error) {
-                    return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.VALIDATION_FAILED,
-                            null, "validated but could not be written > " + error.getMessage());
-                }
+                return writeTester(spec, testerSource, outputDirectory, GenerationStatus.WRITTEN,
+                        "validated with " + validation.getTestCaseCount() + " test case(s)");
             }
 
             // invalid > keep the failure detail for the next retry prompt
             lastFailure = validation.getFailedStage() + " > " + validation.getMessage();
             if (attempt >= maxRetries) {
                 // still write the best-effort (invalid) tester so it can be inspected & fixed by hand > but flag it
-                return writeFlagged(spec, testerSource, outputDirectory,
-                        "failed validation after " + (maxRetries + 1) + " attempt(s) > " + lastFailure);
+                return writeTester(spec, testerSource, outputDirectory, GenerationStatus.VALIDATION_FAILED,
+                        "failed validation after " + (maxRetries + 1) + " attempt(s) > " + lastFailure
+                                + " > written anyway for manual review");
             }
         }
 
@@ -132,28 +133,26 @@ public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -
         return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.GENERATION_FAILED, null, "no attempt made");
     }
 
-    // write a tester that did not pass validation so it is not thrown away > status stays VALIDATION_FAILED
-    private QuestionGenerationOutcome writeFlagged(QuestionSpec spec, String testerSource,
-            Path outputDirectory, String reason) {
+    // write the tester & report it with the given status > a write failure is reported instead, keeping the context
+    private QuestionGenerationOutcome writeTester(QuestionSpec spec, String testerSource, Path outputDirectory,
+            GenerationStatus status, String message) {
         try {
             Path written = writer.write(spec, testerSource, outputDirectory);
-            return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.VALIDATION_FAILED,
-                    written, reason + " > written anyway for manual review");
+            return new QuestionGenerationOutcome(spec.getId(), status, written, message);
         } catch (IOException error) {
-            // writing the flagged tester itself failed > report that, keeping the validation failure context
-            return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.VALIDATION_FAILED,
-                    null, reason + " > and could not be written > " + error.getMessage());
+            return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.VALIDATION_FAILED, null,
+                    message + " > but could not be written > " + error.getMessage());
         }
     }
 
-    // append the previous failure so the model can correct it on a retry
-    private String buildRetryPrompt(String userPrompt, String lastFailure, int attempt) {
-        if (attempt == 0 || lastFailure == null || lastFailure.isBlank()) {
+    // append the previous failure so the model can correct it on a retry > lastFailure is blank on the first attempt
+    private String buildRetryPrompt(String userPrompt, String lastFailure) {
+        if (lastFailure == null || lastFailure.isBlank()) {
             return userPrompt;
         }
-        String retryNote = "\nThe previous tester you produced failed with this error. Fix it and return corrected code:\n"
+        String retryNote = "The previous tester you produced failed with this error. Fix it and return corrected code:\n"
                 + lastFailure;
-        return (userPrompt == null || userPrompt.isBlank()) ? retryNote : userPrompt + "\n" + retryNote;
+        return userPrompt.isBlank() ? retryNote : userPrompt + "\n\n" + retryNote;
     }
 
     // pick the lexicographically first existing *Tester.java as a format example > null when none

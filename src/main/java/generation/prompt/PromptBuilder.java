@@ -6,10 +6,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import generation.QuestionSpec;
+import utils.TemplateUtils;
 
 public final class PromptBuilder { // assembles one prompt by filling the section layout from tester-prompt.json
     private final PromptCatalog catalog;
-    private final BasePrompter base;
 
     public PromptBuilder() {
         this(PromptCatalog.loadDefault());
@@ -17,7 +17,6 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
 
     public PromptBuilder(PromptCatalog catalog) {
         this.catalog = catalog;
-        this.base = new BasePrompter(catalog);
     }
 
     // build the full prompt for one question
@@ -31,7 +30,7 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
 
         // every value a section can reference > blank optional values make their section drop out
         Map<String, String> values = new HashMap<>();
-        values.put("baseInstructions", base.instructions().strip());
+        values.put("baseInstructions", catalog.getBaseInstructions().strip());
         values.put("addOnInstructions", activeAddOns == null ? ""
                 : activeAddOns.stream().map(addOn -> addOn.instructions().strip())
                         .collect(Collectors.joining("\n\n")));
@@ -45,7 +44,7 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
         // render sections in catalog order > skip a section whose required value is blank > blank line between
         return catalog.getSections().stream()
                 .filter(section -> section.requires() == null || !values.getOrDefault(section.requires(), "").isBlank())
-                .map(section -> PromptCatalog.render(PromptCatalog.join(section.lines()), values))
+                .map(section -> TemplateUtils.fill(PromptCatalog.join(section.lines()), values))
                 .collect(Collectors.joining("\n\n", "", "\n"));
     }
 

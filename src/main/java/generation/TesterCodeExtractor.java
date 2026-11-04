@@ -8,6 +8,10 @@ public class TesterCodeExtractor { //pulls clean java source out of an llm reply
     private static final Pattern FENCED_BLOCK =
             Pattern.compile("```[a-zA-Z0-9]*\\s*\\n(.*?)\\n?```", Pattern.DOTALL);
 
+    // source starts at the first import, a package line, or a top-level type declaration
+    private static final Pattern SOURCE_START = Pattern.compile(
+            "(?m)^\\s*(package\\s|import\\s|public\\s+(final\\s+)?(class|interface|enum|abstract)\\b|(final\\s+)?(class|interface|enum)\\b)");
+
     // extract the java source the llm produced > throw when nothing usable is present
     public String extract(String response) {
         if (response == null || response.isBlank()) {
@@ -45,11 +49,8 @@ public class TesterCodeExtractor { //pulls clean java source out of an llm reply
     }
 
     // drop any leading prose before the real source starts
-    // source starts at the first import, a package line, or a top-level type declaration
     private String trimToSource(String code) {
-        Matcher start = Pattern.compile(
-                "(?m)^\\s*(package\\s|import\\s|public\\s+(final\\s+)?(class|interface|enum|abstract)\\b|(final\\s+)?(class|interface|enum)\\b)")
-                .matcher(code);
+        Matcher start = SOURCE_START.matcher(code);
         if (start.find()) {
             return code.substring(start.start());
         }

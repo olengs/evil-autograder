@@ -18,8 +18,7 @@ import utils.PdfFileUtils;
 public final class GeminiClient implements LlmClient { //google gemini generateContent via the google gen ai sdk > exam pdf goes up through the files api
     private final Client client;
 
-    // blank baseUrl > the sdk's public gemini endpoint > otherwise an override e.g.
-    // a proxy
+    // blank baseUrl > the sdk's public gemini endpoint > otherwise an override e.g. a proxy
     public GeminiClient(String apiKey, String baseUrl) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("gemini api key is required");
@@ -42,8 +41,7 @@ public final class GeminiClient implements LlmClient { //google gemini generateC
         List<Part> parts = new ArrayList<>();
         parts.add(Part.fromText(request.getPrompt()));
         if (request.hasDocument()) {
-            UploadedDocument document = request.getDocument();
-            parts.add(Part.fromUri(document.reference(), document.mimeType()));
+            parts.add(Part.fromUri(request.getDocument().reference(), PdfFileUtils.PDF_MIME_TYPE));
         }
 
         GenerateContentResponse response;
@@ -51,11 +49,11 @@ public final class GeminiClient implements LlmClient { //google gemini generateC
             response = client.models.generateContent(request.getModel(),
                     Content.fromParts(parts.toArray(Part[]::new)), null);
         } catch (ApiException error) {
-            // http status & provider message
-            throw requestFailed(error);
+            // separate catches on purpose > a multi-catch types the variable as the sdk's package-private
+            // BaseException & the jvm then throws IllegalAccessError at runtime
+            throw LlmException.requestFailed(providerName(), error);
         } catch (GenAiIOException error) {
-            // transport failure
-            throw requestFailed(error);
+            throw LlmException.requestFailed(providerName(), error);
         }
         return extractText(response);
     }
@@ -69,18 +67,17 @@ public final class GeminiClient implements LlmClient { //google gemini generateC
         try {
             com.google.genai.types.File uploaded = client.files.upload(pdf.toString(), config);
             String uri = uploaded.uri().orElseThrow(() -> new LlmException("gemini upload returned no file uri"));
-            return new UploadedDocument(uri, uploaded.name().orElse(""), PdfFileUtils.PDF_MIME_TYPE,
-                    PdfFileUtils.displayName(pdf));
+            return new UploadedDocument(uri, uploaded.name().orElse(""));
         } catch (ApiException error) {
-            throw requestFailed(error);
+            throw LlmException.requestFailed(providerName(), error);
         } catch (GenAiIOException error) {
-            throw requestFailed(error);
+            throw LlmException.requestFailed(providerName(), error);
         }
     }
 
     @Override
     public void deleteUpload(UploadedDocument document) {
-        if (document == null || document.name().isBlank()) {
+        if (document.name().isBlank()) {
             return;
         }
         try {
@@ -88,12 +85,6 @@ public final class GeminiClient implements LlmClient { //google gemini generateC
         } catch (RuntimeException ignored) {
             // best effort > gemini also expires uploaded files on its own
         }
-    }
-
-    // separate catches on purpose > a multi-catch types the variable as the sdk's package-private
-    // BaseException & the jvm then throws IllegalAccessError at runtime
-    private LlmException requestFailed(RuntimeException error) {
-        return new LlmException(providerName() + " request failed > " + error.getMessage(), error);
     }
 
     // text of the first candidate's parts joined by the sdk > fail loudly when the reply is empty
