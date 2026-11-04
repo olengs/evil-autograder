@@ -8,8 +8,14 @@ public final class QuestionSpec { //everything the llm needs to write one tester
     private final String answerTemplateSource; // full source of the template > gives the exact method signature
     private final Path resourceDirectory; // the question folder holding support files > e.g. .../Q2
     private final List<String> supportFiles; // support files needed to compile & run > e.g. DataException.class
+    private final List<QuestionFile> folderFiles; // every file in the question folder > sent to the llm as context
 
     public QuestionSpec(String id, String answerTemplateSource, Path resourceDirectory, List<String> supportFiles) {
+        this(id, answerTemplateSource, resourceDirectory, supportFiles, List.of());
+    }
+
+    public QuestionSpec(String id, String answerTemplateSource, Path resourceDirectory, List<String> supportFiles,
+            List<QuestionFile> folderFiles) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("question id is required");
         }
@@ -21,6 +27,7 @@ public final class QuestionSpec { //everything the llm needs to write one tester
         this.resourceDirectory = resourceDirectory;
         // copy defensively > empty when the question has no support files
         this.supportFiles = supportFiles == null ? List.of() : List.copyOf(supportFiles);
+        this.folderFiles = folderFiles == null ? List.of() : List.copyOf(folderFiles);
     }
 
     public String getId() {
@@ -37,6 +44,10 @@ public final class QuestionSpec { //everything the llm needs to write one tester
 
     public List<String> getSupportFiles() {
         return supportFiles;
+    }
+
+    public List<QuestionFile> getFolderFiles() {
+        return folderFiles;
     }
 
     // name of the tester file this question should produce > matches TesterLoader discovery glob

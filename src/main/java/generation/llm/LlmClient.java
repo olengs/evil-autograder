@@ -8,6 +8,12 @@ public interface LlmClient { //sends one request to a language model & returns i
     // TODO to config?
     Duration REQUEST_TIMEOUT = Duration.ofSeconds(120);
 
+    // system note sent with every structured request > the class descriptions define the format >
+    // this only resolves the conflict with the base prompt's "return java source" rule
+    String STRUCTURED_NOTE = "Reply with JSON that matches the supplied schema and nothing else. "
+            + "Ignore any instruction to return Java source code or to print Test/Passed/Failed lines yourself > "
+            + "the tester class, score handling and output lines are generated from your test cases.";
+
     // return the model's text completion > throw LlmException on transport or response errors
     String complete(LlmRequest request);
 

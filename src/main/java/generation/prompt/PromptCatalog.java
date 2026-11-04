@@ -20,7 +20,10 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
 
     public record Section(String name, String requires, List<String> lines) {}
 
-    private record Definition(Base base, List<AddOn> addOns, List<Section> sections) {}
+    // layout of the files.md bundle > one folder header then one entry per file
+    public record Files(List<String> folder, List<String> textFile, List<String> binaryFile) {}
+
+    private record Definition(Base base, List<AddOn> addOns, Files files, List<Section> sections) {}
 
     private static PromptCatalog defaultCatalog; // lazily loaded once > shared by builder & registry
 
@@ -57,6 +60,10 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
         if (definition.base() == null || isEmpty(definition.base().instructions())) {
             throw new IllegalStateException("prompt catalog needs base.instructions");
         }
+        Files files = definition.files();
+        if (files == null || isEmpty(files.folder()) || isEmpty(files.textFile()) || isEmpty(files.binaryFile())) {
+            throw new IllegalStateException("prompt catalog needs files.folder, files.textFile & files.binaryFile");
+        }
         if (isEmpty(definition.sections())) {
             throw new IllegalStateException("prompt catalog needs at least one section");
         }
@@ -79,6 +86,10 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
 
     public List<AddOn> getAddOns() {
         return definition.addOns() == null ? List.of() : definition.addOns();
+    }
+
+    public Files getFiles() {
+        return definition.files();
     }
 
     public List<Section> getSections() {
