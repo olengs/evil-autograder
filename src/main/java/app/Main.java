@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import junit.JUnitRunner;
 import model.*;
 import report.ScoreSheet;
 import submission.StudentCsvReader;
@@ -25,9 +26,14 @@ import validation.rules.*;
 public class Main {
     public static void main(String[] args) {
         try {
+            if (args.length > 1) throw new IllegalArgumentException("usage > [config.properties]");
+            if (args.length == 1 && args[0].startsWith("--")) {
+                throw new IllegalArgumentException("unknown option > " + args[0]);
+            }
             Config config = args.length == 0 ? new Config() : new Config(Path.of(args[0]));
             var results = run(config);
             printResults(results);
+            JUnitRunner.verify(config, results);
 
             //7 > fill the provided scoresheet with each student's total
             Path scoresheet = config.getOutputDirectory().resolve(config.getScoresheetFile().getFileName());
