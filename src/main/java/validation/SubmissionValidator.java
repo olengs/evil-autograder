@@ -6,6 +6,7 @@ import model.QuestionAttempt;
 import model.QuestionDefinition;
 import model.StudentSubmission;
 import model.SubmissionIssue;
+import utils.SubmissionFileFinder;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -35,31 +36,33 @@ public class SubmissionValidator { //runs validation rules & builds one ~questio
         }
 
         //@1ejun6 > step 2 > validate every question
+        SubmissionFileFinder files = fileLocator.forSubmission();
         for (QuestionDefinition question : assessment.getQuestions()) {
-            validateQuestion(submission, question);
+            validateQuestion(submission, question, files);
         }
         return submission;
     }
 
-    private void validateQuestion(StudentSubmission submission, QuestionDefinition question) {
+    private void validateQuestion(StudentSubmission submission, QuestionDefinition question, SubmissionFileFinder files) {
         List<SubmissionIssue> issues = new ArrayList<>();
         for (ValidationRule rule : questionRules) {
-            issues.addAll(rule.validate(submission, question));
+            issues.addAll(rule.validate(submission, question, files));
         }
 
         Path questionDirectory = submission.getRootDirectory().resolve(question.getExpectedFolder()).toAbsolutePath().normalize();
-        List<Path> submittedFiles = locateFiles(submission, question, issues);
+        List<Path> submittedFiles = locateFiles(submission, question, issues, files);
         QuestionAttempt attempt = new QuestionAttempt(question, questionDirectory, submittedFiles, issues);
 
         submission.addQuestionAttempt(attempt);
         submission.addIssues(issues);
     }
 
-    private List<Path> locateFiles(StudentSubmission submission, QuestionDefinition question, List<SubmissionIssue> issues) {
+    private List<Path> locateFiles(StudentSubmission submission, QuestionDefinition question,
+            List<SubmissionIssue> issues, SubmissionFileFinder files) {
         Path questionFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
         
         try {
-            return fileLocator.findSubmissionFiles(questionFolder, question.getRequiredFiles());
+            return files.findAnswerFiles(submission.getRootDirectory(), question.getExpectedFolder(), question.getRequiredFiles());
         } catch (IOException e) {
             issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR, "unable to locate answer files > " + e.getMessage(), question.getId(), questionFolder));
             return new ArrayList<>();

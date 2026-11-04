@@ -14,7 +14,7 @@ import model.*;
 import submission.StudentCsvReader;
 import submission.SubmissionLoader;
 import utils.FileUtils;
-import validation.SubmissionFileFinder;
+import utils.SubmissionFileFinder;
 import validation.SubmissionValidator;
 import validation.rules.*;
 
@@ -46,7 +46,7 @@ public class Main { //loads project files & validates submissions & grades each 
             //@1ejun6 > 3 > wire validation rules together using same file finder
             //@1ejun6 > checks collect issues before answers reach grader
             var finder = new SubmissionFileFinder();
-            var validator = new SubmissionValidator(List.of(new QuestionFolderRule(), new RequiredFileRule(finder), new FileNamingRule(finder), new StudentHeaderRule(finder)), List.of(new UnexpectedFileRule()), finder);
+            var validator = new SubmissionValidator(List.of(new QuestionFolderRule(), new RequiredFileRule(), new FileNamingRule(), new StudentHeaderRule()), List.of(new UnexpectedFileRule()), finder);
 
             //@1ejun6 > 4 > extract zips > validate each extracted submission
             //@1ejun6 > validation creates ~questionattempt~ objects consumed by grading
