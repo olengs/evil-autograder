@@ -1,0 +1,16 @@
+        try {
+            System.out.printf("Test %d: %s%n", tcNum++, {{label}});
+{{setupCode}}
+            Object expected = {{expected}};
+            Object actual = {{actual}};
+            System.out.println("Expected: " + formatForLog(expected));
+            System.out.println("Actual: " + formatForLog(actual));
+            if (Objects.deepEquals(expected, actual)) {
+                System.out.println("Passed");
+                score += 1;
+            } else {
+                System.out.println("Failed");
+            }
+        } catch (Exception e) {
+            System.out.println("Failed -> " + formatForLog(e));
+        }

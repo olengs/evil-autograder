@@ -6,7 +6,7 @@ import java.util.Optional;
 public final class QuestionGenerationOutcome { //result of generating one tester > status & where it went & why it failed
     private final String questionId; // question this outcome belongs to > e.g. Q1a
     private final GenerationStatus status;
-    private final Optional<Path> writtenFile; // present only when status is WRITTEN
+    private final Optional<Path> writtenFile; // present whenever a tester file was written > also for a flagged VALIDATION_FAILED one
     private final String message; // human-readable detail > failure reason or completion note
 
     public QuestionGenerationOutcome(String questionId, GenerationStatus status, Path writtenFile, String message) {

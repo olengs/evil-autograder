@@ -5,27 +5,18 @@ import java.util.List;
 
 public final class QuestionSpec { //everything the llm needs to write one tester > id & template signature
     private final String id; // question id & answer class name > e.g. Q1a or Q3
-    private final String folder; // answer-template folder > e.g. Q1 or Q3
-    private final Path answerTemplateFile; // path to the student answer template > e.g. Q1/Q1a.java
     private final String answerTemplateSource; // full source of the template > gives the exact method signature
     private final Path resourceDirectory; // the question folder holding support files > e.g. .../Q2
     private final List<String> supportFiles; // support files needed to compile & run > e.g. DataException.class
 
-    public QuestionSpec(String id, String folder, Path answerTemplateFile,
-            String answerTemplateSource,
-            Path resourceDirectory, List<String> supportFiles) {
+    public QuestionSpec(String id, String answerTemplateSource, Path resourceDirectory, List<String> supportFiles) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("question id is required");
-        }
-        if (answerTemplateFile == null) {
-            throw new IllegalArgumentException("answerTemplateFile is required for " + id);
         }
         if (answerTemplateSource == null || answerTemplateSource.isBlank()) {
             throw new IllegalArgumentException("answerTemplateSource is required for " + id);
         }
         this.id = id;
-        this.folder = folder == null ? "" : folder;
-        this.answerTemplateFile = answerTemplateFile;
         this.answerTemplateSource = answerTemplateSource;
         this.resourceDirectory = resourceDirectory;
         // copy defensively > empty when the question has no support files
@@ -34,14 +25,6 @@ public final class QuestionSpec { //everything the llm needs to write one tester
 
     public String getId() {
         return id;
-    }
-
-    public String getFolder() {
-        return folder;
-    }
-
-    public Path getAnswerTemplateFile() {
-        return answerTemplateFile;
     }
 
     public String getAnswerTemplateSource() {
@@ -68,8 +51,7 @@ public final class QuestionSpec { //everything the llm needs to write one tester
 
     @Override
     public String toString() {
-        return "QuestionSpec{id=" + id + ", folder=" + folder
-                + ", answerTemplateFile=" + answerTemplateFile
+        return "QuestionSpec{id=" + id + ", resourceDirectory=" + resourceDirectory
                 + ", templateSourceLength=" + answerTemplateSource.length() + '}';
     }
 }
