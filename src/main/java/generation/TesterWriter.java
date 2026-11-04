@@ -12,6 +12,14 @@ public class TesterWriter { //writes tester to the output folder > backs up any 
     // backups live in a sub-folder so the testers folder stays clean for TesterLoader's *Tester.java glob
     private static final String BACKUP_FOLDER = "backup";
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    // the files bundle sent in the prompt > not *Tester.java so TesterLoader ignores it
+    private static final String FILES_BUNDLE = "files.md";
+
+    // write the files bundle next to the testers so the exact llm context can be inspected > replaced every run
+    public Path writeFilesBundle(String files, Path outputDirectory) throws IOException {
+        Path directory = Files.createDirectories(outputDirectory.toAbsolutePath().normalize());
+        return Files.writeString(directory.resolve(FILES_BUNDLE), files);
+    }
 
     // write the generated tester > return the path written > never touches answer templates
     public Path write(QuestionSpec spec, String testerSource, Path outputDirectory) throws IOException {

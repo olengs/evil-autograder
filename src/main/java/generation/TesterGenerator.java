@@ -4,11 +4,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import config.Config;
 import generation.llm.LlmClient;
 import generation.llm.LlmClientFactory;
+import generation.llm.LlmException;
 import generation.llm.LlmRequest;
 import generation.llm.UploadedDocument;
 import generation.prompt.AddOnPrompter;
@@ -16,10 +22,9 @@ import generation.prompt.PromptBuilder;
 import generation.prompt.PrompterRegistry;
 import utils.PdfFileUtils;
 
-public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -> validate -> write for every question
+public class TesterGenerator { //orchestrates files bundle & exam pdf upload -> one prompt -> llm json -> validate -> write per question
     private final QuestionSpecCollector collector = new QuestionSpecCollector();
     private final PromptBuilder promptBuilder = new PromptBuilder();
-    private final TesterCodeExtractor codeExtractor = new TesterCodeExtractor();
     private final TesterSourceRenderer renderer = new TesterSourceRenderer();
     private final TesterWriter writer = new TesterWriter();
 
@@ -55,82 +60,118 @@ public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -
         // 3 > optional: snapshot one existing tester as a format exemplar before we overwrite anything
         String exemplar = findExemplarTester(request.getOutputDirectory());
 
-        // 4 > upload the exam pdf once when configured > an unsupported provider fails here before any question runs
+        // 4 > every question folder as one files.md bundle > sent in the prompt & kept next to the testers for inspection
+        String files = promptBuilder.renderFiles(specs);
+        writer.writeFilesBundle(files, request.getOutputDirectory());
+
+        // 5 > upload the exam pdf once when configured > an unsupported provider fails here before the llm call
         UploadedDocument exam = config.isLlmSendPdf()
                 ? llmClient.uploadPdf(PdfFileUtils.requirePdf(request.getExamPdf()))
                 : null;
 
-        List<QuestionGenerationOutcome> outcomes = new ArrayList<>();
         try {
-            for (QuestionSpec spec : specs) {
-                outcomes.add(generateOne(spec, addOns, request.getUserPrompt(), exemplar, exam,
-                        request.getOutputDirectory()));
-            }
+            return new GenerationResult(generateAll(specs, files, addOns, request.getUserPrompt(), exemplar, exam,
+                    request.getOutputDirectory()));
         } finally {
-            // always remove the uploaded copy > even when a question blew up
+            // always remove the uploaded copy > even when generation blew up
             if (exam != null) {
                 llmClient.deleteUpload(exam);
             }
         }
-        return new GenerationResult(outcomes);
     }
 
-    // generate & validate one tester > retry feeding the failure back into the prompt
-    private QuestionGenerationOutcome generateOne(QuestionSpec spec, List<AddOnPrompter> addOns,
-            String userPrompt, String exemplar, UploadedDocument exam, Path outputDirectory) {
+    // one llm call returns every tester as json > each is rendered, validated & written on its own
+    // a retry asks again for the failed question ids only, with each one's failure fed back into the prompt
+    private List<QuestionGenerationOutcome> generateAll(List<QuestionSpec> specs, String files,
+            List<AddOnPrompter> addOns, String userPrompt, String exemplar, UploadedDocument exam,
+            Path outputDirectory) {
+        if (!llmClient.supportsStructuredOutput()) {
+            throw new LlmException(llmClient.providerName() + " cannot return structured output > "
+                    + "generating every tester in one reply needs it");
+        }
         int maxRetries = config.getGenerationMaxRetries();
-        String lastFailure = "";
-        String lastTesterSource = null; // keep the most recent generated source so a failed one is still written
+        Map<String, QuestionGenerationOutcome> outcomes = new HashMap<>(); // question id -> final outcome
+        Map<String, String> lastFailures = new LinkedHashMap<>(); // question id -> latest failure > fed into the retry
+        Map<String, String> lastSources = new HashMap<>(); // keep each latest source so a failed one is still written
+        List<QuestionSpec> pending = specs;
 
         // one initial attempt plus up to maxRetries more
-        for (int attempt = 0; attempt <= maxRetries; attempt++) {
-            // on a retry, append the previous failure so the model can fix it
-            String effectiveUserPrompt = buildRetryPrompt(userPrompt, lastFailure);
-
-            String testerSource;
+        for (int attempt = 0; attempt <= maxRetries && !pending.isEmpty(); attempt++) {
+            Map<String, GeneratedTesterSpec> generated;
             try {
-                String prompt = promptBuilder.build(spec, addOns, effectiveUserPrompt, exemplar, exam != null);
-                LlmRequest llmRequest = new LlmRequest(config.getLlmModel(), prompt, exam);
-                // structured providers return the test cases as json > the renderer writes the grader-format tester
-                testerSource = llmClient.supportsStructuredOutput()
-                        ? renderer.render(spec, llmClient.completeStructured(llmRequest, GeneratedTesterSpec.class))
-                        : codeExtractor.extract(llmClient.complete(llmRequest));
+                String prompt = promptBuilder.build(pending, files, addOns,
+                        buildRetryPrompt(userPrompt, lastFailures), exemplar, exam != null);
+                generated = byQuestionId(llmClient.completeStructured(
+                        new LlmRequest(config.getLlmModel(), prompt, exam), GeneratedTesters.class));
             } catch (RuntimeException error) {
-                // llm or extraction failure > record & retry if attempts remain
-                lastFailure = error.getMessage();
-                if (attempt < maxRetries) {
-                    continue;
+                // llm failure > every pending question shares it > retry if attempts remain
+                pending.forEach(spec -> lastFailures.put(spec.getId(), "generation failed > " + error.getMessage()));
+                continue;
+            }
+
+            List<QuestionSpec> failed = new ArrayList<>();
+            for (QuestionSpec spec : pending) {
+                GeneratedTesterSpec tester = generated.get(key(spec.getId()));
+                String failure = renderAndValidate(spec, tester, lastSources);
+                if (failure == null) {
+                    outcomes.put(spec.getId(), writeTester(spec, lastSources.get(spec.getId()), outputDirectory,
+                            GenerationStatus.WRITTEN, "validated with " + tester.testCases.size() + " test case(s)"));
+                } else {
+                    lastFailures.put(spec.getId(), failure);
+                    failed.add(spec);
                 }
-                // nothing usable was ever produced > fall back to any earlier source, else report generation failure
-                if (lastTesterSource != null) {
-                    return writeTester(spec, lastTesterSource, outputDirectory, GenerationStatus.VALIDATION_FAILED,
-                            "generation failed on final attempt > " + lastFailure + " > written anyway for manual review");
-                }
-                return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.GENERATION_FAILED,
-                        null, "generation failed > " + lastFailure);
             }
-
-            lastTesterSource = testerSource; // remember the latest source even if it fails validation
-
-            // validate the generated tester against the real answer template
-            ValidationResult validation = validator.validate(spec, testerSource);
-            if (validation.isValid()) {
-                return writeTester(spec, testerSource, outputDirectory, GenerationStatus.WRITTEN,
-                        "validated with " + validation.getTestCaseCount() + " test case(s)");
-            }
-
-            // invalid > keep the failure detail for the next retry prompt
-            lastFailure = validation.getFailedStage() + " > " + validation.getMessage();
-            if (attempt >= maxRetries) {
-                // still write the best-effort (invalid) tester so it can be inspected & fixed by hand > but flag it
-                return writeTester(spec, testerSource, outputDirectory, GenerationStatus.VALIDATION_FAILED,
-                        "failed validation after " + (maxRetries + 1) + " attempt(s) > " + lastFailure
-                                + " > written anyway for manual review");
-            }
+            // only the still-failing questions are asked for again > drop the failures of ones that now passed
+            lastFailures.keySet().retainAll(failed.stream().map(QuestionSpec::getId).toList());
+            pending = failed;
         }
 
-        // unreachable > the loop always returns > kept for the compiler
-        return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.GENERATION_FAILED, null, "no attempt made");
+        // out of attempts > write any best-effort (invalid) source for manual review, else report generation failure
+        String attempts = (maxRetries + 1) + " attempt(s)";
+        for (QuestionSpec spec : pending) {
+            String failure = lastFailures.get(spec.getId());
+            String source = lastSources.get(spec.getId());
+            outcomes.put(spec.getId(), source != null
+                    ? writeTester(spec, source, outputDirectory, GenerationStatus.VALIDATION_FAILED,
+                            "failed after " + attempts + " > " + failure + " > written anyway for manual review")
+                    : new QuestionGenerationOutcome(spec.getId(), GenerationStatus.GENERATION_FAILED, null,
+                            "failed after " + attempts + " > " + failure));
+        }
+        return specs.stream().map(spec -> outcomes.get(spec.getId())).toList();
+    }
+
+    // render one tester from the model's json & validate it against the real answer template
+    // returns null when valid > otherwise the failure to feed back > a rendered source is kept in lastSources either way
+    private String renderAndValidate(QuestionSpec spec, GeneratedTesterSpec generated, Map<String, String> lastSources) {
+        if (generated == null) {
+            return "no tester was returned for " + spec.getId();
+        }
+        String testerSource;
+        try {
+            testerSource = renderer.render(spec, generated);
+        } catch (IllegalArgumentException error) {
+            return "unusable reply > " + error.getMessage();
+        }
+        lastSources.put(spec.getId(), testerSource);
+        ValidationResult validation = validator.validate(spec, testerSource);
+        return validation.isValid() ? null : validation.getFailedStage() + " > " + validation.getMessage();
+    }
+
+    // index the reply by question id > case-insensitive like the grader > the first entry wins on a duplicate
+    private static Map<String, GeneratedTesterSpec> byQuestionId(GeneratedTesters reply) {
+        Map<String, GeneratedTesterSpec> byId = new HashMap<>();
+        if (reply != null && reply.testers != null) {
+            for (GeneratedTesterSpec tester : reply.testers) {
+                if (tester != null && tester.questionId != null) {
+                    byId.putIfAbsent(key(tester.questionId), tester);
+                }
+            }
+        }
+        return byId;
+    }
+
+    private static String key(String questionId) {
+        return questionId.strip().toLowerCase(Locale.ROOT);
     }
 
     // write the tester & report it with the given status > a write failure is reported instead, keeping the context
@@ -145,13 +186,15 @@ public class TesterGenerator { //orchestrates exam pdf upload -> prompt -> llm -
         }
     }
 
-    // append the previous failure so the model can correct it on a retry > lastFailure is blank on the first attempt
-    private String buildRetryPrompt(String userPrompt, String lastFailure) {
-        if (lastFailure == null || lastFailure.isBlank()) {
+    // append each failed question's error so the model can correct it on a retry > no failures on the first attempt
+    private String buildRetryPrompt(String userPrompt, Map<String, String> failures) {
+        if (failures.isEmpty()) {
             return userPrompt;
         }
-        String retryNote = "The previous tester you produced failed with this error. Fix it and return corrected code:\n"
-                + lastFailure;
+        String retryNote = "The previous testers you produced for these question ids failed. "
+                + "Fix them and return corrected testers:\n"
+                + failures.entrySet().stream().map(failure -> "- " + failure.getKey() + " > " + failure.getValue())
+                        .collect(Collectors.joining("\n"));
         return userPrompt.isBlank() ? retryNote : userPrompt + "\n\n" + retryNote;
     }
 

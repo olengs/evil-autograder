@@ -4,8 +4,21 @@
     "{{name}} placeholders are filled in by the Java code. An unknown placeholder is an error.",
     "addOns: toggle each one with prompter.<id>.enabled in config.properties.",
     "sections: assembled in order and separated by a blank line. A section with 'requires' is skipped when that value is blank.",
-    "Section placeholders: baseInstructions, addOnInstructions, userPrompt, questionId, testerClass, answerTemplate, examAttached, exemplarTester."
+    "Section placeholders: baseInstructions, addOnInstructions, userPrompt, questionIds, files, examAttached, exemplarTester.",
+    "files: layout of the files.md bundle > every question folder & its files in one block > written next to the testers too.",
+    "files placeholders: folder (folderName), textFile (fileName, fileType, content), binaryFile (fileName)."
   ],
+
+  "files": {
+    "folder": ["{{folderName}}/"],
+    "textFile": [
+      "{{fileName}}",
+      "```{{fileType}}",
+      "{{content}}",
+      "```"
+    ],
+    "binaryFile": ["{{fileName}} (binary file, contents not shown)"]
+  },
 
   "base": {
     "instructions": [
@@ -105,21 +118,23 @@
       ]
     },
     {
-      "name": "question",
+      "name": "questions",
       "lines": [
-        "QUESTION TO WRITE A TESTER FOR:",
-        "- Question id: {{questionId}}",
-        "- Tester class name: {{testerClass}}",
-        "- Must declare: public class {{testerClass}} extends {{questionId}}"
+        "QUESTIONS TO WRITE TESTERS FOR:",
+        "Write one tester for each of these question ids: {{questionIds}}",
+        "For a question id <id>: the tester class is <id>Tester and must declare: public class <id>Tester extends <id>",
+        "Each tester is returned separately, tagged with its question id."
       ]
     },
     {
-      "name": "answer-template",
+      "name": "files",
       "lines": [
-        "ANSWER TEMPLATE SOURCE (the exact method signatures you must call):",
-        "```java",
-        "{{answerTemplate}}",
-        "```"
+        "FILES IN THE RESOURCES FOLDER (one block per question folder):",
+        "<folder>/<id>.java is the answer template for question <id> > it has the exact method signatures you must call.",
+        "A tester runs inside its own question folder > it can only use the files in that folder.",
+        "Data files can be opened by name from the working directory. Use their real contents to compute expected values.",
+        "",
+        "{{files}}"
       ]
     },
     {
@@ -127,7 +142,7 @@
       "requires": "examAttached",
       "lines": [
         "QUESTION DESCRIPTION FROM THE EXAM:",
-        "The exam paper is attached as a PDF. Find the description of {{questionId}} in it (Question N, part (x)) and write tests that match its requirements and mark allocation."
+        "The exam paper is attached as a PDF. Find the description of each question id in it (Question N, part (x)) and write tests that match its requirements and mark allocation."
       ]
     },
     {
