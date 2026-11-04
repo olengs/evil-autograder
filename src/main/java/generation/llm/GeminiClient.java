@@ -3,19 +3,32 @@ package generation.llm;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.google.genai.Client;
 import com.google.genai.errors.ApiException;
 import com.google.genai.errors.GenAiIOException;
 import com.google.genai.types.Content;
+import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.HttpOptions;
 import com.google.genai.types.Part;
 import com.google.genai.types.UploadFileConfig;
+import com.openai.core.JsonField;
+import com.openai.core.ObjectMappers;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
 
 import utils.PdfFileUtils;
 
 public final class GeminiClient implements LlmClient { //google gemini generateContent via the google gen ai sdk > exam pdf goes up through the files api
+    // the openai sdk's mapper knows its JsonField types > used only to turn the schema into a plain map
+    private static final ObjectMapper SDK_JSON = ObjectMappers.jsonMapper();
+    // a plain mapper reads replies > the structured output classes use public fields, which the sdk mapper ignores
+    private static final ObjectMapper REPLY_JSON = new ObjectMapper();
+
     private final Client client;
 
     // blank baseUrl > the sdk's public gemini endpoint > otherwise an override e.g. a proxy
@@ -37,7 +50,45 @@ public final class GeminiClient implements LlmClient { //google gemini generateC
 
     @Override
     public String complete(LlmRequest request) {
-        // prompt text first > then the uploaded pdf by reference when one was uploaded
+        return generate(request, null);
+    }
+
+    @Override
+    public boolean supportsStructuredOutput() {
+        return true;
+    }
+
+    // json mode with the schema built from the class > the same schema the openai sdk sends for its structured outputs
+    @Override
+    public <T> T completeStructured(LlmRequest request, Class<T> type) {
+        GenerateContentConfig config = GenerateContentConfig.builder()
+                .systemInstruction(Content.fromParts(Part.fromText(STRUCTURED_NOTE)))
+                .responseMimeType("application/json")
+                .responseJsonSchema(jsonSchemaOf(type))
+                .build();
+        String json = generate(request, config);
+        try {
+            return REPLY_JSON.readValue(json, type);
+        } catch (JsonProcessingException | RuntimeException error) {
+            throw new LlmException("could not parse structured reply > " + error.getMessage(), error);
+        }
+    }
+
+    // let the openai sdk build its response_format for the class & read the json schema back out
+    // the sdk's own schema helpers are not callable from java > this keeps one schema for every provider
+    private static Map<?, ?> jsonSchemaOf(Class<?> type) {
+        JsonField<?> schema = ChatCompletionCreateParams.builder()
+                .model("schema-only").addUserMessage("schema-only") // required by build() > never sent
+                .responseFormat(type).build().rawParams()
+                .responseFormat().flatMap(ChatCompletionCreateParams.ResponseFormat::jsonSchema)
+                .orElseThrow(() -> new LlmException("could not build a json schema for " + type.getSimpleName()))
+                .jsonSchema()._schema(); // the raw field > the typed schema() accessor rejects a free-form schema
+        // a plain map so the gemini sdk serialises it as json schema > not as openai JsonField objects
+        return SDK_JSON.convertValue(schema, Map.class);
+    }
+
+    // prompt text first > then the uploaded pdf by reference when one was uploaded > config null for plain text
+    private String generate(LlmRequest request, GenerateContentConfig config) {
         List<Part> parts = new ArrayList<>();
         parts.add(Part.fromText(request.getPrompt()));
         if (request.hasDocument()) {
@@ -47,7 +98,7 @@ public final class GeminiClient implements LlmClient { //google gemini generateC
         GenerateContentResponse response;
         try {
             response = client.models.generateContent(request.getModel(),
-                    Content.fromParts(parts.toArray(Part[]::new)), null);
+                    Content.fromParts(parts.toArray(Part[]::new)), config);
         } catch (ApiException error) {
             // separate catches on purpose > a multi-catch types the variable as the sdk's package-private
             // BaseException & the jvm then throws IllegalAccessError at runtime

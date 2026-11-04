@@ -10,6 +10,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 @JsonClassDescription("The test cases for one question's tester. The tester class, score field, main(), "
         + "'Test <n>:' headers and Passed/Failed outcome lines are generated for you > never write them.")
 public class GeneratedTesterSpec {
+    @JsonPropertyDescription("The question id this tester is for, exactly as listed in the prompt, e.g. \"Q1a\". "
+            + "The tester is written to <questionId>Tester.java.")
+    public String questionId;
+
     @JsonPropertyDescription("Import statements, one per entry, e.g. \"import java.util.*;\". "
             + "Java standard library only (java.* packages), no third-party libraries. Empty list when none are needed.")
     public List<String> imports;
