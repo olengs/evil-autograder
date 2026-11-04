@@ -4,14 +4,13 @@
 package utils;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.stream.Stream;
+import org.apache.commons.io.file.PathUtils;
 
 public class FileUtils {
     /** Lists direct regular files; the caller must close the returned stream. */
@@ -25,72 +24,52 @@ public class FileUtils {
     }
 
     //#region file copy
-    public record CopyPaths(Path source, Path destination) {}
-
     public static void copyDirectory(Path from, Path to, CopyOptions option) throws IOException {
-        CopyPaths paths = checkCopyPaths(from, to, option);
-        copyDirectoryContents(paths.source, paths.destination,  option);
-    }
-
-    private static CopyPaths checkCopyPaths(Path from, Path to, CopyOptions option) throws IOException { //@1ejun6 > checks that both folders are valid before copying
-        if (option == null) {
-            throw new IOException("copy option is required");
-        }
+        if (option == null) throw new IOException("copy option is required");
         Path source = resolveExistingPath(from);
-        Path destination = resolveExistingPath(to); //@1ejun6 > destination folder must already exist too
-        if (pathsOverlap(source, destination)) {
-            throw new IOException("source & destination overlap > " + to);
-        }
-        if (!Files.isDirectory(source)) {
-            throw new IOException("copy source is not a directory > " + from);
-        }
-        if (!Files.isDirectory(destination)) {
-            throw new IOException("copy destination is not a directory > " + to);
-        }
-        return new CopyPaths(source, destination);
-    }
+        Path destination = resolveExistingPath(to);
+        if (pathsOverlap(source, destination)) throw new IOException("source & destination overlap > " + to);
+        if (!Files.isDirectory(source)) throw new IOException("copy source is not a directory > " + from);
+        if (!Files.isDirectory(destination)) throw new IOException("copy destination is not a directory > " + to);
 
-    private static void copyDirectoryContents(Path sourceRoot, Path destinationRoot, CopyOptions option) throws IOException {
-        Files.walkFileTree(sourceRoot, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path directory, BasicFileAttributes attributes) throws IOException {
-                Path target = destinationRoot.resolve(sourceRoot.relativize(directory));
-                Files.createDirectories(target);
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) throws IOException {
-                if (!attributes.isRegularFile()) {
-                    throw new IOException("source contains a non-regular file > " + file);
+        // Preserve the existing file-type checks before letting Commons IO copy the tree.
+        try (var entries = Files.walk(source)) {
+            for (Path entry : entries.toList()) {
+                Path target = destination.resolve(source.relativize(entry));
+                if (Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)) {
+                    if (Files.exists(target) && !Files.isDirectory(target)) {
+                        throw new IOException("destination is not a directory > " + target);
+                    }
+                } else {
+                    if (!Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS)) {
+                        throw new IOException("source contains a non-regular file > " + entry);
+                    }
+                    checkFileCopy(entry, target);
                 }
-                copyFile(file, destinationRoot.resolve(sourceRoot.relativize(file)), option);
-                return FileVisitResult.CONTINUE;
             }
-        });
+        }
+        if (option == CopyOptions.REPLACE_EXISTING) {
+            PathUtils.copyDirectory(source, destination, StandardCopyOption.REPLACE_EXISTING);
+        } else {
+            PathUtils.copyDirectory(source, destination);
+        }
     }
 
     public static void copyFile(Path source, Path destination, CopyOptions option) throws IOException {
-        if (option == null) {
-            throw new IOException("copy option is required");
-        }
-        if (!Files.isRegularFile(source)) {
-            throw new IOException("copy source is not a regular file > " + source);
-        }
-        //@1ejun6 > destination parent folder must already exist
-        if (Files.exists(destination)) {
-            if (!Files.isRegularFile(destination)) {
-                throw new IOException("destination is not a regular file > " + destination);
-            }
-            if (Files.isSameFile(source, destination)) {
-                throw new IOException("source & destination refer to same file");
-            }
-        }
-
+        if (option == null) throw new IOException("copy option is required");
+        checkFileCopy(source, destination);
         if (option == CopyOptions.REPLACE_EXISTING) {
             Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
         } else {
             Files.copy(source, destination);
+        }
+    }
+
+    private static void checkFileCopy(Path source, Path destination) throws IOException {
+        if (!Files.isRegularFile(source)) throw new IOException("copy source is not a regular file > " + source);
+        if (Files.exists(destination)) {
+            if (!Files.isRegularFile(destination)) throw new IOException("destination is not a regular file > " + destination);
+            if (Files.isSameFile(source, destination)) throw new IOException("source & destination refer to same file");
         }
     }
 
@@ -104,24 +83,7 @@ public class FileUtils {
             throw new IOException("Cannot delete a filesystem root > " + root);
         }
 
-        Files.walkFileTree(root, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attributes)
-                    throws IOException {
-                Files.delete(file);
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path directory, IOException failure)
-                    throws IOException {
-                if (failure != null) {
-                    throw failure;
-                }
-                Files.delete(directory);
-                return FileVisitResult.CONTINUE;
-            }
-        });
+        PathUtils.deleteDirectory(root);
     }
 
     public static Path resolveExistingPath(Path value) throws IOException {

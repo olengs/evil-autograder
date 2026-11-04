@@ -13,6 +13,7 @@ import java.util.concurrent.TimeoutException;
 
 import exceptions.ProcessExecutionException;
 import model.ProcessResult;
+import org.apache.commons.io.IOUtils;
 
 public class ProcessExecutor {
     public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorCode, String startErrorMessage) {
@@ -56,8 +57,9 @@ public class ProcessExecutor {
             throw new ProcessExecutionException("prc-003", "Cannot close process input", error);
         } finally {
             destroyProcessTree(process);
-            closeQuietly(process.getInputStream());
-            closeQuietly(process.getErrorStream());
+            IOUtils.closeQuietly(process.getInputStream());
+            IOUtils.closeQuietly(process.getErrorStream());
+            IOUtils.closeQuietly(process.getOutputStream());
             outputReaders.shutdownNow();
         }
     }
@@ -91,11 +93,4 @@ public class ProcessExecutor {
         }
     }
 
-    private static void closeQuietly(InputStream input) {
-        try {
-            input.close();
-        } catch (IOException ignored) {
-            //cleanup must not replace the original run failure
-        }
-    }
 }
