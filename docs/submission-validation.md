@@ -54,7 +54,6 @@
 - Existing header/search utilities and newer model APIs are reused without parallel replacements.
 - Grading source and answer-lookup behavior are unchanged; no normalizer was introduced.
 
-## Tests
+## Build
 
-`src/test/java` contains optional development tests, not application dependencies.
-Run `mvn test` with JDK 25+; `test-validation.ps1` also checks the 200-line Java-file limit.
+Run `mvn compile` with JDK 25+ to compile the application.
