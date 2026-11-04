@@ -1,3 +1,6 @@
+// Resolves file paths and builds bounded indexes within a submission directory.
+// Detects ambiguous matches and optionally caches searches for one submission.
+
 package utils;
 
 import java.io.IOException;

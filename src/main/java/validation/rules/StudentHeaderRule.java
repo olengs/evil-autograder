@@ -1,3 +1,6 @@
+// Checks roster identity fields in the leading comments of required answer files.
+// Reports missing and mismatched names or emails without changing submissions.
+
 package validation.rules;
 
 import java.io.IOException;
@@ -12,9 +15,9 @@ import model.StudentSubmission;
 import model.SubmissionIssue;
 import utils.SubmissionFileFinder;
 import utils.StudentHeaderUtils;
-import validation.ValidationRule;
+import validation.QuestionValidationRule;
 
-public class StudentHeaderRule implements ValidationRule { //checks student name & email in comments at the top of each required answer
+public class StudentHeaderRule implements QuestionValidationRule {
     @Override
     public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question, SubmissionFileFinder files) {
         List<SubmissionIssue> issues = new ArrayList<>();

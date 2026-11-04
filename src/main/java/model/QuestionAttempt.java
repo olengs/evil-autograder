@@ -1,3 +1,6 @@
+// Stores a question's directory, selected student files, and issues.
+// Reports whether its own findings contain an error.
+
 package model;
 
 import java.nio.file.Path;

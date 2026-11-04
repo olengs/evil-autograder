@@ -1,3 +1,6 @@
+// Stores the roster identity used to identify submissions.
+// Provides the student's name, username, and email.
+
 package model;
 
 public class StudentDetails { //hold name & username & email read from scoresheet

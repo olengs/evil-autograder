@@ -1,3 +1,6 @@
+// Extracts one ZIP archive into the workspace supplied by its caller.
+// Rejects entries that would escape that directory and reports extraction failures.
+
 package submission;
 
 import java.io.IOException;
@@ -9,7 +12,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipFile;
 
-public class ZipExtractor { //unpacks one zip into destination directory supplied by its caller
+public class ZipExtractor {
     /** @1ejun6 > extracts one zip file into given destination folder
      *
      * @param zipFile > zip file to extract

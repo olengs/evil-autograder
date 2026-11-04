@@ -1,3 +1,6 @@
+// Runs submission and question checks using one cached file finder per submission.
+// Builds question attempts containing selected answer paths and validation issues.
+
 package validation;
 
 import model.AssessmentDefinition;
@@ -14,12 +17,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SubmissionValidator { //runs validation rules & builds one ~questionattempt~ for each question
-    private final List<ValidationRule> questionRules;
+public class SubmissionValidator {
+    private final List<QuestionValidationRule> questionRules;
     private final List<SubmissionValidationRule> submissionRules;
     private final SubmissionFileFinder fileLocator;
 
-    public SubmissionValidator(List<ValidationRule> questionRules, List<SubmissionValidationRule> submissionRules, SubmissionFileFinder fileLocator) {
+    public SubmissionValidator(List<QuestionValidationRule> questionRules, List<SubmissionValidationRule> submissionRules, SubmissionFileFinder fileLocator) {
         this.questionRules = questionRules;
         this.submissionRules = submissionRules;
         this.fileLocator = fileLocator;
@@ -46,24 +49,24 @@ public class SubmissionValidator { //runs validation rules & builds one ~questio
 
     private void validateQuestion(StudentSubmission submission, QuestionDefinition question, SubmissionFileFinder files) {
         List<SubmissionIssue> issues = new ArrayList<>();
-        for (ValidationRule rule : questionRules) {
+        for (QuestionValidationRule rule : questionRules) {
             issues.addAll(rule.validate(submission, question, files));
         }
 
         Path questionDirectory = submission.getRootDirectory().resolve(question.getExpectedFolder()).toAbsolutePath().normalize();
-        List<Path> submittedFiles = locateFiles(submission, question, issues, files);
+        List<Path> submittedFiles = locateSubmittedAnswerFiles(submission, question, issues, files);
         QuestionAttempt attempt = new QuestionAttempt(question, questionDirectory, submittedFiles, issues);
 
         submission.addQuestionAttempt(attempt);
         submission.addIssues(issues);
     }
 
-    private List<Path> locateFiles(StudentSubmission submission, QuestionDefinition question,
+    private List<Path> locateSubmittedAnswerFiles(StudentSubmission submission, QuestionDefinition question,
             List<SubmissionIssue> issues, SubmissionFileFinder files) {
         Path questionFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
         
         try {
-            return files.findAnswerFiles(submission.getRootDirectory(), question.getExpectedFolder(), editableFiles(question));
+            return files.findAnswerFiles(submission.getRootDirectory(), question.getExpectedFolder(), selectEditableFileNames(question));
         } catch (IOException e) {
             issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR, "unable to locate answer files > " + e.getMessage(), question.getId(), questionFolder));
             return new ArrayList<>();
@@ -71,7 +74,7 @@ public class SubmissionValidator { //runs validation rules & builds one ~questio
     }
 
     //required answers & any template java file with a name & email section > a missing optional file is just left out
-    private List<String> editableFiles(QuestionDefinition question) throws IOException {
+    private List<String> selectEditableFileNames(QuestionDefinition question) throws IOException {
         List<String> editable = new ArrayList<>(question.getRequiredFiles());
         for (String resource : question.getAllowedResourceFiles()) {
             if (resource.endsWith(".java") && StudentHeaderUtils.hasStudentHeader(question.getResourceDirectory().resolve(resource))) {

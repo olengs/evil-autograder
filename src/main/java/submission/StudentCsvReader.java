@@ -1,3 +1,6 @@
+// Reads roster records and derives each student's username from their email.
+// Logs corrected or invalid CSV rows while continuing through ordinary row errors.
+
 package submission;
 
 import com.opencsv.CSVReader;
@@ -11,7 +14,7 @@ import java.util.Map;
 import model.StudentDetails;
 import utils.Logger;
 
-public class StudentCsvReader { //read scoresheet & corrects usernames from email & records row issues without stopping for ordinary invalid records
+public class StudentCsvReader {
     public List<StudentDetails> read(Path scoresheet) throws IOException { //@1ejun6 > checked
         return read(scoresheet, scoresheet.toAbsolutePath().getParent().resolve("csv.log.jsonl"));
     }

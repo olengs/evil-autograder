@@ -1,3 +1,6 @@
+// Describes an assessment and its question definitions.
+// Exposes the assessment name and read-only question list.
+
 package model;
 
 import java.util.ArrayList;
