@@ -13,12 +13,15 @@ import model.QuestionDefinition;
 import model.TesterDefinition;
 import utils.FileUtils;
 import utils.SubmissionFileFinder;
+import utils.TemporaryDirectory;
 
 public class GradingWorkspace implements AutoCloseable { //creates & cleans up temporary folder used to grade one question
+    private final TemporaryDirectory temporaryDirectory;
     private final Path directory;
 
     public GradingWorkspace() throws IOException {
-        directory = Files.createTempDirectory("autograder-ws-"); //@1ejun6 > give this question its own temporary folder
+        temporaryDirectory = new TemporaryDirectory("autograder-ws-"); //@1ejun6 > give this question its own temporary folder
+        directory = temporaryDirectory.path();
     }
 
     public void prepare(QuestionDefinition question, QuestionAttempt attempt,
@@ -126,6 +129,6 @@ public class GradingWorkspace implements AutoCloseable { //creates & cleans up t
 
     @Override
     public void close() throws IOException {
-        FileUtils.deleteDirectory(directory);
+        temporaryDirectory.close();
     }
 }

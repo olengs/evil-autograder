@@ -9,7 +9,6 @@ import grading.AssessmentGrader;
 import grading.QuestionGrader;
 import grading.TesterLoader;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +17,8 @@ import model.*;
 import report.ScoreSheet;
 import submission.StudentCsvReader;
 import submission.SubmissionLoader;
-import utils.FileUtils;
 import utils.SubmissionFileFinder;
+import utils.TemporaryDirectory;
 import validation.SubmissionValidator;
 import validation.rules.*;
 
@@ -51,9 +50,8 @@ public class Main {
         //@1ejun6 > 1 > load question requirements & teacher provided tester programs
         var assessment = AssessmentLoader.load(config.getResourcesDirectory());
         var testers = TesterLoader.load(config.getTestersDirectory());
-        Path workspace = Files.createTempDirectory("autograder-submissions-");
-        Map<StudentSubmission, List<QuestionGrade>> results;
-        try {
+        try (var temporaryDirectory = new TemporaryDirectory("autograder-submissions-")) {
+            Path workspace = temporaryDirectory.path();
             //@1ejun6 > logs & extracted submissions stay outside original project files
             //@1ejun6 > 2 > read class list used to identify who submitted each zip
             //the scoresheet may not be provided > build it from the zips first
@@ -78,19 +76,9 @@ public class Main {
             }
 
             //@1ejun6 > 5 > pass prepared submissions to grading > each question gets its answer & requirements & tester & compilation/execution limits.
-            results = new AssessmentGrader(new QuestionGrader(config.getCompilationTimeout(), config.getExecutionTimeout())).grade(submissions, assessment, testers);
-        } catch (IOException | RuntimeException | Error failure) {
-            //@1ejun6 > keep original failure if cleanup also fails
-            try {
-                FileUtils.deleteDirectory(workspace);
-            } catch (IOException cleanupFailure) {
-                failure.addSuppressed(cleanupFailure);
-            }
-            throw failure;
+            //@1ejun6 > close workspace after grading & before returning > preserve cleanup failures as suppressed exceptions
+            return new AssessmentGrader(new QuestionGrader(config.getCompilationTimeout(), config.getExecutionTimeout())).grade(submissions, assessment, testers);
         }
-        //@1ejun6 > 6 > clean up extracted files after grading > keep results for printing
-        FileUtils.deleteDirectory(workspace);
-        return results;
     }
 
     public static void printResults(Map<StudentSubmission, List<QuestionGrade>> results) {
