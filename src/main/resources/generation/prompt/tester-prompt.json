@@ -4,9 +4,10 @@
     "{{name}} placeholders are filled in by the Java code. An unknown placeholder is an error.",
     "addOns: toggle each one with prompter.<id>.enabled in config.properties.",
     "sections: assembled in order and separated by a blank line. A section with 'requires' is skipped when that value is blank.",
-    "Section placeholders: baseInstructions, addOnInstructions, userPrompt, questionIds, files, examAttached, exemplarTester.",
-    "files: layout of the files.md bundle > every question folder & its files in one block > written next to the testers too.",
-    "files placeholders: folder (folderName), textFile (fileName, fileType, content), binaryFile (fileName)."
+    "Section placeholders: baseInstructions, addOnInstructions, userPrompt, questionIds, files, examAttached, exemplarTester, testerSkeleton, testerCase.",
+    "testerSkeleton & testerCase: the files in generation/tester/ inserted as-is > their own {{...}} markers are left for the model.",
+    "files: layout of the <folder>.md bundle > each question folder & its answer templates in one block > written to context/ too.",
+    "files placeholders: folder (folderName), textFile (fileName, fileType, content)."
   ],
 
   "files": {
@@ -16,8 +17,7 @@
       "```{{fileType}}",
       "{{content}}",
       "```"
-    ],
-    "binaryFile": ["{{fileName}} (binary file, contents not shown)"]
+    ]
   },
 
   "base": {
@@ -46,6 +46,9 @@
       "    \"Failed\"  when it does not,",
       "    \"Failed -> <reason>\" inside the catch block when an exception is thrown.",
       "- On a pass, do: score += 1;  (one mark per passing test case).",
+      "    EVERY place that prints \"Passed\" must do score += 1; immediately before it, with no exceptions.",
+      "    This includes tests that expect an exception: when the expected exception is caught, do score += 1;",
+      "    and then print \"Passed\". The final score must always equal the number of \"Passed\" lines printed.",
       "",
       "NUMBER OF TEST CASES (one mark each):",
       "- Each test case is worth exactly one mark.",
@@ -129,10 +132,10 @@
     {
       "name": "files",
       "lines": [
-        "FILES IN THE RESOURCES FOLDER (one block per question folder):",
+        "ANSWER TEMPLATES (one block per question folder):",
         "<folder>/<id>.java is the answer template for question <id> > it has the exact method signatures you must call.",
-        "A tester runs inside its own question folder > it can only use the files in that folder.",
-        "Data files can be opened by name from the working directory. Use their real contents to compute expected values.",
+        "A tester runs inside its own question folder. The folder may also hold data files that are not shown here >",
+        "open them by the file name the question or template uses, and base expected values on the exam paper and template, never on invented file contents.",
         "",
         "{{files}}"
       ]
@@ -153,6 +156,35 @@
         "```java",
         "{{exemplarTester}}",
         "```"
+      ]
+    },
+    {
+      "name": "tester-template",
+      "lines": [
+        "TESTER TEMPLATE (a guide to follow, not a fixed format):",
+        "Base every tester on this layout > each marker in double braces is a part you write:",
+        "extra imports, the question id, the test cases and any optional helper methods.",
+        "```java",
+        "{{testerSkeleton}}",
+        "```",
+        "",
+        "Replace the testCases marker with one block like this per test case > one per mark:",
+        "```java",
+        "{{testerCase}}",
+        "```",
+        "",
+        "Adapt the template to each question where it makes sense, for example:",
+        "- Pick the comparison that suits the return type and context: expected.equals(result) for objects and",
+        "    collections with equals, == for primitives, Arrays.equals or Arrays.deepEquals for arrays,",
+        "    a tolerance such as Math.abs(expected - result) < 1e-6 for doubles,",
+        "    or compare result.toString() with an expected string when the elements have no equals (e.g. a List<Shape>).",
+        "- Declare expected and result with the method's real return type.",
+        "- Build the inputs the method actually takes > several arguments, a data file, objects, and so on.",
+        "- Print the inputs, expected value and actual value in whatever form makes them readable.",
+        "The parts the grader depends on must stay exactly as in the template: the class declaration,",
+        "the score field and main(), the \"Test <n>:\" header line, and exactly one",
+        "\"Passed\" / \"Failed\" / \"Failed -> ...\" outcome line per test case with score += 1 on a pass.",
+        "Every class you use must be imported or covered by import java.util.*; > the code must compile."
       ]
     }
   ]
