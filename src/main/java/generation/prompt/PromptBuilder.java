@@ -7,12 +7,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import generation.questionSpec.QuestionFile;
 import generation.questionSpec.QuestionSpec;
 import utils.TemplateUtils;
 
 public final class PromptBuilder { // assembles one prompt by filling the section layout from tester-prompt.json
+    // the tester layout the model must follow > filled into the tester-template section as-is
+    private static final String SKELETON_RESOURCE = "/generation/tester/tester-skeleton.java.txt";
+    private static final String CASE_RESOURCE = "/generation/tester/tester-case.java.txt";
+
     private final PromptCatalog catalog;
+    private final String testerSkeleton = TemplateUtils.readResource(SKELETON_RESOURCE).strip();
+    private final String testerCase = TemplateUtils.readResource(CASE_RESOURCE).stripTrailing();
 
     public PromptBuilder() {
         this(PromptCatalog.loadDefault());
@@ -42,6 +47,9 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
         values.put("files", strip(files));
         values.put("examAttached", examAttached ? "yes" : "");
         values.put("exemplarTester", strip(exemplarTester));
+        // filled in one pass > the {{...}} markers inside the templates are not replaced
+        values.put("testerSkeleton", testerSkeleton);
+        values.put("testerCase", testerCase);
 
         // render sections in catalog order > skip a section whose required value is blank > blank line between
         return catalog.getSections().stream()
@@ -50,47 +58,29 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
                 .collect(Collectors.joining("\n\n", "", "\n"));
     }
 
-    // the files.md bundle > every question folder once with all its files > layout from the catalog's files block
-    // a spec without folder files contributes its answer template alone
+    // the <folder>.md bundle > each question folder in specs once with its answer templates > layout from the catalog's files block
     public String renderFiles(List<QuestionSpec> specs) {
-        // questions sharing a folder (Q1a & Q1b) list the same files > keep each file once in folder order
-        Map<String, List<QuestionFile>> folders = new LinkedHashMap<>();
+        // questions sharing a folder (Q1a & Q1b) are listed under one folder header in spec order
+        Map<String, List<QuestionSpec>> folders = new LinkedHashMap<>();
         for (QuestionSpec spec : specs) {
-            List<QuestionFile> folderFiles = folders.computeIfAbsent(folderName(spec), name -> new ArrayList<>());
-            List<QuestionFile> files = spec.getFolderFiles().isEmpty()
-                    ? List.of(new QuestionFile(spec.getId() + ".java", spec.getAnswerTemplateSource()))
-                    : spec.getFolderFiles();
-            for (QuestionFile file : files) {
-                if (folderFiles.stream().noneMatch(existing -> existing.name().equals(file.name()))) {
-                    folderFiles.add(file);
-                }
-            }
+            folders.computeIfAbsent(spec.getFolderName(), name -> new ArrayList<>()).add(spec);
         }
 
         PromptCatalog.Files layout = catalog.getFiles();
         return folders.entrySet().stream()
                 .map(folder -> TemplateUtils.fill(PromptCatalog.join(layout.folder()), Map.of("folderName", folder.getKey()))
-                        + "\n" + folder.getValue().stream().map(file -> renderFile(layout, file))
+                        + "\n" + folder.getValue().stream().map(spec -> renderTemplate(layout, spec))
                                 .collect(Collectors.joining("\n\n")))
                 .collect(Collectors.joining("\n\n", "", "\n"));
     }
 
-    // one file entry > binary files are named only
-    private static String renderFile(PromptCatalog.Files layout, QuestionFile file) {
-        if (file.isBinary()) {
-            return TemplateUtils.fill(PromptCatalog.join(layout.binaryFile()), Map.of("fileName", file.name()));
-        }
+    // one answer template entry e.g. Q1a.java
+    private static String renderTemplate(PromptCatalog.Files layout, QuestionSpec spec) {
+        String fileName = spec.getId() + ".java";
         return TemplateUtils.fill(PromptCatalog.join(layout.textFile()), Map.of(
-                "fileName", file.name(),
-                "fileType", extension(file.name()),
-                "content", file.content().strip()));
-    }
-
-    // the question folder name > e.g. Q1 > the id when the spec has no folder
-    private static String folderName(QuestionSpec spec) {
-        return spec.getResourceDirectory() == null || spec.getResourceDirectory().getFileName() == null
-                ? spec.getId()
-                : spec.getResourceDirectory().getFileName().toString();
+                "fileName", fileName,
+                "fileType", extension(fileName),
+                "content", spec.getAnswerTemplateSource().strip()));
     }
 
     // file extension used as the fence language > e.g. java or txt > empty when there is none

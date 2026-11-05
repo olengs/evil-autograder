@@ -17,7 +17,6 @@ import generation.llm.LlmClientFactory;
 import generation.llm.LlmException;
 import generation.llm.LlmRequest;
 import generation.llm.UploadedDocument;
-import generation.output.TesterSourceRenderer;
 import generation.output.TesterWriter;
 import generation.prompt.AddOnPrompter;
 import generation.prompt.PromptBuilder;
@@ -28,16 +27,14 @@ import generation.run.GenerationRequest;
 import generation.run.GenerationResult;
 import generation.run.GenerationStatus;
 import generation.run.QuestionGenerationOutcome;
-import generation.schema.GeneratedTesterSpec;
 import generation.schema.GeneratedTesters;
 import generation.validation.GeneratedTesterValidator;
 import generation.validation.ValidationResult;
 import utils.PdfFileUtils;
 
-public class TesterGenerator { //orchestrates files bundle & exam pdf upload -> one prompt -> llm json -> validate -> write per question
+public class TesterGenerator { //orchestrates exam pdf upload -> per folder: files bundle -> one prompt -> llm json -> validate -> write per question
     private final QuestionSpecCollector collector = new QuestionSpecCollector();
     private final PromptBuilder promptBuilder = new PromptBuilder();
-    private final TesterSourceRenderer renderer = new TesterSourceRenderer();
     private final TesterWriter writer = new TesterWriter();
 
     private final Config config;
@@ -69,12 +66,19 @@ public class TesterGenerator { //orchestrates files bundle & exam pdf upload -> 
                 ? prompterRegistry.resolveFromConfig(config)
                 : prompterRegistry.resolve(request.getEnabledAddOnPrompters());
 
-        // 3 > optional: snapshot one existing tester as a format exemplar before we overwrite anything
-        String exemplar = findExemplarTester(request.getOutputDirectory());
+        // 3 > optional: one tester from exemplar.folder as a format example > none when the setting is blank
+        String exemplar = config.getExemplarDirectory().map(this::findExemplarTester).orElse(null);
 
-        // 4 > every question folder as one files.md bundle > sent in the prompt & kept next to the testers for inspection
-        String files = promptBuilder.renderFiles(specs);
-        writer.writeFilesBundle(files, request.getOutputDirectory());
+        if (!llmClient.supportsStructuredOutput()) {
+            throw new LlmException(llmClient.providerName() + " cannot return structured output > "
+                    + "generating testers as json needs it");
+        }
+
+        // 4 > group questions by folder > Q1a & Q1b share Q1 and its files > one llm call per folder
+        Map<String, List<QuestionSpec>> folders = new LinkedHashMap<>();
+        for (QuestionSpec spec : specs) {
+            folders.computeIfAbsent(spec.getFolderName(), name -> new ArrayList<>()).add(spec);
+        }
 
         // 5 > upload the exam pdf once when configured > an unsupported provider fails here before the llm call
         UploadedDocument exam = config.isLlmSendPdf()
@@ -82,8 +86,18 @@ public class TesterGenerator { //orchestrates files bundle & exam pdf upload -> 
                 : null;
 
         try {
-            return new GenerationResult(generateAll(specs, files, addOns, request.getUserPrompt(), exemplar, exam,
-                    request.getOutputDirectory()));
+            Map<String, QuestionGenerationOutcome> outcomes = new HashMap<>(); // question id -> final outcome
+            for (Map.Entry<String, List<QuestionSpec>> folder : folders.entrySet()) {
+                // each folder's own bundle e.g. context/q1.md > sent in its prompt & kept for inspection
+                String bundleName = folder.getKey().toLowerCase(Locale.ROOT);
+                String files = promptBuilder.renderFiles(folder.getValue());
+                writer.writeFilesBundle(bundleName, files, request.getOutputDirectory());
+                for (QuestionGenerationOutcome outcome : generateFolder(bundleName, folder.getValue(), files, addOns,
+                        request.getUserPrompt(), exemplar, exam, request.getOutputDirectory())) {
+                    outcomes.put(outcome.getQuestionId(), outcome);
+                }
+            }
+            return new GenerationResult(specs.stream().map(spec -> outcomes.get(spec.getId())).toList());
         } finally {
             // always remove the uploaded copy > even when generation blew up
             if (exam != null) {
@@ -92,15 +106,11 @@ public class TesterGenerator { //orchestrates files bundle & exam pdf upload -> 
         }
     }
 
-    // one llm call returns every tester as json > each is rendered, validated & written on its own
+    // one llm call returns every tester in one question folder as json > each is validated & written on its own
     // a retry asks again for the failed question ids only, with each one's failure fed back into the prompt
-    private List<QuestionGenerationOutcome> generateAll(List<QuestionSpec> specs, String files,
+    private List<QuestionGenerationOutcome> generateFolder(String bundleName, List<QuestionSpec> specs, String files,
             List<AddOnPrompter> addOns, String userPrompt, String exemplar, UploadedDocument exam,
             Path outputDirectory) {
-        if (!llmClient.supportsStructuredOutput()) {
-            throw new LlmException(llmClient.providerName() + " cannot return structured output > "
-                    + "generating every tester in one reply needs it");
-        }
         int maxRetries = config.getGenerationMaxRetries();
         Map<String, QuestionGenerationOutcome> outcomes = new HashMap<>(); // question id -> final outcome
         Map<String, String> lastFailures = new LinkedHashMap<>(); // question id -> latest failure > fed into the retry
@@ -109,27 +119,30 @@ public class TesterGenerator { //orchestrates files bundle & exam pdf upload -> 
 
         // one initial attempt plus up to maxRetries more
         for (int attempt = 0; attempt <= maxRetries && !pending.isEmpty(); attempt++) {
-            Map<String, GeneratedTesterSpec> generated;
+            GeneratedTesters reply;
             try {
                 String prompt = promptBuilder.build(pending, files, addOns,
                         buildRetryPrompt(userPrompt, lastFailures), exemplar, exam != null);
-                generated = byQuestionId(llmClient.completeStructured(
-                        new LlmRequest(config.getLlmModel(), prompt, exam), GeneratedTesters.class));
+                reply = llmClient.completeStructured(
+                        new LlmRequest(config.getLlmModel(), prompt, exam), GeneratedTesters.class);
             } catch (RuntimeException error) {
                 // llm failure > every pending question shares it > retry if attempts remain
                 pending.forEach(spec -> lastFailures.put(spec.getId(), "generation failed > " + error.getMessage()));
                 continue;
             }
+            writeReply(attempt == 0 ? bundleName : bundleName + ".retry" + attempt, reply, outputDirectory);
+            Map<String, GeneratedTesters.Tester> generated = byQuestionId(reply);
 
             List<QuestionSpec> failed = new ArrayList<>();
             for (QuestionSpec spec : pending) {
-                GeneratedTesterSpec tester = generated.get(key(spec.getId()));
-                String failure = renderAndValidate(spec, tester, lastSources);
-                if (failure == null) {
+                ValidationResult validation = validate(spec, generated.get(key(spec.getId())), lastSources);
+                if (validation != null && validation.isValid()) {
                     outcomes.put(spec.getId(), writeTester(spec, lastSources.get(spec.getId()), outputDirectory,
-                            GenerationStatus.WRITTEN, "validated with " + tester.testCases.size() + " test case(s)"));
+                            GenerationStatus.WRITTEN, "validated with " + validation.getTestCaseCount() + " test case(s)"));
                 } else {
-                    lastFailures.put(spec.getId(), failure);
+                    lastFailures.put(spec.getId(), validation == null
+                            ? "no tester code was returned for " + spec.getId()
+                            : validation.getFailedStage() + " > " + validation.getMessage());
                     failed.add(spec);
                 }
             }
@@ -152,38 +165,43 @@ public class TesterGenerator { //orchestrates files bundle & exam pdf upload -> 
         return specs.stream().map(spec -> outcomes.get(spec.getId())).toList();
     }
 
-    // render one tester from the model's json & validate it against the real answer template
-    // returns null when valid > otherwise the failure to feed back > a rendered source is kept in lastSources either way
-    private String renderAndValidate(QuestionSpec spec, GeneratedTesterSpec generated, Map<String, String> lastSources) {
-        if (generated == null) {
-            return "no tester was returned for " + spec.getId();
+    // validate the model's tester code against the real answer template
+    // returns null when no code was returned > the source is kept in lastSources so a failed one is still written
+    private ValidationResult validate(QuestionSpec spec, GeneratedTesters.Tester generated, Map<String, String> lastSources) {
+        if (generated == null || generated.testCode == null || generated.testCode.isBlank()) {
+            return null;
         }
-        String testerSource;
-        try {
-            testerSource = renderer.render(spec, generated);
-        } catch (IllegalArgumentException error) {
-            return "unusable reply > " + error.getMessage();
-        }
+        String testerSource = generated.testCode.strip();
         lastSources.put(spec.getId(), testerSource);
-        ValidationResult validation = validator.validate(spec, testerSource);
-        return validation.isValid() ? null : validation.getFailedStage() + " > " + validation.getMessage();
+        return validator.validate(spec, testerSource);
     }
 
-    // index the reply by question id > case-insensitive like the grader > the first entry wins on a duplicate
-    private static Map<String, GeneratedTesterSpec> byQuestionId(GeneratedTesters reply) {
-        Map<String, GeneratedTesterSpec> byId = new HashMap<>();
-        if (reply != null && reply.testers != null) {
-            for (GeneratedTesterSpec tester : reply.testers) {
-                if (tester != null && tester.questionId != null) {
-                    byId.putIfAbsent(key(tester.questionId), tester);
+    // index tests by id > case-insensitive like the grader > the first entry wins on a duplicate
+    private static Map<String, GeneratedTesters.Tester> byQuestionId(GeneratedTesters reply) {
+        Map<String, GeneratedTesters.Tester> byId = new HashMap<>();
+        if (reply != null && reply.tests != null) {
+            for (GeneratedTesters.Tester tester : reply.tests) {
+                if (tester != null && tester.id != null) {
+                    byId.putIfAbsent(key(tester.id), tester);
                 }
             }
         }
         return byId;
     }
 
+    // "Q1a", "q1a" & "1a" all match question Q1a
     private static String key(String questionId) {
-        return questionId.strip().toLowerCase(Locale.ROOT);
+        String id = questionId.strip().toLowerCase(Locale.ROOT);
+        return id.startsWith("q") ? id.substring(1) : id;
+    }
+
+    // keep the model's json reply in response/ for inspection > never fail generation over it
+    private void writeReply(String replyName, GeneratedTesters reply, Path outputDirectory) {
+        try {
+            writer.writeReply(replyName, reply, outputDirectory);
+        } catch (IOException error) {
+            // inspection copy only
+        }
     }
 
     // write the tester & report it with the given status > a write failure is reported instead, keeping the context
@@ -211,11 +229,11 @@ public class TesterGenerator { //orchestrates files bundle & exam pdf upload -> 
     }
 
     // pick the lexicographically first existing *Tester.java as a format example > null when none
-    private String findExemplarTester(Path outputDirectory) {
-        if (!Files.isDirectory(outputDirectory)) {
+    private String findExemplarTester(Path exemplarDirectory) {
+        if (!Files.isDirectory(exemplarDirectory)) {
             return null;
         }
-        try (var files = Files.list(outputDirectory)) {
+        try (var files = Files.list(exemplarDirectory)) {
             Path exemplar = files.filter(Files::isRegularFile)
                     .filter(p -> p.getFileName().toString().endsWith("Tester.java"))
                     .sorted()

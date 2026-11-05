@@ -21,7 +21,7 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
     public record Section(String name, String requires, List<String> lines) {}
 
     // layout of the files.md bundle > one folder header then one entry per file
-    public record Files(List<String> folder, List<String> textFile, List<String> binaryFile) {}
+    public record Files(List<String> folder, List<String> textFile) {}
 
     private record Definition(Base base, List<AddOn> addOns, Files files, List<Section> sections) {}
 
@@ -61,8 +61,8 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
             throw new IllegalStateException("prompt catalog needs base.instructions");
         }
         Files files = definition.files();
-        if (files == null || isEmpty(files.folder()) || isEmpty(files.textFile()) || isEmpty(files.binaryFile())) {
-            throw new IllegalStateException("prompt catalog needs files.folder, files.textFile & files.binaryFile");
+        if (files == null || isEmpty(files.folder()) || isEmpty(files.textFile())) {
+            throw new IllegalStateException("prompt catalog needs files.folder & files.textFile");
         }
         if (isEmpty(definition.sections())) {
             throw new IllegalStateException("prompt catalog needs at least one section");
