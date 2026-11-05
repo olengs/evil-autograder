@@ -1,4 +1,4 @@
-package generation;
+package generation.validation;
 
 public final class ValidationResult { //outcome of validating one generated tester > ok or why it failed
     // stage that failed > lets the orchestrator feed a useful hint back into a retry prompt

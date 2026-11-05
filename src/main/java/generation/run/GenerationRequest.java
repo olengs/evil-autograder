@@ -1,4 +1,4 @@
-package generation;
+package generation.run;
 
 import java.nio.file.Path;
 import java.util.List;

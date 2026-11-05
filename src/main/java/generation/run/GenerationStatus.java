@@ -1,4 +1,4 @@
-package generation;
+package generation.run;
 
 public enum GenerationStatus { //outcome kind for one question's tester generation
     WRITTEN, // generated & validated & written to the output folder

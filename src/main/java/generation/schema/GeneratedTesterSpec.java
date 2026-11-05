@@ -1,4 +1,4 @@
-package generation;
+package generation.schema;
 
 import java.util.List;
 

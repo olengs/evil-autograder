@@ -17,9 +17,21 @@ import generation.llm.LlmClientFactory;
 import generation.llm.LlmException;
 import generation.llm.LlmRequest;
 import generation.llm.UploadedDocument;
+import generation.output.TesterSourceRenderer;
+import generation.output.TesterWriter;
 import generation.prompt.AddOnPrompter;
 import generation.prompt.PromptBuilder;
 import generation.prompt.PrompterRegistry;
+import generation.questionSpec.QuestionSpec;
+import generation.questionSpec.QuestionSpecCollector;
+import generation.run.GenerationRequest;
+import generation.run.GenerationResult;
+import generation.run.GenerationStatus;
+import generation.run.QuestionGenerationOutcome;
+import generation.schema.GeneratedTesterSpec;
+import generation.schema.GeneratedTesters;
+import generation.validation.GeneratedTesterValidator;
+import generation.validation.ValidationResult;
 import utils.PdfFileUtils;
 
 public class TesterGenerator { //orchestrates files bundle & exam pdf upload -> one prompt -> llm json -> validate -> write per question

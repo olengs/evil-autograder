@@ -1,4 +1,4 @@
-package generation;
+package generation.validation;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,7 +8,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import generation.ValidationResult.Stage;
+import generation.questionSpec.QuestionSpec;
+import generation.validation.ValidationResult.Stage;
 import grading.TesterOutputParser;
 import model.ProcessResult;
 import model.TestCaseResult;

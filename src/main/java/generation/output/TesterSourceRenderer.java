@@ -1,8 +1,10 @@
-package generation;
+package generation.output;
 
 import java.util.List;
 import java.util.Map;
 
+import generation.questionSpec.QuestionSpec;
+import generation.schema.GeneratedTesterSpec;
 import utils.TemplateUtils;
 
 public class TesterSourceRenderer { //fills the tester templates with the llm's test cases > so the grader format cannot drift
