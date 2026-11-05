@@ -1,10 +1,9 @@
 // Locates question folders and answer files for validation and grading preparation.
-// Supports exact and case-insensitive searches with optional per-submission caching.
+// Supports case-insensitive searches with optional per-submission caching.
 
 package utils;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,16 +32,8 @@ public class SubmissionFileFinder { //shared read-only answer lookup for validat
         return new SubmissionFileFinder(true);
     }
 
-    public Optional<Path> findExact(Path directory, String requiredFileName) throws IOException { //@1ejun6 > a path \ nothing
-        if (!Files.isDirectory(directory)) {
-            return Optional.empty();
-        }
-
-        return fileSearch.findFile(directory, requiredFileName, false);
-    }
-
     public Optional<Path> findIgnoringCase(Path directory, String requiredFileName) throws IOException {
-        return fileSearch.findFile(directory, requiredFileName, true);
+        return fileSearch.findFile(directory, requiredFileName);
     }
 
     public Optional<Path> findQuestionFolder(Path root, String expectedFolder) throws IOException {
@@ -96,23 +87,4 @@ public class SubmissionFileFinder { //shared read-only answer lookup for validat
         return found;
     }
 
-    public List<Path> findSubmissionFiles(Path directory, List<String> requiredFiles) throws IOException {
-        List<Path> submittedFiles = new ArrayList<>();
-
-        for (String requiredFile : requiredFiles) {
-            Optional<Path> exact = findExact(directory, requiredFile);
-
-            if (exact.isPresent()) {
-                submittedFiles.add(exact.get().toAbsolutePath().normalize());
-                continue;
-            }
-
-            //@1ejun6 > if exact name is absent > keep a case insensitive candidate so we still know what student submitted
-            Optional<Path> caseInsensitive = findIgnoringCase(directory, requiredFile);
-            if (caseInsensitive.isPresent()) {
-                submittedFiles.add(caseInsensitive.get().toAbsolutePath().normalize());
-            }
-        }
-        return submittedFiles;
-    }
 }
