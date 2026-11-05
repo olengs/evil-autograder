@@ -1,25 +1,25 @@
+import java.util.*;
 {{imports}}
-import java.util.Arrays;
-import java.util.Objects;
 
-public class {{testerClass}} extends {{questionId}} {
-    private static double score = 0;
+public class {{questionId}}Tester extends {{questionId}} {
 
-{{helperCode}}
+    private static double score;
+    private static String qn = "{{questionId}}";
+
     public static void main(String[] args) {
         grade();
         System.out.println(score);
     }
 
-    private static void grade() {
-        int tcNum = 1;
-{{testCases}}
-    }
+    public static void grade() {
+        System.out.println("-------------------------------------------------------");
+        System.out.println("---------------------- " + qn + " ----------------------------");
+        System.out.println("-------------------------------------------------------");
 
-    // one line only > a value containing a line that looks like Passed or Failed must not confuse the grader
-    private static String formatForLog(Object value) {
-        String text = value != null && value.getClass().isArray()
-                ? Arrays.deepToString(new Object[] { value }) : String.valueOf(value);
-        return text.replace("\r", "\\r").replace("\n", "\\n");
+        int tcNum = 1;
+        {
+{{testCases}}
+        }
     }
+{{helperCode}}
 }

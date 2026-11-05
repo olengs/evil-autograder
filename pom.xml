@@ -67,6 +67,12 @@
             <artifactId>junit-platform-launcher</artifactId>
             <version>1.13.4</version>
         </dependency>
+        <!-- silences the slf4j "no providers" warning from the genai sdk -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId>
+            <version>2.0.16</version>
+        </dependency>
     </dependencies>
 
     <build>

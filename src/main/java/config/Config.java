@@ -5,6 +5,7 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Map;
 
@@ -86,6 +87,12 @@ public class Config { //loads grading paths & process time limits from configura
 
     public Path getGenerationOutputDirectory() {
         return getInputDirectory().resolve(getRequired("generation.output.dir"));
+    }
+
+    // folder of example testers shown to the llm > optional > empty when blank so no exemplar is sent
+    public Optional<Path> getExemplarDirectory() {
+        String folder = getOptional("exemplar.folder", "");
+        return folder.isEmpty() ? Optional.empty() : Optional.of(getInputDirectory().resolve(folder));
     }
 
     public String getLlmProvider() {

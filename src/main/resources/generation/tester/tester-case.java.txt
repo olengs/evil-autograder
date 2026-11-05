@@ -1,16 +1,20 @@
-        try {
-            System.out.printf("Test %d: %s%n", tcNum++, {{label}});
+            try {
 {{setupCode}}
-            Object expected = {{expected}};
-            Object actual = {{actual}};
-            System.out.println("Expected: " + formatForLog(expected));
-            System.out.println("Actual: " + formatForLog(actual));
-            if (Objects.deepEquals(expected, actual)) {
-                System.out.println("Passed");
-                score += 1;
-            } else {
-                System.out.println("Failed");
+
+                System.out.printf("Test %d: {{methodName}}(%s)%n", tcNum++, inputs);
+                {{ReturnType}} expected = {{expectedValue}};
+                {{ReturnType}} result = {{methodName}}(inputs);
+                System.out.printf("Expected  :|%s|%n", expected);
+                System.out.printf("Actual    :|%s|%n", result);
+
+                if (expected.equals(result)) {
+                    score += 1;
+                    System.out.println("Passed");
+                } else {
+                    System.out.println("Failed");
+                }
+            } catch (Exception e) {
+                System.out.println("Failed -> Exception");
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            System.out.println("Failed -> " + formatForLog(e));
-        }
+            System.out.println("-------------------------------------------------------");
