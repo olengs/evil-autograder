@@ -90,7 +90,8 @@ public class GradingWorkspace implements AutoCloseable { //creates & cleans up t
             throw new IOException("invalid workspace path > " + relativeName);
         }
         Files.createDirectories(destination.getParent());
-        FileUtils.copyFile(source, destination, FileUtils.CopyOptions.REPLACE_EXISTING);
+        //workspace owns directory creation > shared helper validates & replaces the file
+        FileUtils.copyFileReplacing(source, destination);
     }
 
     private void copyTesterResources(QuestionDefinition question, TesterDefinition tester) throws IOException {
@@ -113,7 +114,8 @@ public class GradingWorkspace implements AutoCloseable { //creates & cleans up t
                         Path.of(name).normalize().toString().equalsIgnoreCase(relativePath.toString()))) {
                     continue;
                 }
-                FileUtils.copyFile(source, destination, FileUtils.CopyOptions.REPLACE_EXISTING);
+                // Tester resources retain their existing replacement priority after the exclusions above.
+                FileUtils.copyFileReplacing(source, destination);
             }
         }
     }
