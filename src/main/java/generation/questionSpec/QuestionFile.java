@@ -1,4 +1,4 @@
-package generation;
+package generation.questionSpec;
 
 // one file from a question folder as shown to the llm > content is null for a binary file e.g. DataException.class
 public record QuestionFile(String name, String content) {

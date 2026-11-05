@@ -5,6 +5,9 @@ import java.nio.file.Path;
 import java.util.List;
 
 import config.Config;
+import generation.run.GenerationRequest;
+import generation.run.GenerationResult;
+import generation.run.QuestionGenerationOutcome;
 
 public class TesterGeneratorApp { //thin standalone entry point > the console ui should calls TesterGenerator directly instead
     public static void main(String[] args) {

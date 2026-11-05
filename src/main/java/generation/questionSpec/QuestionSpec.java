@@ -1,4 +1,4 @@
-package generation;
+package generation.questionSpec;
 
 import java.nio.file.Path;
 import java.util.List;

@@ -7,11 +7,12 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import generation.GeneratedTesterSpec;
-import generation.GeneratedTesterValidator;
-import generation.QuestionSpec;
-import generation.TesterSourceRenderer;
-import generation.ValidationResult;
+import generation.output.TesterSourceRenderer;
+import generation.questionSpec.QuestionSpec;
+import generation.schema.GeneratedTesterSpec;
+import generation.validation.GeneratedTesterValidator;
+import generation.validation.ValidationResult;
+
 
 class TesterSourceRendererTest {
     private static final String TEMPLATE = """

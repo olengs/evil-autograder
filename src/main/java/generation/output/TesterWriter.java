@@ -1,4 +1,4 @@
-package generation;
+package generation.output;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import generation.questionSpec.QuestionSpec;
 import utils.FileUtils;
 
 public class TesterWriter { //writes tester to the output folder > backs up any existing one first
