@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import model.AssessmentDefinition;
 import model.QuestionDefinition;
+import utils.FileUtils;
 
 public class AssessmentLoader { //reads question templates & support files from resource folders
     public static AssessmentDefinition load(Path resources) throws IOException {
@@ -27,8 +28,9 @@ public class AssessmentLoader { //reads question templates & support files from 
             //@1ejun6 > Q1/Q1a.java is an answer template > ShapeComparator.java is support code
             Pattern answerName = Pattern.compile(Pattern.quote(folderName) + "[a-zA-Z]*\\.java");
             List<String> files;
-            try (var entries = Files.list(folder)) {
-                files = entries.filter(Files::isRegularFile).map(path -> path.getFileName().toString())
+            // Shared listing excludes directories; keep visible filenames sorted for question discovery.
+            try (var entries = FileUtils.streamRegularFiles(folder)) {
+                files = entries.map(path -> path.getFileName().toString())
                         .filter(name -> !name.startsWith(".")).sorted().toList();
             }
             List<String> answers = files.stream().filter(name -> answerName.matcher(name).matches()).toList();

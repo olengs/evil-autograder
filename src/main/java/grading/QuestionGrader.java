@@ -14,6 +14,7 @@ import model.QuestionDefinition;
 import model.QuestionGrade;
 import model.TestCaseResult;
 import model.TesterDefinition;
+import utils.FileUtils;
 import utils.JavaProcessUtils;
 import utils.ProcessExecutor;
 
@@ -46,10 +47,9 @@ public class QuestionGrader { //compiles & runs tester & calculates marks for on
         command.add(workspaceDirectory.toString());
 
         List<Path> sources;
-        //find & sort java files directly inside workspace
-        try (var files = Files.list(workspaceDirectory)) {
-            sources = files.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".java")).sorted().toList();
+        //shared listing stays nonrecursive > compile only direct java files in sorted order
+        try (var files = FileUtils.streamRegularFiles(workspaceDirectory)) {
+            sources = files.filter(path -> path.getFileName().toString().endsWith(".java")).sorted().toList();
         }
         if (sources.isEmpty()) {
             throw new IOException("No Java sources in " + workspaceDirectory);
