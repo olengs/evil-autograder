@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import generation.QuestionFile;
-import generation.QuestionSpec;
+import generation.questionSpec.QuestionFile;
+import generation.questionSpec.QuestionSpec;
 import utils.TemplateUtils;
 
 public final class PromptBuilder { // assembles one prompt by filling the section layout from tester-prompt.json

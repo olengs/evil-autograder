@@ -13,18 +13,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import config.Config;
-import generation.GeneratedTesterSpec;
-import generation.GeneratedTesterValidator;
-import generation.GeneratedTesters;
-import generation.GenerationRequest;
-import generation.GenerationResult;
-import generation.GenerationStatus;
-import generation.QuestionGenerationOutcome;
 import generation.TesterGenerator;
 import generation.llm.LlmClient;
 import generation.llm.LlmException;
 import generation.llm.LlmRequest;
 import generation.prompt.PrompterRegistry;
+import generation.run.GenerationRequest;
+import generation.run.GenerationResult;
+import generation.run.GenerationStatus;
+import generation.run.QuestionGenerationOutcome;
+import generation.schema.GeneratedTesterSpec;
+import generation.schema.GeneratedTesters;
+import generation.validation.GeneratedTesterValidator;
 
 class TesterGeneratorTest {
     @TempDir
