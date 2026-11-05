@@ -15,11 +15,6 @@ import model.StudentDetails;
 import utils.Logger;
 
 public class StudentCsvReader {
-    //@1ejun6 > read students > save log beside scoresheet
-    public List<StudentDetails> read(Path scoresheet) throws IOException { //@1ejun6 > checked
-        return read(scoresheet, scoresheet.toAbsolutePath().getParent().resolve("csv.log.jsonl"));
-    }
-
     //@1ejun6 > read one row at a time > skip header & blank rows
     public List<StudentDetails> read(Path scoresheet, Path logFile) throws IOException {
         List<StudentDetails> students = new ArrayList<>(); //@1ejun6 > grow in size

@@ -24,14 +24,14 @@ final class FileSearch { //reads directory entries & indexes files with optional
     }
 
     //@1ejun6 > resolve spelling without renaming anything in the extracted submission
-    Optional<Path> findFile(Path directory, String name, boolean ignoreCase) throws IOException {
+    Optional<Path> findFile(Path directory, String name) throws IOException {
         Path relative = Path.of(name).normalize();
         if (relative.isAbsolute() || relative.startsWith("..")) {
             throw new IOException("invalid relative submission path > " + name);
         }
         Path current = directory;
         for (Path component : relative) {
-            Optional<Path> entry = findEntry(current, component.toString(), ignoreCase);
+            Optional<Path> entry = findEntry(current, component.toString());
             if (entry.isEmpty()) return Optional.empty();
             current = entry.get();
         }
@@ -39,14 +39,12 @@ final class FileSearch { //reads directory entries & indexes files with optional
     }
 
     Optional<Path> findDirectory(Path root, String name) throws IOException {
-        Optional<Path> folder = findEntry(root, name, true);
+        Optional<Path> folder = findEntry(root, name);
         return folder.filter(path -> Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS));
     }
 
-    private Optional<Path> findEntry(Path directory, String name, boolean ignoreCase) throws IOException {
-        List<Path> matches = listEntries(directory).stream().filter(path -> ignoreCase
-                ? path.getFileName().toString().equalsIgnoreCase(name)
-                : path.getFileName().toString().equals(name)).limit(2).toList();
+    private Optional<Path> findEntry(Path directory, String name) throws IOException {
+        List<Path> matches = listEntries(directory).stream().filter(path -> path.getFileName().toString().equalsIgnoreCase(name)).limit(2).toList();
         if (matches.size() > 1) throw new IOException("ambiguous submission path > " + name + " in " + directory);
         return matches.stream().findFirst();
     }

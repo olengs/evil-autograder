@@ -17,7 +17,7 @@ public final class SubmissionFileNames {
     }
 
     /** Callers supply a ZIP filename; academic-year prefixes remain in the returned name. */
-    public static String baseNameWithoutZipExtension(Path zipFile) {
+    private static String baseNameWithoutZipExtension(Path zipFile) {
         String name = zipFile.getFileName().toString();
         return name.substring(0, name.length() - zipExtension.length());
     }

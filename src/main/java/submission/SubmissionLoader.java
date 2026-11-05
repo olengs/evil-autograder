@@ -17,10 +17,6 @@ import model.AssessmentDefinition;
 import utils.FileUtils;
 
 public class SubmissionLoader {
-    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> students) throws IOException {
-        return loadSubmissions(submissionFolder, workspaceFolder, students, null);
-    }
-
     public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder,
             List<StudentDetails> students, AssessmentDefinition assessment) throws IOException {
         Files.createDirectories(workspaceFolder);
@@ -34,9 +30,7 @@ public class SubmissionLoader {
 
             try {
                 ZipExtractor.extract(zipFile, extractionDirectory);
-                if (assessment != null) {
-                    submission = new StudentSubmission(student, zipFile, findAnswerRoot(extractionDirectory, assessment));
-                }
+                submission = new StudentSubmission(student, zipFile, findAnswerRoot(extractionDirectory, assessment));
                 if (student == null) {
                     submission.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.ERROR, "no match for " + zipFile.getFileName(), null, zipFile)));
                 }
