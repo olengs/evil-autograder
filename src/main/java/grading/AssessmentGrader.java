@@ -35,7 +35,7 @@ public class AssessmentGrader {
             for (QuestionDefinition question : assessment.getQuestions()) {
                 //@1ejun6 > 1 > match this question with its validated attempt & tester
                 String skipReason = findBlockingIssue(submission, question.getId());
-                QuestionAttempt attempt = findAttempt(submission, question.getId());
+                QuestionAttempt attempt = submission.findAttempt(question.getId()).orElse(null);
                 TesterDefinition tester = testers.get(question.getId().toLowerCase(Locale.ROOT));
 
                 //@1ejun6 > 2 > keep whichever blocking reason appears first
@@ -55,17 +55,6 @@ public class AssessmentGrader {
             results.put(submission, grades);
         }
         return results;
-    }
-
-    //@1ejun6 > find this question attempt among attempts saved during validation
-    private QuestionAttempt findAttempt(StudentSubmission submission, String questionId) {
-        for (QuestionAttempt attempt : submission.getQuestionAttempts()) {
-            if (attempt.getQuestionDefinition().getId().equals(questionId)) {
-                return attempt;
-            }
-        }
-
-        return null;
     }
 
     //@1ejun6 > errors without a question id block grading for this submission

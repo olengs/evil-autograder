@@ -6,6 +6,7 @@ package model;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class StudentSubmission { //stores a students zip & extracted folder & validation results together
     private final StudentDetails student;
@@ -36,6 +37,15 @@ public class StudentSubmission { //stores a students zip & extracted folder & va
 
     public List<QuestionAttempt> getQuestionAttempts() {
         return List.copyOf(questionAttempts);
+    }
+
+    public Optional<QuestionAttempt> findAttempt(String questionId) {
+        for (QuestionAttempt attempt : questionAttempts) {
+            if (attempt.getQuestionDefinition().getId().equals(questionId)) {
+                return Optional.of(attempt);
+            }
+        }
+        return Optional.empty();
     }
 
     public List<SubmissionIssue> getSubmissionIssues() {

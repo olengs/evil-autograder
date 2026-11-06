@@ -1,5 +1,6 @@
 package report;
 
+
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
 import java.io.IOException;
@@ -8,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -25,9 +27,6 @@ import utils.CsvWriter;
 import utils.StudentHeaderUtils;
 
 public class ScoreSheet { //creates the scoresheet from the zips when it is not provided & fills in each student's total
-    private static final String[] columns = {"OrgDefinedId", "Username", "Last Name", "First Name", "Email", "Calculated Final Grade Numerator", "Calculated Final Grade Denominator", "End-of-Line Indicator"};
-    private static final int emailColumn = 4; //same column positions StudentCsvReader reads
-    private static final int gradeColumn = 5;
     private static final String emailDomain = "computing.smu.edu.sg"; //domain of every email in the provided scoresheet
 
     //@1ejun6 > no scoresheet provided > create one row per student
@@ -36,7 +35,7 @@ public class ScoreSheet { //creates the scoresheet from the zips when it is not 
             return false;
         }
         List<String[]> rows = new ArrayList<>();
-        rows.add(columns);
+        rows.add(ScoreSheetColumns.header());
         Set<String> usernames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
         for (Path zip : SubmissionLoader.findZipFiles(submissionsFolder)) {
@@ -63,7 +62,12 @@ public class ScoreSheet { //creates the scoresheet from the zips when it is not 
         if (!email.toLowerCase(Locale.ROOT).startsWith(username.toLowerCase(Locale.ROOT) + "@")) {
             email = username + "@" + emailDomain;
         }
-        return new String[] {"", username, "", header.name(), email, "", "", ""};
+        String[] row = new String[ScoreSheetColumns.endOfLine + 1];
+        Arrays.fill(row, "");
+        row[ScoreSheetColumns.username] = username;
+        row[ScoreSheetColumns.firstName] = header.name();
+        row[ScoreSheetColumns.email] = email;
+        return row;
     }
 
     //@1ejun6 > sum question marks > keep each students highest total
@@ -95,15 +99,15 @@ public class ScoreSheet { //creates the scoresheet from the zips when it is not 
     private static void fillGrades(List<String[]> rows, Map<String, Double> totals) {
         for (int index = 1; index < rows.size(); index++) { //keep the header unchanged
             String[] row = rows.get(index);
-            if (row.length <= gradeColumn) continue;
+            if (row.length <= ScoreSheetColumns.gradeNumerator) continue;
 
-            row[0] = row[0].replaceFirst("^#+", "");
-            row[1] = row[1].replaceFirst("^#+", "");
-            if (row[2].equals("_")) row[2] = "";
-            if (row[3].equals("_")) row[3] = "";
-            if (row.length > 7 && row[7].equals("#")) row[7] = "";
+            row[ScoreSheetColumns.orgDefinedId] = row[ScoreSheetColumns.orgDefinedId].replaceFirst("^#+", "");
+            row[ScoreSheetColumns.username] = row[ScoreSheetColumns.username].replaceFirst("^#+", "");
+            if (row[ScoreSheetColumns.lastName].equals("_")) row[ScoreSheetColumns.lastName] = "";
+            if (row[ScoreSheetColumns.firstName].equals("_")) row[ScoreSheetColumns.firstName] = "";
+            if (row.length > ScoreSheetColumns.endOfLine && row[ScoreSheetColumns.endOfLine].equals("#")) row[ScoreSheetColumns.endOfLine] = "";
 
-            String email = row[emailColumn].strip();
+            String email = row[ScoreSheetColumns.email].strip();
             int atIndex = email.indexOf('@');
             if (atIndex <= 0) continue;
 
@@ -111,7 +115,7 @@ public class ScoreSheet { //creates the scoresheet from the zips when it is not 
             Double total = totals.get(username);
             if (total == null) continue;
 
-            row[gradeColumn] = BigDecimal.valueOf(total).stripTrailingZeros().toPlainString();
+            row[ScoreSheetColumns.gradeNumerator] = BigDecimal.valueOf(total).stripTrailingZeros().toPlainString();
         }
     }
 
