@@ -15,16 +15,20 @@ import utils.SubmissionFileFinder;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SubmissionValidator {
     private final List<QuestionValidationRule> questionRules;
     private final List<SubmissionValidationRule> submissionRules;
     private final SubmissionFileFinder fileLocator;
+    private final Map<QuestionDefinition, TemplateSelection> templateSelections = new HashMap<>();
+    private record TemplateSelection(List<String> filenames, IOException error) {}
 
     public SubmissionValidator(List<QuestionValidationRule> questionRules, List<SubmissionValidationRule> submissionRules, SubmissionFileFinder fileLocator) {
-        this.questionRules = questionRules;
-        this.submissionRules = submissionRules;
+        this.questionRules = List.copyOf(questionRules);
+        this.submissionRules = List.copyOf(submissionRules);
         this.fileLocator = fileLocator;
     }
 
@@ -75,12 +79,22 @@ public class SubmissionValidator {
 
     //required answers & any template java file with a name & email section > a missing optional file is just left out
     private List<String> selectEditableFileNames(QuestionDefinition question) throws IOException {
-        List<String> editable = new ArrayList<>(question.getRequiredFiles());
-        for (String resource : question.getAllowedResourceFiles()) {
-            if (resource.endsWith(".java") && StudentHeaderUtils.hasStudentHeader(question.getResourceDirectory().resolve(resource))) {
-                editable.add(resource);
+        TemplateSelection selection = templateSelections.get(question);
+        if (selection == null) {
+            try {
+                List<String> editable = new ArrayList<>(question.getRequiredFiles());
+                for (String resource : question.getAllowedResourceFiles()) {
+                    if (resource.endsWith(".java") && StudentHeaderUtils.hasStudentHeader(question.getResourceDirectory().resolve(resource))) {
+                        editable.add(resource);
+                    }
+                }
+                selection = new TemplateSelection(List.copyOf(editable), null);
+            } catch (IOException error) {
+                selection = new TemplateSelection(List.of(), error);
             }
+            templateSelections.put(question, selection);
         }
-        return editable;
+        if (selection.error() != null) throw selection.error();
+        return selection.filenames();
     }
 }
