@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import model.StudentDetails;
+import report.ScoreSheetColumns;
 import utils.Logger;
 
 public class StudentCsvReader {
@@ -47,17 +48,17 @@ public class StudentCsvReader {
 
     //@1ejun6 > validate row & log issues > return null if skipped
     private StudentDetails parseStudent(String[] row, long recordNumber, Path logFile) throws IOException {
-        if (row.length < 5) {
+        if (row.length <= ScoreSheetColumns.email) {
             Logger.logError(logFile, Map.of("status", "skipped", "row", recordNumber,
                     "issue", "invalid record", "details", "fewer than 5 columns"));
             return null;
         }
 
-        String name = row[3].strip();
-        String studentId = row[0].strip();
+        String name = row[ScoreSheetColumns.firstName].strip();
+        String studentId = row[ScoreSheetColumns.orgDefinedId].strip();
         //@1ejun6 > remove username decorations & dots at start or end
-        String listedUsername = row[1].strip().replaceAll("[^\\p{Alnum}.]", "").replaceAll("^\\.+|\\.+$", "");
-        String email = row[4].strip();
+        String listedUsername = row[ScoreSheetColumns.username].strip().replaceAll("[^\\p{Alnum}.]", "").replaceAll("^\\.+|\\.+$", "");
+        String email = row[ScoreSheetColumns.email].strip();
         int atIndex = email.indexOf('@');
 
         if (atIndex <= 0 || atIndex != email.lastIndexOf('@') || atIndex == email.length() - 1) {

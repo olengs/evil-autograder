@@ -14,13 +14,7 @@ final class GradeAssertions { //shared consistency checks for a single grading r
     static void check(StudentSubmission submission, QuestionGrade grade, boolean hasTester) {
         assertTrue(Double.isFinite(grade.getEarnedMarks()) && grade.getEarnedMarks() >= 0,
                 "marks must be finite and nonnegative");
-        QuestionAttempt attempt = null;
-        for (QuestionAttempt candidate : submission.getQuestionAttempts()) {
-            if (candidate.getQuestionDefinition().getId().equals(grade.getQuestionId())) {
-                attempt = candidate;
-                break;
-            }
-        }
+        QuestionAttempt attempt = submission.findAttempt(grade.getQuestionId()).orElse(null);
 
         boolean blocked = !hasTester || attempt == null || !attempt.isValid();
         for (var issue : submission.getSubmissionIssues()) {
