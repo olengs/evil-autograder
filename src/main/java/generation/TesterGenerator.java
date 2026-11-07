@@ -15,9 +15,7 @@ import generation.llm.LlmException;
 import generation.llm.LlmRequest;
 import generation.llm.UploadedDocument;
 import generation.output.TesterWriter;
-import generation.prompt.AddOnPrompter;
 import generation.prompt.PromptBuilder;
-import generation.prompt.PrompterRegistry;
 import generation.questionSpec.QuestionSpec;
 import generation.questionSpec.QuestionSpecCollector;
 import generation.run.GenerationRequest;
@@ -36,20 +34,17 @@ public class TesterGenerator { //exam pdf + all question templates -> one prompt
 
     private final Config config;
     private final LlmClient llmClient;
-    private final PrompterRegistry prompterRegistry;
     private final GeneratedTesterValidator validator;
 
     public TesterGenerator(Config config) {
-        this(config, LlmClientFactory.create(config), new PrompterRegistry(),
+        this(config, LlmClientFactory.create(config),
                 new GeneratedTesterValidator(config.getCompilationTimeout(), config.getExecutionTimeout()));
     }
 
     // explicit-dependency constructor > lets a ui or a test inject a stub llm client
-    public TesterGenerator(Config config, LlmClient llmClient, PrompterRegistry prompterRegistry,
-            GeneratedTesterValidator validator) {
+    public TesterGenerator(Config config, LlmClient llmClient, GeneratedTesterValidator validator) {
         this.config = config;
         this.llmClient = llmClient;
-        this.prompterRegistry = prompterRegistry;
         this.validator = validator;
     }
 
@@ -61,12 +56,7 @@ public class TesterGenerator { //exam pdf + all question templates -> one prompt
         // 1 > enumerate questions from the answer-template folders
         List<QuestionSpec> specs = collector.collect(request.getResourcesDirectory());
 
-        // 2 > resolve add-ons > explicit request list wins > otherwise fall back to config toggles
-        List<AddOnPrompter> addOns = request.getEnabledAddOnPrompters().isEmpty()
-                ? prompterRegistry.resolveFromConfig(config)
-                : prompterRegistry.resolve(request.getEnabledAddOnPrompters());
-
-        // 3 > optional: one tester from exemplar.folder as a format example > none when the setting is blank
+        // 2 > optional: one tester from exemplar.folder as a format example > none when the setting is blank
         String exemplar = config.getExemplarDirectory().map(this::findExemplarTester).orElse(null);
 
         if (!llmClient.supportsStructuredOutput()) {
@@ -74,18 +64,18 @@ public class TesterGenerator { //exam pdf + all question templates -> one prompt
                     + "generating testers as json needs it");
         }
 
-        // 4 > bundle every question & subpart into one prompt > keep folder labels inside the bundle
+        // 3 > bundle every question & subpart into one prompt > keep folder labels inside the bundle
         var bundle = promptBuilder.collectFiles(specs);
-        writer.archivePrevious(specs, request.getOutputDirectory());
+        writer.deletePrevious(specs, request.getOutputDirectory());
         writer.writeFilesBundle("all", bundle.text(), request.getOutputDirectory());
 
-        // 5 > upload the exam pdf once when configured > an unsupported provider fails here before the llm call
+        // 4 > upload the exam pdf once when configured > an unsupported provider fails here before the llm call
         UploadedDocument exam = config.isLlmSendPdf()
                 ? llmClient.uploadPdf(PdfFileUtils.requirePdf(request.getExamPdf()))
                 : null;
 
         try {
-            return new GenerationResult(generateTesters(specs, bundle, addOns,
+            return new GenerationResult(generateTesters(specs, bundle,
                     request.getUserPrompt(), exemplar, exam, request.getOutputDirectory()));
         } finally {
             // always remove the uploaded copy > even when generation blew up
@@ -96,11 +86,11 @@ public class TesterGenerator { //exam pdf + all question templates -> one prompt
     }
 
     private List<QuestionGenerationOutcome> generateTesters(List<QuestionSpec> specs, PromptBuilder.FileBundle bundle,
-            List<AddOnPrompter> addOns, String userPrompt, String exemplar, UploadedDocument exam,
+            String userPrompt, String exemplar, UploadedDocument exam,
             Path outputDirectory) throws IOException {
         GeneratedTesters reply;
         try {
-            String prompt = promptBuilder.build(specs, bundle.text(), addOns, userPrompt, exemplar, exam != null);
+            String prompt = promptBuilder.build(specs, bundle.text(), userPrompt, exemplar, exam != null);
             reply = llmClient.completeStructured(new LlmRequest(config.getLlmModel(), prompt, exam), GeneratedTesters.class);
         } catch (RuntimeException error) {
             return failedBatch(specs, "generation failed > " + error.getMessage());

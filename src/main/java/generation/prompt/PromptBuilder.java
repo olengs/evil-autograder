@@ -28,10 +28,9 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
     }
 
     // build one prompt asking for a tester per question in specs
-    // files is the bundle from renderFiles > activeAddOns resolved by PrompterRegistry > userPrompt free-form >
+    // files is the bundle from renderFiles > userPrompt free-form >
     // exemplarTester a real tester to imitate > examAttached true when the exam pdf is uploaded with the request
-    public String build(List<QuestionSpec> specs, String files, List<AddOnPrompter> activeAddOns,
-            String userPrompt, String exemplarTester, boolean examAttached) {
+    public String build(List<QuestionSpec> specs, String files, String userPrompt, String exemplarTester, boolean examAttached) {
         if (specs == null || specs.isEmpty()) {
             throw new IllegalArgumentException("at least one question spec is required");
         }
@@ -39,9 +38,6 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
         // every value a section can reference > blank optional values make their section drop out
         Map<String, String> values = new HashMap<>();
         values.put("baseInstructions", catalog.getBaseInstructions().strip());
-        values.put("addOnInstructions", activeAddOns == null ? ""
-                : activeAddOns.stream().map(addOn -> addOn.instructions().strip())
-                        .collect(Collectors.joining("\n\n")));
         values.put("userPrompt", strip(userPrompt));
         values.put("questionIds", specs.stream().map(QuestionSpec::getId).collect(Collectors.joining(", ")));
         values.put("files", strip(files));

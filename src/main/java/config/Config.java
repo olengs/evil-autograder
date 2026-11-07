@@ -111,11 +111,6 @@ public class Config { //loads grading paths & process time limits from configura
         return getNonNegativeInt("generation.max.retries");
     }
 
-    // toggle for one named add-on prompter > default off when key absent
-    public boolean isPrompterEnabled(String prompterId) {
-        return getOptionalBoolean("prompter." + prompterId + ".enabled", false);
-    }
-
     private String getRequired(String key) {
         String value = props.getProperty(key); //@1ejun6 > finds value belonging to this key
 
@@ -139,19 +134,6 @@ public class Config { //loads grading paths & process time limits from configura
             throw new IllegalArgumentException(key + " must be true or false");
         }
         return value.equals("true");
-    }
-
-    // optional boolean > fall back when key missing or blank
-    private boolean getOptionalBoolean(String key, boolean fallback) {
-        String value = props.getProperty(key);
-        if (value == null || value.isBlank()) {
-            return fallback;
-        }
-        String normalised = value.strip().toLowerCase(java.util.Locale.ROOT);
-        if (!normalised.equals("true") && !normalised.equals("false")) {
-            throw new IllegalArgumentException(key + " must be true or false");
-        }
-        return normalised.equals("true");
     }
 
     // whole number zero or greater > used for retry count

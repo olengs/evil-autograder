@@ -2,9 +2,7 @@
   "_comment": [
     "Prompt text used to generate testers. Each text block is an array of lines joined with newlines.",
     "{{name}} placeholders are filled in by the Java code. An unknown placeholder is an error.",
-    "addOns: toggle each one with prompter.<id>.enabled in config.properties.",
-    "addOns select coverage and formatting without changing the response schema or mark allocation.",
-    "Section placeholders: baseInstructions, addOnInstructions, userPrompt, questionIds, files, examAttached, exemplarTester, testerSkeleton, testerCase.",
+    "Section placeholders: baseInstructions, userPrompt, questionIds, files, examAttached, exemplarTester, testerSkeleton, testerCase.",
     "testerSkeleton & testerCase: the files in generation/tester/ inserted as-is > their own {{...}} markers are left for the model.",
     "files: layout of the <folder>.md bundle > each question folder & its answer templates in one block > written to context/ too.",
     "files placeholders: folder (folderName), textFile (fileName, fileType, content)."
@@ -45,41 +43,16 @@
       "- Print Test <n>: with a unique sequential number BEFORE setup or student calls that may throw. Use a fixed description so printing the header does not evaluate student code.",
       "- Catch exceptions per case. Determine the result, then emit exactly one Passed, Failed, or Failed -> <reason> line. Increment score exactly once for a pass. Final score equals the number of Passed outcomes.",
       "- Optional Expected/Actual diagnostics must not look like test headers or outcome lines. Do not invoke the answer class main method.",
+      "- Use the required test headers, optional Expected/Actual diagnostics, exactly one outcome per case, and the final numeric score. Avoid banners and decorative output.",
+      "- Select comparisons by the documented value semantics; do not substitute toString unless its format is documented.",
       "- Before returning, check that every requested id is present, successful sources are complete, counts match marks, imports and signatures match the supplied APIs, and unresolved entries contain an issue. Return no reasoning or commentary outside the JSON."
     ]
   },
-  "addOns": [
-    {
-      "id": "strict-output-format",
-      "description": "enforce strict grader output format",
-      "instructions": [
-        "STRICT OUTPUT FORMAT:",
-        "- Use the required test headers, optional Expected/Actual diagnostics, exactly one outcome per case, and the final numeric score. Avoid banners and decorative output.",
-        "- Select comparisons by the documented value semantics; do not substitute toString unless its format is documented."
-      ]
-    },
-    {
-      "id": "extra-edge-cases",
-      "description": "prioritize edge cases within the mark allocation",
-      "instructions": [
-        "EDGE-CASE COVERAGE:",
-        "- Within the fixed marks-sized set, select distinct ordinary and boundary cases: empty or single-element inputs, ordering, and invalid data only where the specification defines them.",
-        "- Do not increase the case count, repeat example inputs unnecessarily, or invent expected behavior."
-      ]
-    }
-  ],
   "sections": [
     {
       "name": "base",
       "lines": [
         "{{baseInstructions}}"
-      ]
-    },
-    {
-      "name": "add-ons",
-      "requires": "addOnInstructions",
-      "lines": [
-        "{{addOnInstructions}}"
       ]
     },
     {

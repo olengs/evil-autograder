@@ -2,7 +2,6 @@ package generation;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
 
 import config.Config;
 import generation.run.GenerationRequest;
@@ -15,12 +14,11 @@ public class TesterGeneratorApp { //thin standalone entry point > the console ui
             // optional first arg overrides the config file path > like app.Main
             Config config = args.length == 0 ? new Config() : new Config(Path.of(args[0]));
 
-            // defaults come from config > empty add-on list means "use config toggles"
+            // defaults come from config
             GenerationRequest request = new GenerationRequest(
                     config.getExamPdfFile(),
                     config.getResourcesDirectory(),
                     config.getGenerationOutputDirectory(),
-                    List.of(),
                     "");
 
             GenerationResult result = new TesterGenerator(config).generate(request);
