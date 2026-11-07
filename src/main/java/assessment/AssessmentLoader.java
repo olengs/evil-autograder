@@ -54,7 +54,7 @@ public final class AssessmentLoader {
         }
         if (questions.isEmpty()) throw new IOException("no question templates found in " + root + " > expected folder/question.java such as q1/q1a.java");
 
-        return new AssessmentDefinition(root.getFileName().toString(), questions);
+        return new AssessmentDefinition(questions);
     }
 
     private static boolean isAnswerClass(String file, Set<String> answers) {

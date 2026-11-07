@@ -18,7 +18,6 @@ final class ProgressState {
     List<String> questions = List.of();
     final Map<String, GradeStatus> results = new LinkedHashMap<>();
     int totalStudents;
-    int studentNumber;
     int processedStudents;
     int processedQuestions;
     long stageStarted = System.nanoTime();
@@ -29,7 +28,6 @@ final class ProgressState {
     boolean waitingForInput;
     boolean timerFinished;
     Duration batchStartedElapsed = Duration.ZERO;
-    Optional<Duration> estimatedRemaining = Optional.empty();
     Optional<Duration> estimatedTotal = Optional.empty();
     Duration timeout = Duration.ZERO;
     long revision;
@@ -42,7 +40,7 @@ final class ProgressState {
         //refreshes live time every tick & reuses snapshots while paused or finished
         Duration elapsed = totalElapsed();
         if (cachedSnapshot == null || cachedSnapshot.revision() != revision || cachedSnapshot.totalElapsed().toMillis() / 250 != elapsed.toMillis() / 250) {
-            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, studentNumber, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, junit, elapsed, estimatedRemaining, estimatedTotal);
+            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, junit, elapsed, estimatedTotal);
         }
         return cachedSnapshot;
     }

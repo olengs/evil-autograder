@@ -5,6 +5,7 @@ package submission;
 
 import assessment.AssessmentDefinition;
 import utils.files.FileUtils;
+import utils.process.Interruptions;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.file.Files;
@@ -23,7 +24,7 @@ public final class SubmissionLoader {
         StudentIdentifier studentIdentifier = new StudentIdentifier();
 
         for (Path zipFile : SubmissionArchives.listZipFiles(submissionFolder)) {
-            if (Thread.currentThread().isInterrupted()) throw new InterruptedIOException("submission loading interrupted");
+            Interruptions.check("submission loading interrupted");
             StudentDetails student = studentIdentifier.identify(zipFile, roster);
             Path extractionDirectory = Files.createTempDirectory(workspaceFolder, "submission-");
             StudentSubmission submission = new StudentSubmission(student, zipFile, extractionDirectory);
@@ -32,7 +33,7 @@ public final class SubmissionLoader {
                 ZipExtractor.extract(zipFile, extractionDirectory);
                 submission = new StudentSubmission(student, zipFile, findAnswerRoot(extractionDirectory, assessment));
                 if (student == null) {
-                    submission.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.error, "no match for " + zipFile.getFileName(), null, zipFile)));
+                    submission.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.error, "no match for " + zipFile.getFileName(), null)));
                 }
             } catch (IOException error) {
                 if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
@@ -41,7 +42,7 @@ public final class SubmissionLoader {
                 } catch (IOException cleanupError) {
                     error.addSuppressed(cleanupError);
                 }
-                submission.addIssues(List.of(new SubmissionIssue("submission preparation error", IssueSeverity.error, error.toString(), null, zipFile)));
+                submission.addIssues(List.of(new SubmissionIssue("submission preparation error", IssueSeverity.error, error.toString(), null)));
             }
             submissions.add(submission);
         }

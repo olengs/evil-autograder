@@ -53,6 +53,6 @@ public class TesterOutputParser {
             throw new IllegalArgumentException("missing outcome for test " + caseId);
         }
         //each passed case earns one mark > a failed case earns zero
-        return new TestCaseResult(caseId, passed, passed ? 1 : 0, "completed");
+        return new TestCaseResult(caseId, passed, passed ? 1 : 0);
     }
 }

@@ -3,8 +3,9 @@
 
 package submission;
 
+import utils.process.Interruptions;
+
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -17,7 +18,7 @@ public final class ZipExtractor {
 
     //caller owns returned extraction directory & must clean it up
     public static Path extract(Path zipFile, Path destinationFolder) throws IOException {
-        checkInterrupted();
+        Interruptions.check("submission extraction interrupted");
         Path extractionDirectory = destinationFolder.toAbsolutePath().normalize();
         Files.createDirectories(extractionDirectory);
 
@@ -25,7 +26,7 @@ public final class ZipExtractor {
             byte[] buffer = new byte[8192];
             var entries = archive.entries();
             while (entries.hasMoreElements()) {
-                checkInterrupted();
+                Interruptions.check("submission extraction interrupted");
                 ZipEntry entry = entries.nextElement();
                 Path outputPath = extractionDirectory.resolve(entry.getName()).normalize();
 
@@ -41,21 +42,17 @@ public final class ZipExtractor {
                     try (var contents = archive.getInputStream(entry);
                             var output = Files.newOutputStream(outputPath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
                         while (true) {
-                            checkInterrupted();
+                            Interruptions.check("submission extraction interrupted");
                             int count = contents.read(buffer);
                             if (count == -1) break;
-                            checkInterrupted();
+                            Interruptions.check("submission extraction interrupted");
                             output.write(buffer, 0, count);
                         }
                     }
                 }
             }
         }
-        checkInterrupted();
+        Interruptions.check("submission extraction interrupted");
         return extractionDirectory;
-    }
-
-    private static void checkInterrupted() throws InterruptedIOException {
-        if (Thread.currentThread().isInterrupted()) throw new InterruptedIOException("submission extraction interrupted");
     }
 }

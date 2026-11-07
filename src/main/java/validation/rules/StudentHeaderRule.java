@@ -20,12 +20,11 @@ public class StudentHeaderRule implements QuestionValidationRule {
     @Override
     public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question, ValidationFiles.QuestionFiles files) {
         List<SubmissionIssue> issues = new ArrayList<>();
-        Path questionFolder = files.expectedFolder();
 
         StudentDetails student = submission.getStudent();
 
         if (student == null) {
-            issues.add(SubmissionIssue.warning("unknown student", "cannot check headers without a matched student", question.getId(), questionFolder));
+            issues.add(SubmissionIssue.warning("unknown student", "cannot check headers without a matched student", question.getId()));
             return issues;
         }
 
@@ -39,7 +38,7 @@ public class StudentHeaderRule implements QuestionValidationRule {
                 checkField(header.name(), "Name", student.getName(), question.getId(), file.get(), issues);
                 checkField(header.email(), "Email", student.getEmail(), question.getId(), file.get(), issues);
             } catch (IOException error) {
-                issues.add(SubmissionIssue.error("file read error", "unable to read " + requiredFile + " > " + error.getMessage(), question.getId(), questionFolder.resolve(requiredFile)));
+                issues.add(SubmissionIssue.error("file read error", "unable to read " + requiredFile + " > " + error.getMessage(), question.getId()));
             }
         }
         return issues;
@@ -49,7 +48,7 @@ public class StudentHeaderRule implements QuestionValidationRule {
         boolean missing = found == null || found.isEmpty();
         if (missing || expected == null || !found.equalsIgnoreCase(expected.strip())) {
             String value = found == null ? "(missing)" : found.isEmpty() ? "(blank)" : found;
-            issues.add(SubmissionIssue.warning(missing ? "missing student header" : "mismatched student header", file.getFileName() + " > " + field + ": expected [" + expected + "] but found [" + value + "]", questionId, file));
+            issues.add(SubmissionIssue.warning(missing ? "missing student header" : "mismatched student header", file.getFileName() + " > " + field + ": expected [" + expected + "] but found [" + value + "]", questionId));
         }
     }
 }

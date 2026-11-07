@@ -1,7 +1,7 @@
 //shares terminal colors & bordered panels & safe text rendering
 //clips displayed text to available cells & removes control sequences
 
-package ui;
+package utils.ui;
 
 import dev.tamboui.layout.Rect;
 import dev.tamboui.style.Color;

@@ -199,7 +199,6 @@ public final class JUnitRunner {
         public synchronized void executionStarted(TestIdentifier test) {
             Thread thread = Thread.currentThread();
             workers.put(thread.threadId(), thread);
-            progress.junitThreadStarted(thread.threadId());
             if (!test.isTest()) return;
             currentTest = test.getDisplayName();
             publish();

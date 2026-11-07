@@ -22,11 +22,7 @@ public final class ProcessExecutor {
         return "autograder-process-output-" + workerId + "-";
     }
 
-    public static boolean isOutputReader(String threadName, long workerId) {
-        return threadName.startsWith(outputReaderPrefix(workerId));
-    }
-
-    public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorCode, String startErrorMessage) {
+    public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorMessage) {
         if (timeout.isZero() || timeout.isNegative()) {
             throw new IllegalArgumentException("Process timeout must be positive");
         }
@@ -35,7 +31,7 @@ public final class ProcessExecutor {
         try {
             process = processBuilder.start();
         } catch (IOException error) {
-            throw new ProcessExecutionException(startErrorCode, startErrorMessage, error);
+            throw new ProcessExecutionException(startErrorMessage, error);
         }
 
         ExecutorService outputReaders = Executors.newFixedThreadPool(2, Thread.ofPlatform().daemon().name(outputReaderPrefix(Thread.currentThread().threadId()), 0).factory());
@@ -57,9 +53,9 @@ public final class ProcessExecutor {
         } catch (InterruptedException error) {
             //preserve interruption so caller can stop its own work
             Thread.currentThread().interrupt();
-            throw new ProcessExecutionException("prc-004", "Process run interrupted", error);
+            throw new ProcessExecutionException("Process run interrupted", error);
         } catch (IOException error) {
-            throw new ProcessExecutionException("prc-003", "Cannot close process input", error);
+            throw new ProcessExecutionException("Cannot close process input", error);
         } finally {
             try {
                 destroyProcessTree(process);
@@ -85,10 +81,10 @@ public final class ProcessExecutor {
             //a child may keep a pipe open > output collection also needs a bounded wait
             return future.get(2, TimeUnit.SECONDS);
         } catch (ExecutionException error) {
-            throw new ProcessExecutionException("prc-003", "Output capture failed", error.getCause());
+            throw new ProcessExecutionException("Output capture failed", error.getCause());
         } catch (TimeoutException error) {
             future.cancel(true);
-            throw new ProcessExecutionException("prc-003", "Output capture did not finish", error);
+            throw new ProcessExecutionException("Output capture did not finish", error);
         }
     }
 
@@ -104,7 +100,7 @@ public final class ProcessExecutor {
         try {
             while (process.isAlive()) {
                 long remaining = deadline - System.nanoTime();
-                if (remaining <= 0) throw new ProcessExecutionException("prc-005", "Process did not stop after forced termination", null);
+                if (remaining <= 0) throw new ProcessExecutionException("Process did not stop after forced termination");
                 try {
                     process.waitFor(remaining, TimeUnit.NANOSECONDS);
                 } catch (InterruptedException error) {

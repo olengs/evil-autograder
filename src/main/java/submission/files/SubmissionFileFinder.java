@@ -5,31 +5,21 @@ package submission.files;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public class SubmissionFileFinder {
-    private final boolean reuseLookups;
     private final FileSearch fileSearch;
-    private final Map<AnswerKey, AnswerLookup> answers = new HashMap<>();
-
-    private record AnswerKey(Path root, String folder, String file) {}
-
-    private record AnswerLookup(Optional<Path> answer, IOException error) {}
 
     public SubmissionFileFinder() {
         this(false);
     }
 
     private SubmissionFileFinder(boolean reuseLookups) {
-        this.reuseLookups = reuseLookups;
         this.fileSearch = new FileSearch(reuseLookups);
     }
 
-    //reuse lookups across rules for this submission only > including failed lookups
+    //reuse directory entries & file indexes for this submission only
     public SubmissionFileFinder forSubmission() {
         return new SubmissionFileFinder(true);
     }
@@ -42,30 +32,7 @@ public class SubmissionFileFinder {
         return fileSearch.findDirectory(root, expectedFolderName);
     }
 
-    //prefer expected folder > a relocated answer is accepted only when exactly one match exists
-    public Optional<Path> findAnswerFile(Path root, String expectedFolderName, String requiredFile) throws IOException {
-        if (!reuseLookups) return locateAnswer(root, expectedFolderName, requiredFile);
-        AnswerKey key = new AnswerKey(root.toAbsolutePath().normalize(), expectedFolderName, requiredFile);
-        AnswerLookup lookup = answers.get(key);
-
-        if (lookup == null) {
-            try {
-                lookup = new AnswerLookup(locateAnswer(root, expectedFolderName, requiredFile), null);
-            } catch (IOException error) {
-                lookup = new AnswerLookup(Optional.empty(), error);
-            }
-            answers.put(key, lookup);
-        }
-
-        if (lookup.error() != null) throw lookup.error();
-        return lookup.answer();
-    }
-
-    private Optional<Path> locateAnswer(Path root, String expectedFolderName, String requiredFile) throws IOException {
-        return findAnswerFile(root, findQuestionFolder(root, expectedFolderName), requiredFile);
-    }
-
-    //reuses a resolved question folder > keeps the same direct lookup & fallback search
+    //prefer the resolved question folder > accept a relocated answer only when unambiguous
     public Optional<Path> findAnswerFile(Path root, Optional<Path> folder, String requiredFile) throws IOException {
         if (folder.isPresent()) {
             Optional<Path> answer = findFileIgnoringCase(folder.get(), requiredFile);
@@ -85,13 +52,5 @@ public class SubmissionFileFinder {
             if (!path.getName(path.getNameCount() - i).toString() .equalsIgnoreCase(required.getName(required.getNameCount() - i).toString())) return false;
         }
         return true;
-    }
-
-    public List<Path> findAnswerFiles(Path root, String expectedFolderName, List<String> requiredAnswerFiles) throws IOException {
-        List<Path> found = new ArrayList<>();
-        for (String required : requiredAnswerFiles) {
-            findAnswerFile(root, expectedFolderName, required).ifPresent(path -> found.add(path.toAbsolutePath().normalize()));
-        }
-        return found;
     }
 }

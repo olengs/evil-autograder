@@ -8,16 +8,10 @@ import java.util.Collections;
 import java.util.List;
 
 public class AssessmentDefinition {
-    private final String name;
     private final List<QuestionDefinition> questions;
 
-    public AssessmentDefinition(String name, List<QuestionDefinition> questions) {
-        this.name = name;
+    public AssessmentDefinition(List<QuestionDefinition> questions) {
         this.questions = new ArrayList<>(questions);
-    }
-
-    public String getName() {
-        return name;
     }
 
     public List<QuestionDefinition> getQuestions() {

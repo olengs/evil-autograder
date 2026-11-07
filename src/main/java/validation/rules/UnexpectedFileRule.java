@@ -44,11 +44,11 @@ public class UnexpectedFileRule implements SubmissionValidationRule {
                     String actualName = file.getFileName().toString();
 
                     if (!expectedFiles.contains(actualName)) {
-                        issues.add(SubmissionIssue.warning("unexpected file", "unexpected file " + actualName + " found in " + questionFolderName + ".", null, file));
+                        issues.add(SubmissionIssue.warning("unexpected file", "unexpected file " + actualName + " found in " + questionFolderName + ".", null));
                     }
                 });
             } catch (IOException | UncheckedIOException error) {
-                issues.add(SubmissionIssue.error("folder read error", "Unable to inspect folder " + questionFolderName + ": " + error.getMessage(), null, questionDirectory));
+                issues.add(SubmissionIssue.error("folder read error", "Unable to inspect folder " + questionFolderName + ": " + error.getMessage(), null));
             }
         }
         return issues;
