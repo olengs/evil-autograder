@@ -20,6 +20,8 @@ import java.util.zip.ZipFile;
 import submission.SubmissionArchives;
 import submission.SubmissionFileNames;
 import submission.files.StudentHeaderReader;
+import utils.files.CsvWriter;
+import utils.process.Interruptions;
 
 public final class ScoreSheetCreator {
     private static final String defaultEmailDomain = "computing.smu.edu.sg";
@@ -27,7 +29,7 @@ public final class ScoreSheetCreator {
     private ScoreSheetCreator() {}
 
     public static boolean createIfMissing(Path scoresheet, Path submissionsFolder) throws IOException {
-        checkInterrupted();
+        Interruptions.check("scoresheet creation interrupted");
         if (Files.exists(scoresheet)) return false;
 
         List<String[]> rows = new ArrayList<>();
@@ -35,7 +37,7 @@ public final class ScoreSheetCreator {
         Set<String> usernames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
         for (Path zip : SubmissionArchives.listZipFiles(submissionsFolder)) {
-            checkInterrupted();
+            Interruptions.check("scoresheet creation interrupted");
             String username = SubmissionFileNames.username(zip);
             if (usernames.add(username)) rows.add(studentRow(zip, username));
         }
@@ -51,7 +53,7 @@ public final class ScoreSheetCreator {
             email = username + "@" + defaultEmailDomain;
         }
         
-        String[] row = new String[ScoreSheetColumns.endOfLine + 1];
+        String[] row = new String[ScoreSheetColumns.header().length];
         Arrays.fill(row, "");
         row[ScoreSheetColumns.username] = username;
         row[ScoreSheetColumns.firstName] = header.name();
@@ -60,21 +62,21 @@ public final class ScoreSheetCreator {
     }
 
     private static String readJavaSources(Path zip) throws InterruptedIOException {
-        checkInterrupted();
+        Interruptions.check("scoresheet creation interrupted");
         StringBuilder sources = new StringBuilder();
         try (ZipFile file = new ZipFile(zip.toFile())) {
             char[] buffer = new char[8192];
             var entries = file.entries();
             while (entries.hasMoreElements()) {
-                checkInterrupted();
+                Interruptions.check("scoresheet creation interrupted");
                 ZipEntry entry = entries.nextElement();
                 if (entry.getName().endsWith(".java")) {
                     try (var source = new InputStreamReader(file.getInputStream(entry), StandardCharsets.UTF_8)) {
                         while (true) {
-                            checkInterrupted();
+                            Interruptions.check("scoresheet creation interrupted");
                             int count = source.read(buffer);
                             if (count == -1) break;
-                            checkInterrupted();
+                            Interruptions.check("scoresheet creation interrupted");
                             sources.append(buffer, 0, count);
                         }
                         sources.append('\n');
@@ -83,14 +85,10 @@ public final class ScoreSheetCreator {
             }
         } catch (IOException | RuntimeException error) {
             if (error instanceof InterruptedIOException interrupted) throw interrupted;
-            checkInterrupted();
+            Interruptions.check("scoresheet creation interrupted");
             //a broken zip still gets a roster row > submissionloader reports extraction error later
         }
-        checkInterrupted();
+        Interruptions.check("scoresheet creation interrupted");
         return sources.toString();
-    }
-
-    private static void checkInterrupted() throws InterruptedIOException {
-        if (Thread.currentThread().isInterrupted()) throw new InterruptedIOException("scoresheet creation interrupted");
     }
 }

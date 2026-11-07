@@ -11,14 +11,13 @@ public final class ScoreSheetColumns {
     public static final int email = 4;
     public static final int gradeNumerator = 5;
     public static final int gradeDenominator = 6;
-    public static final int endOfLine = 7;
 
     private ScoreSheetColumns() {
     }
 
     public static String[] header() {
         return new String[] {
-                "OrgDefinedId", "Username", "Last Name", "First Name", "Email", "Calculated Final Grade Numerator", "Calculated Final Grade Denominator", "End-of-Line Indicator"
+                "OrgDefinedId", "Username", "Last Name", "First Name", "Email", "Calculated Final Grade Numerator", "Calculated Final Grade Denominator"
         };
     }
 }
