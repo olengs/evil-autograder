@@ -1,6 +1,3 @@
-//shares terminal colors & bordered panels & safe text rendering
-//clips displayed text to available cells & removes control sequences
-
 package utils.ui;
 
 import dev.tamboui.layout.Rect;
@@ -12,7 +9,7 @@ import dev.tamboui.widgets.block.Block;
 import dev.tamboui.widgets.block.Borders;
 import java.util.regex.Pattern;
 
-public final class UiDrawing {
+public final class UiDrawing { //shares terminal colors, bordered boxes & clipped text rendering
     public static final Style base = Style.EMPTY.fg(Color.rgb(187, 194, 207)).bg(Color.rgb(40, 44, 52));
     //foreground > background
     public static final Style muted = Style.EMPTY.fg(Color.rgb(156, 160, 164));
@@ -32,7 +29,7 @@ public final class UiDrawing {
     }
 
     public static void drawLine(Frame frame, Rect area, int row, String value, Style style) {
-        if (row < 0 || row >= area.height()) return; //stops if row is outside the available area
+        if (row < 0 || row >= area.height()) return; //stops if row is outside available area
         frame.buffer().setStyle(new Rect(area.x(), area.y() + row, area.width(), 1), style);
         //applies chosen style to whole row
         frame.buffer().setString(area.x(), area.y() + row, CharWidth.truncateWithEllipsis(safeText(value), area.width(), CharWidth.TruncatePosition.END), style);

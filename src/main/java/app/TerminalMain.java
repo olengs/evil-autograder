@@ -1,6 +1,3 @@
-//starts terminal ui with optional configuration path
-//reports failures through shared json logger & returns cancellation or failure exit codes
-
 package app;
 
 import java.io.IOException;
@@ -10,7 +7,7 @@ import java.util.concurrent.CancellationException;
 import ui.TerminalUi;
 import utils.logging.JsonLineLogger;
 
-public class TerminalMain {
+public class TerminalMain { //starts terminal UI & logs failures or cancellation
     private static void log(Path file, String status, String message) {
         try {
             JsonLineLogger.append(file, Map.of("status", status, "message", message));

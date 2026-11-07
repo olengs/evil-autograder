@@ -1,6 +1,3 @@
-//appends structured log entries as individual json lines
-//records corrected & skipped student list rows while student list reader continues reading scoresheet
-
 package utils.logging;
 
 import com.google.gson.Gson;
@@ -11,7 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 
-public final class JsonLineLogger {
+public final class JsonLineLogger { //appends structured log entries as JSON lines
     private static final Gson gson = new Gson();
 
     private JsonLineLogger() {

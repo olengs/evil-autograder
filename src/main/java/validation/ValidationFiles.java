@@ -1,6 +1,3 @@
-//resolves question folders & answer files once per submission
-//shares found paths & lookup failures across validation rules & attempt creation
-
 package validation;
 
 import assessment.QuestionDefinition;
@@ -14,7 +11,7 @@ import java.util.Optional;
 import submission.StudentSubmission;
 import submission.files.SubmissionFileFinder;
 
-public final class ValidationFiles {
+public final class ValidationFiles { //shares cached question-folder & answer-file lookups across validation
     private final Path root;
     private final SubmissionFileFinder finder;
     private final Map<String, Lookup> folders = new HashMap<>();

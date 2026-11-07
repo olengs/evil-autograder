@@ -1,6 +1,3 @@
-//checks direct files in each question folder against combined allowed filenames
-//records unexpected files as warnings without deleting them or preventing grading
-
 package validation.rules;
 
 import assessment.AssessmentDefinition;
@@ -23,7 +20,7 @@ import validation.SubmissionIssue;
 import validation.SubmissionValidationRule;
 import validation.ValidationFiles;
 
-public class UnexpectedFileRule implements SubmissionValidationRule {
+public class UnexpectedFileRule implements SubmissionValidationRule { //warns about unexpected files in question folders
     private final Map<AssessmentDefinition, Map<String, Set<String>>> expectedFilesCache = new HashMap<>();
 
     @Override

@@ -1,6 +1,3 @@
-//writes student totals & per-question marks into a copy of student list scoresheet
-//preserves unmatched grades & uses one highest-total submission for each student breakdown
-
 package report;
 
 import com.opencsv.CSVReader;
@@ -20,7 +17,7 @@ import submission.StudentDetails;
 import submission.StudentSubmission;
 import utils.files.CsvWriter;
 
-public final class ScoreSheetWriter {
+public final class ScoreSheetWriter { //writes totals & question marks from each student's highest-scoring submission
     private ScoreSheetWriter() {}
 
     public static void write(Path scoresheet, Map<StudentSubmission, List<QuestionGrade>> results, Path output) throws IOException {

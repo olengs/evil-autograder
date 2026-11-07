@@ -1,5 +1,3 @@
-//starts autograder > runs grading > prints > verifies result > saves scoresheet > reports failures
-
 package app;
 
 import config.Config;
@@ -9,7 +7,7 @@ import java.nio.file.Path;
 import report.ConsoleReportPrinter;
 import report.ScoreSheetWriter;
 
-public final class Main {
+public final class Main { //runs console grading, verifies results & saves scoresheet
     private Main() {}
 
     public static void main(String[] args) {

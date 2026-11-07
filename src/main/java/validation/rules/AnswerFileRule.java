@@ -1,6 +1,3 @@
-//checks question folders & required answer files through shared lookup results
-//reports missing answers as errors & recoverable folder or filename differences as warnings
-
 package validation.rules;
 
 import assessment.QuestionDefinition;
@@ -12,7 +9,7 @@ import validation.QuestionValidationRule;
 import validation.SubmissionIssue;
 import validation.ValidationFiles;
 
-public class AnswerFileRule implements QuestionValidationRule {
+public class AnswerFileRule implements QuestionValidationRule { //reports missing answers & recoverable folder or filename differences
     @Override
     public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question, ValidationFiles.QuestionFiles files) {
         List<SubmissionIssue> issues = new ArrayList<>();

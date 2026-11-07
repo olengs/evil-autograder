@@ -1,6 +1,3 @@
-//writes csv rows with opencsv escaping & reports write failures
-//creates parent directories & replaces files only after all rows are written
-
 package utils.files;
 
 import com.opencsv.CSVWriter;
@@ -12,7 +9,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import utils.process.Interruptions;
 
-public final class CsvWriter {
+public final class CsvWriter { //writes escaped CSV rows before replacing destination file
     private CsvWriter() {}
 
     public static void write(Path file, List<String[]> rows) throws IOException {

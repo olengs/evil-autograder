@@ -1,9 +1,6 @@
-//lists final outcomes a question grade can have
-//distinguishes completed grading & compilation or runtime failures & timeouts & skipped questions
-
 package grading;
 
-public enum GradeStatus {
+public enum GradeStatus { //defines completed, failed, timed-out & skipped grading outcomes
     completed, //compilation & execution & output parsing finished > individual cases may still fail
     compileError,
     runtimeError,

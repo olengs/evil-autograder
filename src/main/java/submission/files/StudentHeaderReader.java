@@ -1,6 +1,3 @@
-//reads student names & emails from source text for validation & student list creation
-//checks leading file comments for validation & finds nonblank source fields when building a student list
-
 package submission.files;
 
 import java.io.BufferedReader;
@@ -10,7 +7,7 @@ import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class StudentHeaderReader {
+public final class StudentHeaderReader { //reads student name & email fields from source comments or text
     private static final int maxHeaderLines = 15;
     private static final Pattern leadingComments = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)");
     private static final Pattern nameField = fieldPattern("Name");

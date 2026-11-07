@@ -1,6 +1,3 @@
-//draws current student & active grading stage & per-question outcomes
-//follows active question in small panels & displays shared junit verification status
-
 package ui.panel;
 
 import static utils.ui.UiDrawing.*;
@@ -11,7 +8,7 @@ import dev.tamboui.text.CharWidth;
 import grading.GradeStatus;
 import grading.progress.ProgressSnapshot;
 
-public final class StudentPanel {
+public final class StudentPanel { //draws current student, question outcomes & verification status
     private StudentPanel() {
     }
 

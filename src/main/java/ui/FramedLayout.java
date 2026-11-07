@@ -1,6 +1,3 @@
-//draws bordered progress & summary panels when terminal dimensions allow
-//keeps resource metrics & keyboard commands visible below grading details
-
 package ui;
 
 import static utils.ui.UiDrawing.*;
@@ -12,7 +9,7 @@ import ui.panel.BatchPanel;
 import ui.panel.StudentPanel;
 import ui.panel.SummaryPanel;
 
-final class FramedLayout {
+final class FramedLayout { //draws bordered grading, summary, resource & command panels
     private FramedLayout() {}
 
     static void draw(Frame frame, Rect area, Path project, ProgressSnapshot snapshot,

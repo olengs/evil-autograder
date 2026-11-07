@@ -1,6 +1,3 @@
-//grades once in junit setup & checks result coverage & consistency for selected assessment
-//requires a positive completed grade & shares ui verification rules across runtime checks
-
 package grading.verification;
 
 import app.Autograder;
@@ -35,7 +32,7 @@ import submission.SubmissionArchives;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(GradingSession.class)
 @Execution(ExecutionMode.CONCURRENT)
-class AutograderTest {
+class AutograderTest { //grades once & checks result coverage, consistency & a positive score
     private Map<StudentSubmission, List<QuestionGrade>> results;
     private AssessmentDefinition assessment;
     private Map<String, TesterDefinition> testers;

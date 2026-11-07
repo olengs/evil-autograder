@@ -1,6 +1,3 @@
-//runs terminal setup & grading views while shared autograder works in background
-//handles input & redraws & cancellation while waiting for worker cleanup before closing
-
 package ui;
 
 import config.SetupConfig;
@@ -19,7 +16,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import grading.progress.GradingProgress;
 
-public class TerminalUi {
+public class TerminalUi { //runs terminal setup & grading with background work & cancellation cleanup
     //creates shared progress state & grading task > updates screen > handles keyboard input > waits for cleanup before closing
 
     private GradingView view;

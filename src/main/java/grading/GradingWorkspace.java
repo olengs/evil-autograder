@@ -1,6 +1,3 @@
-//prepares & owns temporary files used to compile & run one question
-//copies student answers & support files & tester resources in order > then deletes workspace on close
-
 package grading;
 
 import assessment.QuestionDefinition;
@@ -18,7 +15,7 @@ import java.util.Map;
 import submission.QuestionAttempt;
 import submission.files.SubmissionFileFinder;
 
-public class GradingWorkspace implements AutoCloseable {
+public class GradingWorkspace implements AutoCloseable { //copies answer, support & tester files into a temporary grading directory
     private final TemporaryDirectory temporaryDirectory;
 
     public GradingWorkspace() throws IOException {
@@ -119,7 +116,7 @@ public class GradingWorkspace implements AutoCloseable {
                 //tester resources have final priority > cannot replace required student answers
                 boolean isRequiredAnswer = question.getRequiredAnswerFiles().stream().anyMatch(name -> Path.of(name).normalize().toString().equalsIgnoreCase(relativePath.toString()));
                 if (isRequiredAnswer) continue;
-                FileUtils.copyFileReplacing(source, destination);
+                copyFile(source, relativePath.toString());
             }
         }
     }

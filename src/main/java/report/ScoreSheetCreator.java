@@ -1,6 +1,3 @@
-//creates a roster scoresheet from submission zip names & student headers when none is supplied
-//provides student identities for grading while leaving any existing scoresheet untouched
-
 package report;
 
 import java.io.IOException;
@@ -23,7 +20,7 @@ import submission.files.StudentHeaderReader;
 import utils.files.CsvWriter;
 import utils.process.Interruptions;
 
-public final class ScoreSheetCreator {
+public final class ScoreSheetCreator { //creates a missing student scoresheet from ZIP names & source headers
     private static final String defaultEmailDomain = "computing.smu.edu.sg";
 
     private ScoreSheetCreator() {}

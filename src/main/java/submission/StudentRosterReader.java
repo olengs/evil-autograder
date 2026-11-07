@@ -1,6 +1,3 @@
-//reads student identities from a student list scoresheet & derives usernames from email addresses
-//logs corrected or invalid rows while continuing through ordinary row errors
-
 package submission;
 
 import com.opencsv.CSVReader;
@@ -14,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import report.ScoreSheetColumns;
 
-public class StudentRosterReader {
+public class StudentRosterReader { //reads student identities from CSV & logs invalid or corrected rows
     public List<StudentDetails> read(Path scoresheet, Path logFile) throws IOException {
         List<StudentDetails> roster = new ArrayList<>();
 

@@ -1,6 +1,3 @@
-//produces an ordered grade for every question in every student submission
-//explains skipped questions & passes eligible attempts to questiongrader for compilation & testing
-
 package grading;
 
 import assessment.AssessmentDefinition;
@@ -18,15 +15,11 @@ import validation.SubmissionIssue;
 import grading.progress.ProgressListener;
 import utils.process.Interruptions;
 
-public class AssessmentGrader {
+public class AssessmentGrader { //grades each submission in question order & records skipped questions
     private final QuestionGrading questionGrader;
 
     public AssessmentGrader(QuestionGrading questionGrader) {
         this.questionGrader = questionGrader;
-    }
-
-    public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, AssessmentDefinition assessment, Map<String, TesterDefinition> testers) throws IOException {
-        return grade(submissions, assessment, testers, ProgressListener.NONE);
     }
 
     public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, AssessmentDefinition assessment, Map<String, TesterDefinition> testers, ProgressListener progress) throws IOException {
@@ -36,7 +29,7 @@ public class AssessmentGrader {
         progress.batchStarted(submissions.size(), questionIds);
         for (StudentSubmission submission : submissions) {
             Interruptions.check("grading interrupted");
-            progress.submissionStarted(submission.getStudent() == null ? submission.getOriginalZip().getFileName().toString() : submission.getStudent().getUsername());
+            progress.submissionStarted(submission.getDisplayName());
             results.put(submission, gradeSubmission(submission, assessment, testers, progress));
             progress.submissionFinished();
         }

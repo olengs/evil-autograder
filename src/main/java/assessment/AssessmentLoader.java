@@ -1,6 +1,3 @@
-//discovers questions from answer templates & identifies supplied support files
-//builds assessment definitions while excluding reference answers & compiled classes from support
-
 package assessment;
 
 import utils.files.FileUtils;
@@ -14,7 +11,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-public final class AssessmentLoader {
+public final class AssessmentLoader { //discovers question templates & their support files
     private AssessmentLoader() {}
 
     public static AssessmentDefinition load(Path resources) throws IOException {

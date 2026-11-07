@@ -1,6 +1,3 @@
-//draws final grading counts & verification outcomes & timing comparison
-//shows failure details when grading or verification stops
-
 package ui.panel;
 
 import static utils.ui.UiDrawing.*;
@@ -12,7 +9,7 @@ import java.util.Locale;
 import grading.progress.ProgressSnapshot;
 import grading.progress.ProgressStage;
 
-public final class SummaryPanel {
+public final class SummaryPanel { //draws final counts, verification outcomes, timing & failure details
     private SummaryPanel() {}
 
     public static void drawSummary(Frame frame, Rect area, ProgressSnapshot snapshot) { //shared summary for both terminal layouts

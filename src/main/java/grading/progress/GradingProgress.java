@@ -1,6 +1,3 @@
-//records grading stages & student outcomes & run timing for terminal ui
-//synchronizes worker updates & snapshots while preserving one total time estimate
-
 package grading.progress;
 
 import grading.GradeStatus;
@@ -8,7 +5,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
-public class GradingProgress implements ProgressListener {
+public class GradingProgress implements ProgressListener { //synchronizes grading progress, student outcomes & run timing
     private final ProgressState state = new ProgressState();
 
     public synchronized void pauseElapsedTime() {
@@ -95,7 +92,7 @@ public class GradingProgress implements ProgressListener {
             Duration elapsed = state.totalElapsed();
             Duration average = elapsed.minus(state.batchStartedElapsed).dividedBy(state.processedQuestions);
             Duration remaining = average.multipliedBy(totalQuestions - state.processedQuestions);
-            //keeps the first prediction so progress & summary compare the same estimate with actual time
+            //keeps first prediction so progress & summary compare same estimate with actual time
             if (state.estimatedTotal.isEmpty() && state.processedQuestions < totalQuestions) {
                 state.estimatedTotal = Optional.of(elapsed.plus(remaining));
             }

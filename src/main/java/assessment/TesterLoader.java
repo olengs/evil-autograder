@@ -1,6 +1,3 @@
-//discovers teacher-provided tester programs & indexes them by lowercase question id
-//makes testers available to grading & rejects unreadable files or duplicate tester ids
-
 package assessment;
 
 import java.io.IOException;
@@ -11,7 +8,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-public final class TesterLoader {
+public final class TesterLoader { //discovers testers & indexes them by question ID
     private TesterLoader() {}
 
     public static Map<String, TesterDefinition> load(Path testerDirectory) throws IOException {

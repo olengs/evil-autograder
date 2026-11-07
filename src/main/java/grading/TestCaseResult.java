@@ -1,9 +1,6 @@
-//stores reported outcome & earned marks for one tester case
-//provides individual results that questiongrader totals & runtime verification checks
-
 package grading;
 
-public final class TestCaseResult {
+public final class TestCaseResult { //stores one tester case's ID, outcome & earned marks
     private final String caseId;
     private final boolean passed;
     private final double earnedMarks;

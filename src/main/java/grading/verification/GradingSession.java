@@ -1,6 +1,3 @@
-//supplies junit with configuration & progress & results for one grading run
-//shares results from junit setup across console & parallel ui checks without grading again
-
 package grading.verification;
 
 import config.Config;
@@ -19,7 +16,7 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import submission.StudentSubmission;
 
-public final class GradingSession implements ParameterResolver {
+public final class GradingSession implements ParameterResolver { //shares configuration, progress & results across JUnit checks
     static final String sessionParameter = "autograder.session";
     private static final Map<String, Input> sessions = new ConcurrentHashMap<>();
 
@@ -51,8 +48,8 @@ public final class GradingSession implements ParameterResolver {
         return register(new Input(config, new GradingProgress(), false, Objects.requireNonNull(results)));
     }
 
-    static String register(Config config, GradingProgress progress, boolean printResults) {
-        return register(new Input(config, progress, printResults, null));
+    static String register(Config config, GradingProgress progress) {
+        return register(new Input(config, progress, false, null));
     }
 
     private static String register(Input input) {

@@ -1,13 +1,10 @@
-//defines optional progress callbacks for preparation & grading & completion
-//allows console callers to use grading without collecting terminal ui state
-
 package grading.progress;
 
 import grading.GradeStatus;
 import java.time.Duration;
 import java.util.List;
 
-public interface ProgressListener {
+public interface ProgressListener { //defines optional callbacks for grading stages & outcomes
     ProgressListener NONE = new ProgressListener() {};
 
     default void preparing(String message) {}

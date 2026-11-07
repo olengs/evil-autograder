@@ -1,6 +1,3 @@
-//checks whether a question's grade agrees with its validation findings & process evidence
-//shares status & mark-total assertions across runtime checks for every student question
-
 package grading.verification;
 
 import grading.GradeStatus;
@@ -9,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import submission.QuestionAttempt;
 import submission.StudentSubmission;
 
-final class GradeAssertions {
+final class GradeAssertions { //checks question grades against validation findings & tester output
     private GradeAssertions() {}
 
     static void check(StudentSubmission submission, QuestionGrade grade, boolean hasTester) {

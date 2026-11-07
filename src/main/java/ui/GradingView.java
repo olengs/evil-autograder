@@ -1,6 +1,3 @@
-//renders grading progress or final summary using available terminal dimensions
-//updates visible status & timing & resources without retaining grading results
-
 package ui;
 
 import static utils.ui.UiDrawing.*;
@@ -16,7 +13,7 @@ import ui.panel.BatchPanel;
 import ui.panel.StudentPanel;
 import ui.panel.SummaryPanel;
 
-public class GradingView {
+public class GradingView { //renders grading progress or a final summary for terminal size
     private final Path project;
     private ProgressSnapshot snapshot;
     private long displayedSecond;
@@ -43,7 +40,7 @@ public class GradingView {
 
     public void render(Frame frame) { //draws screen
         Rect area = frame.area();
-        frame.buffer().fill(area, new Cell(" ", base)); //gets terminal area & fills it with the base background
+        frame.buffer().fill(area, new Cell(" ", base)); //gets terminal area & fills it with base background
         if (area.width() < 32 || area.height() < 16) {
             frame.renderWidget(Paragraph.builder().text("terminal too small\nresize to at least 32 x 16")
                     .style(base).build(), area);

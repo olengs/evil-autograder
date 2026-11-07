@@ -1,6 +1,3 @@
-//provides shared file listing & replacement & directory deletion & existing-path checks
-//supports workspace preparation & cleanup while keeping filesystem checks in one place
-
 package utils.files;
 
 import java.io.IOException;
@@ -11,7 +8,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.stream.Stream;
 import org.apache.commons.io.file.PathUtils;
 
-public final class FileUtils {
+public final class FileUtils { //lists files, copies replacement files & deletes directories
     private FileUtils() {}
 
     //lists direct regular files > caller must close returned stream
