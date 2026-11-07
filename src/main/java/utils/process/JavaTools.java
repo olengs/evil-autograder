@@ -15,8 +15,12 @@ public final class JavaTools { //locates java & javac in JDK running autograder
         return findTool("java");
     }
 
-    private static Path findTool(String toolName) {
-        String javaHome = System.getProperty("java.home");
+    public static Path getDisassemblerPath() {
+        return findTool("javap");
+    }
+
+    private static Path findTool(String toolName) { //find tool in java.home/bin & check file exists
+        String javaHome = System.getProperty("java.home"); //running jdk folder
         String executableName = toolName;
 
         if (System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows")) {

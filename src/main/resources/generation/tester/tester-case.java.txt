@@ -1,20 +1,21 @@
+        {
+            System.out.printf("Test %d: {{methodName}}%n", tcNum++);
+            boolean passed = false;
+            String failure = "Failed";
             try {
 {{setupCode}}
-
-                System.out.printf("Test %d: {{methodName}}(%s)%n", tcNum++, inputs);
                 {{ReturnType}} expected = {{expectedValue}};
-                {{ReturnType}} result = {{methodName}}(inputs);
-                System.out.printf("Expected  :|%s|%n", expected);
-                System.out.printf("Actual    :|%s|%n", result);
-
-                if (expected.equals(result)) {
-                    score += 1;
-                    System.out.println("Passed");
-                } else {
-                    System.out.println("Failed");
-                }
+                {{ReturnType}} result = {{methodName}}({{arguments}});
+                System.out.println("Expected: " + expected);
+                System.out.println("Actual: " + result);
+                passed = {{comparison}};
             } catch (Exception e) {
-                System.out.println("Failed -> Exception");
-                e.printStackTrace();
+                failure = "Failed -> " + e.getClass().getSimpleName();
             }
-            System.out.println("-------------------------------------------------------");
+            if (passed) {
+                score += 1;
+                System.out.println("Passed");
+            } else {
+                System.out.println(failure);
+            }
+        }

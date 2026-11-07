@@ -60,6 +60,12 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
 
     // the <folder>.md bundle > each question folder in specs once with its answer templates > layout from the catalog's files block
     public String renderFiles(List<QuestionSpec> specs) {
+        return collectFiles(specs).text();
+    }
+
+    public record FileBundle(String text, Map<String, String> issuesByQuestion) {}
+
+    public FileBundle collectFiles(List<QuestionSpec> specs) {
         // questions sharing a folder (Q1a & Q1b) are listed under one folder header in spec order
         Map<String, List<QuestionSpec>> folders = new LinkedHashMap<>();
         for (QuestionSpec spec : specs) {
@@ -67,11 +73,24 @@ public final class PromptBuilder { // assembles one prompt by filling the sectio
         }
 
         PromptCatalog.Files layout = catalog.getFiles();
-        return folders.entrySet().stream()
-                .map(folder -> TemplateUtils.fill(PromptCatalog.join(layout.folder()), Map.of("folderName", folder.getKey()))
-                        + "\n" + folder.getValue().stream().map(spec -> renderTemplate(layout, spec))
-                                .collect(Collectors.joining("\n\n")))
-                .collect(Collectors.joining("\n\n", "", "\n"));
+        StringBuilder bundle = new StringBuilder();
+        Map<String, String> issues = new LinkedHashMap<>();
+        for (var folder : folders.entrySet()) {
+            bundle.append(TemplateUtils.fill(PromptCatalog.join(layout.folder()), Map.of("folderName", folder.getKey())))
+                    .append('\n');
+            for (QuestionSpec spec : folder.getValue()) bundle.append(renderTemplate(layout, spec)).append("\n\n");
+            var context = new SupportContextCollector().collect(folder.getValue());
+            for (var file : context.files()) {
+                bundle.append(TemplateUtils.fill(PromptCatalog.join(layout.textFile()), Map.of(
+                        "fileName", file.name(), "fileType", file.type(), "content", file.content()))).append("\n\n");
+            }
+            if (!context.issues().isEmpty()) {
+                String issue = "Required context could not be read: " + String.join("; ", context.issues());
+                bundle.append("CONTEXT ISSUE: ").append(issue).append("\n\n");
+                for (QuestionSpec spec : folder.getValue()) issues.put(spec.getId(), issue);
+            }
+        }
+        return new FileBundle(bundle.toString(), Map.copyOf(issues));
     }
 
     // one answer template entry e.g. Q1a.java
