@@ -3,7 +3,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.sun.net.httpserver.HttpServer;
 import generation.llm.LlmException;
 import generation.llm.LlmRequest;
-import generation.llm.OpenAiCompatibleClient;
+import generation.llm.OpenAiClient;
 import generation.schema.GeneratedTesters;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -13,9 +13,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-class OpenAiCompatibleClientTest {
+class OpenAiClientTest {
     @Test
-    void officialOpenAiDoesNotAutomaticallyRetryServerErrors() throws IOException {
+    void doesNotAutomaticallyRetryServerErrors() throws IOException {
         AtomicInteger calls = new AtomicInteger();
         AtomicReference<String> requestBody = new AtomicReference<>();
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -31,8 +31,8 @@ class OpenAiCompatibleClientTest {
         });
         server.start();
         try {
-            var client = new OpenAiCompatibleClient("test-key",
-                    "http://127.0.0.1:" + server.getAddress().getPort() + "/v1", true);
+            var client = new OpenAiClient("test-key",
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/v1");
             assertThrows(LlmException.class, () -> client.completeStructured(
                     new LlmRequest("gpt-6.1-terra", "Generate all testers.", null), GeneratedTesters.class));
             assertEquals(1, calls.get());

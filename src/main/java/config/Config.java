@@ -35,7 +35,6 @@ public class Config {
         // settings for LLM tester generator
         getExamPdfFile();
         getGenerationOutputDirectory();
-        getLlmProvider();
         getLlmModel();
         getLlmApiKeyEnv();
         isLlmSendPdf();
@@ -90,17 +89,8 @@ public class Config {
         return folder.isEmpty() ? Optional.empty() : Optional.of(getInputDirectory().resolve(folder));
     }
 
-    public String getLlmProvider() {
-        return getRequired("llm.provider").toLowerCase(java.util.Locale.ROOT);
-    }
-
     public String getLlmModel() {
         return getRequired("llm.model");
-    }
-
-    // base url optional > required only for openai-compatible & ollama providers
-    public String getLlmBaseUrl() {
-        return getOptional("llm.base.url", "");
     }
 
     public String getLlmApiKeyEnv() {
