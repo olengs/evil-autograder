@@ -13,7 +13,7 @@ public class GeneratedTesters {
     public List<Tester> tests;
 
     // no @JsonClassDescription here > a class description plus a property description on the same object
-    // becomes allOf, which openai strict mode rejects & gemini does not support > describe the fields only
+    // becomes allOf, which openai strict mode rejects > describe the fields only
     public static class Tester {
         @JsonPropertyDescription("The question id this tester is for, exactly as listed in the prompt, e.g. \"Q1a\". "
                 + "The tester is written to <id>Tester.java.")

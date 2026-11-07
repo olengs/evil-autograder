@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public final class PdfFileUtils { //checks for a pdf that is about to be uploaded to an llm provider > shared by every provider
+public final class PdfFileUtils { //checks for a pdf that is about to be uploaded to openai
     public static final String PDF_MIME_TYPE = "application/pdf";
 
     private static final byte[] PDF_MAGIC = "%PDF-".getBytes(java.nio.charset.StandardCharsets.US_ASCII);

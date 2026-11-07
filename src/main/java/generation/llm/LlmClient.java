@@ -17,7 +17,7 @@ public interface LlmClient { //sends one request to a language model & returns i
     // return the model's text completion > throw LlmException on transport or response errors
     String complete(LlmRequest request);
 
-    // short label for logging & summaries > e.g. "gemini" or "openai-compatible"
+    // short label for logging & summaries > e.g. "openai"
     String providerName();
 
     // true when completeStructured can be used > the caller then asks for a typed object instead of free text

@@ -13,9 +13,6 @@ import com.openai.models.chat.completions.ChatCompletionContentPart;
 import com.openai.models.chat.completions.ChatCompletionContentPartText;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
-import com.openai.models.chat.completions.StructuredChatCompletion;
-import com.openai.models.chat.completions.StructuredChatCompletionCreateParams;
-import com.openai.models.chat.completions.StructuredChatCompletionMessage;
 import com.openai.models.files.FileCreateParams;
 import com.openai.models.files.FileObject;
 import com.openai.models.files.FilePurpose;
@@ -29,25 +26,20 @@ import com.openai.models.responses.StructuredResponse;
 import com.openai.models.responses.StructuredResponseCreateParams;
 import com.openai.models.responses.StructuredResponseOutputMessage;
 
-public final class OpenAiCompatibleClient implements LlmClient { //openai / groq / openrouter / ollama via the openai sdk > pdf upload only on the real openai platform
-    // the sdk needs some key > local servers like ollama accept any non-blank value
-    private static final String NO_KEY_PLACEHOLDER = "none";
-
+public final class OpenAiClient implements LlmClient { //talks to the openai platform through the openai sdk > responses api for structured output & pdf upload
     private final OpenAIClient client;
-    // real openai platform > the only one here that takes pdf file parts & the responses api
-    // groq / openrouter / ollama get chat completions > structured output through response_format
-    private final boolean officialOpenAi;
 
-    // blank baseUrl > the sdk's default https://api.openai.com/v1 > otherwise e.g. https://api.groq.com/openai/v1
-    public OpenAiCompatibleClient(String apiKey, String baseUrl, boolean officialOpenAi) {
-        this.officialOpenAi = officialOpenAi;
+    public OpenAiClient(String apiKey) {
+        this(apiKey, null);
+    }
+
+    // a blank baseUrl uses the sdk's default https://api.openai.com/v1 > a custom one lets a test point at a local server
+    public OpenAiClient(String apiKey, String baseUrl) {
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
-                .apiKey(apiKey == null || apiKey.isBlank() ? NO_KEY_PLACEHOLDER : apiKey)
-                .timeout(REQUEST_TIMEOUT); // same budget as the gemini client
-        if (officialOpenAi) {
-            // keep one-shot generation to one attempt even on timeouts, rate limits or server errors
-            builder.maxRetries(0);
-        }
+                .apiKey(apiKey)
+                // keep one-shot generation to one attempt even on timeouts, rate limits or server errors
+                .maxRetries(0)
+                .timeout(REQUEST_TIMEOUT);
         if (baseUrl != null && !baseUrl.isBlank()) {
             builder.baseUrl(baseUrl);
         }
@@ -56,7 +48,7 @@ public final class OpenAiCompatibleClient implements LlmClient { //openai / groq
 
     @Override
     public String providerName() {
-        return "openai-compatible";
+        return "openai";
     }
 
     @Override
@@ -81,9 +73,6 @@ public final class OpenAiCompatibleClient implements LlmClient { //openai / groq
     // structured outputs through the responses api > text(Class) makes the sdk send the strict json schema for the class
     @Override
     public <T> T completeStructured(LlmRequest request, Class<T> type) {
-        if (!officialOpenAi) {
-            return completeStructuredChat(request, type);
-        }
         // system message first > then the prompt as the user message
         ResponseInputItem system = ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
                 .role(EasyInputMessage.Role.SYSTEM)
@@ -116,38 +105,6 @@ public final class OpenAiCompatibleClient implements LlmClient { //openai / groq
             throw LlmException.requestFailed(providerName(), error);
         }
         return extractOutput(response);
-    }
-
-    // compatible servers only speak chat completions > responseFormat(Class) sends the same json schema as response_format
-    // a server or model without json schema support rejects the request & that error is reported
-    private <T> T completeStructuredChat(LlmRequest request, Class<T> type) {
-        StructuredChatCompletionCreateParams<T> params = ChatCompletionCreateParams.builder()
-                .model(request.getModel())
-                .addSystemMessage(STRUCTURED_NOTE)
-                .addUserMessage(request.getPrompt())
-                .responseFormat(type)
-                .build();
-        StructuredChatCompletion<T> completion;
-        try {
-            completion = client.chat().completions().create(params);
-        } catch (OpenAIException error) {
-            throw LlmException.requestFailed(providerName(), error);
-        }
-        try {
-            if (completion.choices().isEmpty()) {
-                throw new LlmException(providerName() + " response had no choices");
-            }
-            StructuredChatCompletionMessage<T> message = completion.choices().get(0).message();
-            if (message.refusal().isPresent()) {
-                throw new LlmException("model refused > " + message.refusal().get());
-            }
-            return message.content().orElseThrow(() -> new LlmException(providerName() + " response contained no content"));
-        } catch (LlmException error) {
-            throw error;
-        } catch (RuntimeException error) {
-            // the sdk throws when the json cannot be converted to the class
-            throw new LlmException("could not parse structured reply > " + error.getMessage(), error);
-        }
     }
 
     // output item > message > content > typed output > fail loudly on a refusal or a truncated reply
@@ -199,9 +156,6 @@ public final class OpenAiCompatibleClient implements LlmClient { //openai / groq
 
     @Override
     public UploadedDocument uploadPdf(Path pdf) {
-        if (!officialOpenAi) {
-            throw new LlmException("this provider cannot take a pdf > use llm.provider=openai or gemini, or set llm.send.pdf=false");
-        }
         try {
             FileObject uploaded = client.files().create(FileCreateParams.builder()
                     .file(pdf)
