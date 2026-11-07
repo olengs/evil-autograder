@@ -1,10 +1,6 @@
-//defines severity levels available to submission findings
-//distinguishes blocking errors from warnings & informational findings that allow grading
-
 package validation;
 
-public enum IssueSeverity {
-    info,
+public enum IssueSeverity { //defines warning & blocking error severities
     warning,
     error
 }

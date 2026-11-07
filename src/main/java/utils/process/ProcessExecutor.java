@@ -1,6 +1,3 @@
-//runs an external process with a time limit while capturing its standard & error output
-//drains both output streams & stops timed-out process trees & returns recorded process result
-
 package utils.process;
 
 import java.io.IOException;
@@ -15,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.commons.io.IOUtils;
 
-public final class ProcessExecutor {
+public final class ProcessExecutor { //runs timed processes, captures output & terminates process trees
     private ProcessExecutor() {}
 
     private static String outputReaderPrefix(long workerId) {

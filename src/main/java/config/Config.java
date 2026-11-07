@@ -1,6 +1,3 @@
-//reads application paths & compilation & execution time limits from a properties file
-//checks required settings before application starts preparing \ grading submissions
-
 package config;
 
 import java.io.IOException;
@@ -11,7 +8,7 @@ import java.time.Duration;
 import java.util.Properties;
 import java.util.Map;
 
-public class Config {
+public class Config { //loads grading paths & process time limits from configuration
     private final Path inputDirectory;
     private final Path outputDirectory;
     private final Path submissionsDirectory;

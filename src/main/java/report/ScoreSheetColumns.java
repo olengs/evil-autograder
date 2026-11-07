@@ -1,9 +1,6 @@
-//defines column positions & header labels used by student list & output scoresheets
-//keeps student list reading & student list creation & grade writing aligned with same csv layout
-
 package report;
 
-public final class ScoreSheetColumns {
+public final class ScoreSheetColumns { //defines shared student CSV column positions & header labels
     public static final int orgDefinedId = 0;
     public static final int username = 1;
     public static final int lastName = 2;

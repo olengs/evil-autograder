@@ -1,6 +1,3 @@
-//stores current grading progress & elapsed time & estimates
-//reuses snapshots until progress changes or live timing needs refreshing
-
 package grading.progress;
 
 import grading.GradeStatus;
@@ -10,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-final class ProgressState {
+final class ProgressState { //stores mutable progress state & caches UI snapshots
     ProgressStage stage = ProgressStage.loading;
     String message = "loading configuration";
     String student = "";

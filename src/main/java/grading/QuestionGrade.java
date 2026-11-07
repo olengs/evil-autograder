@@ -1,13 +1,10 @@
-//stores one question's grading status & earned marks & test cases & process details
-//carries grading outcome into console reporting & runtime verification & scoresheet totals
-
 package grading;
 
 import utils.process.ProcessResult;
 import java.util.List;
 import java.util.Optional;
 
-public final class QuestionGrade {
+public final class QuestionGrade { //stores a question's marks, status, test cases & process result
     private final String questionId;
     private final GradeStatus status;
     private final double earnedMarks;

@@ -1,12 +1,9 @@
-//defines zip filename conventions used to recognize archives & derive usernames
-//shares same naming rules between submission identification & creating a student list when none is provided
-
 package submission;
 
 import java.nio.file.Path;
 import java.util.Locale;
 
-public final class SubmissionFileNames {
+public final class SubmissionFileNames { //recognizes ZIP filenames & extracts usernames from them
     private static final String zipExtension = ".zip";
 
     private SubmissionFileNames() {}

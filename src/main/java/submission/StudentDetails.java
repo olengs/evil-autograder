@@ -1,9 +1,6 @@
-//stores student name & username & email from the student list
-//supports matching zip archives & checking answer headers & associating grades with scoresheet rows
-
 package submission;
 
-public class StudentDetails {
+public class StudentDetails { //stores a student's username, name & email
     private final String username;
     private final String name;
     private final String email;

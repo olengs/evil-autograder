@@ -1,6 +1,3 @@
-//tracks one student archive & its extracted answer root & accumulated validation findings
-//keeps question attempts & submission-wide issues together for grading & reporting
-
 package submission;
 
 import java.nio.file.Path;
@@ -9,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import validation.SubmissionIssue;
 
-public class StudentSubmission {
+public class StudentSubmission { //groups a student archive, extracted root, attempts & validation findings
     private final StudentDetails student;
     private final Path originalZip;
     private final Path rootDirectory;
@@ -26,6 +23,10 @@ public class StudentSubmission {
 
     public StudentDetails getStudent() {
         return student;
+    }
+
+    public String getDisplayName() { //uses archive filename when no student matched
+        return student == null ? originalZip.getFileName().toString() : student.getUsername();
     }
 
     public Path getOriginalZip() {

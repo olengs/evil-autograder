@@ -1,12 +1,9 @@
-//defines one questions expected folder & required answer filenames & support files
-//gives validation & grading requirements & trusted resource directory for that question
-
 package assessment;
 
 import java.nio.file.Path;
 import java.util.List;
 
-public class QuestionDefinition {
+public class QuestionDefinition { //stores a question's folder, answer filenames & support files
     private final String id;
     private final String expectedFolderName;
     private final Path resourceRoot;

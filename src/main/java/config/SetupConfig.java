@@ -1,6 +1,3 @@
-//checks configured input & output paths before terminal grading starts
-//accepts one replacement per invalid setting without rewriting configuration
-
 package config;
 
 import java.io.IOException;
@@ -12,7 +9,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public final class SetupConfig {
+public final class SetupConfig { //checks setup paths & accepts replacement paths for this run
     private Path configFile;
     private final Map<String, String> overrides = new HashMap<>();
     private final Set<String> attempted = new HashSet<>();

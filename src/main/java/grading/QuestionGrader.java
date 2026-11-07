@@ -1,6 +1,3 @@
-//compiles a question attempt & runs its teacher-provided tester & calculates earned marks
-//applies process time limits & retains completed test-case marks when tester execution times out
-
 package grading;
 
 import assessment.QuestionDefinition;
@@ -18,18 +15,13 @@ import java.util.List;
 import submission.QuestionAttempt;
 import grading.progress.ProgressListener;
 
-public class QuestionGrader implements QuestionGrading {
+public class QuestionGrader implements QuestionGrading { //compiles answers, runs tester & totals completed test-case marks
     private final Duration compilationTimeout;
     private final Duration executionTimeout;
 
     public QuestionGrader(Duration compilationTimeout, Duration executionTimeout) {
         this.compilationTimeout = compilationTimeout;
         this.executionTimeout = executionTimeout;
-    }
-
-    @Override
-    public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester) throws IOException {
-        return grade(question, attempt, tester, ProgressListener.NONE);
     }
 
     @Override

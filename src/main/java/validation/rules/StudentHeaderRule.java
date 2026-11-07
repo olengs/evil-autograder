@@ -1,6 +1,3 @@
-//compares names & emails in required answer-file headers with matched student in the student list
-//reports missing or mismatched identity fields as warnings without changing submitted source
-
 package validation.rules;
 
 import assessment.QuestionDefinition;
@@ -16,7 +13,7 @@ import validation.QuestionValidationRule;
 import validation.SubmissionIssue;
 import validation.ValidationFiles;
 
-public class StudentHeaderRule implements QuestionValidationRule {
+public class StudentHeaderRule implements QuestionValidationRule { //compares answer-file name & email headers with matched student
     @Override
     public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question, ValidationFiles.QuestionFiles files) {
         List<SubmissionIssue> issues = new ArrayList<>();

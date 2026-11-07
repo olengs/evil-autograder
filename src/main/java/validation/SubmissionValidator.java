@@ -1,6 +1,3 @@
-//runs submission & question validation rules & builds attempts consumed by grading
-//keeps each question's selected files & findings while adding those findings to combined issue list
-
 package validation;
 
 import assessment.AssessmentDefinition;
@@ -17,7 +14,7 @@ import submission.StudentSubmission;
 import submission.files.StudentHeaderReader;
 import submission.files.SubmissionFileFinder;
 
-public class SubmissionValidator {
+public class SubmissionValidator { //runs validation rules & builds question attempts for grading
     private final List<QuestionValidationRule> questionRules;
     private final List<SubmissionValidationRule> submissionRules;
     private final SubmissionFileFinder fileFinder;
@@ -31,7 +28,7 @@ public class SubmissionValidator {
         this.fileFinder = fileFinder;
     }
 
-    public StudentSubmission validate(StudentSubmission submission, AssessmentDefinition assessment) {
+    public void validate(StudentSubmission submission, AssessmentDefinition assessment) {
         if (!submission.getQuestionAttempts().isEmpty()) throw new IllegalStateException("submission already has question attempts");
 
         ValidationFiles files = new ValidationFiles(submission, fileFinder);
@@ -43,8 +40,6 @@ public class SubmissionValidator {
         for (QuestionDefinition question : assessment.getQuestions()) {
             validateQuestion(submission, question, files.question(question));
         }
-        
-        return submission;
     }
 
     private void validateQuestion(StudentSubmission submission, QuestionDefinition question, ValidationFiles.QuestionFiles files) {

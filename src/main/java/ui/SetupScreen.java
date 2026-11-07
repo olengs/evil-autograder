@@ -1,6 +1,3 @@
-//shows invalid setup setting & accepts a replacement path in terminal ui
-//keeps setup errors & expected paths & keyboard commands readable on small screens
-
 package ui;
 
 import static utils.ui.UiDrawing.*;
@@ -12,7 +9,7 @@ import dev.tamboui.terminal.Frame;
 import dev.tamboui.text.CharWidth;
 import dev.tamboui.widgets.paragraph.Paragraph;
 
-public final class SetupScreen {
+public final class SetupScreen { //draws setup errors & replacement-path input
     private SetupScreen() {}
 
     public static void draw(Frame frame, SetupConfig.Issue issue, String input) {

@@ -1,6 +1,3 @@
-//resolves file paths & builds bounded file indexes inside a submission directory
-//rejects ambiguous matches & optionally caches lookups for one submission
-
 package submission.files;
 
 import java.io.IOException;
@@ -13,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-final class FileSearch {
+final class FileSearch { //resolves case-insensitive paths & caches bounded submission file searches
     private static final int maxSearchDepth = 4;
     private final boolean reuseLookups;
     private final Map<Path, List<Path>> directoryEntries = new HashMap<>();

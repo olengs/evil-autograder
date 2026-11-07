@@ -1,16 +1,13 @@
-//describes a preparation or validation finding with a code & severity & message
-//identifies affected question or uses a null question id when finding applies to submission
-
 package validation;
 
-public class SubmissionIssue {
+public class SubmissionIssue { //stores a validation finding & determines which questions it blocks
 
     private final String code;
     private final IssueSeverity severity;
     private final String message;
     private final String questionId;
 
-    public SubmissionIssue(String code, IssueSeverity severity, String message, String questionId) {
+    private SubmissionIssue(String code, IssueSeverity severity, String message, String questionId) {
         this.code = code;
         this.severity = severity;
         this.message = message;

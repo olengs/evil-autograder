@@ -1,6 +1,3 @@
-//extracts one zip archive into destination directory supplied by its caller
-//rejects entries that escape that directory & leaves workspace ownership & cleanup to caller
-
 package submission;
 
 import utils.process.Interruptions;
@@ -12,12 +9,12 @@ import java.nio.file.StandardOpenOption;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public final class ZipExtractor {
+public final class ZipExtractor { //extracts ZIP entries while rejecting paths outside destination
     private ZipExtractor() {
     }
 
-    //caller owns returned extraction directory & must clean it up
-    public static Path extract(Path zipFile, Path destinationFolder) throws IOException {
+    //caller owns extraction directory & must clean it up
+    public static void extract(Path zipFile, Path destinationFolder) throws IOException {
         Interruptions.check("submission extraction interrupted");
         Path extractionDirectory = destinationFolder.toAbsolutePath().normalize();
         Files.createDirectories(extractionDirectory);
@@ -53,6 +50,5 @@ public final class ZipExtractor {
             }
         }
         Interruptions.check("submission extraction interrupted");
-        return extractionDirectory;
     }
 }

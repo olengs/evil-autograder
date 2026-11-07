@@ -1,6 +1,3 @@
-//locates question folders & answer files without changing an extracted submission
-//prefers expected folder & accepts unambiguous relocated answers & can cache per-submission lookups
-
 package submission.files;
 
 import java.io.IOException;
@@ -8,7 +5,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
-public class SubmissionFileFinder {
+public class SubmissionFileFinder { //locates question folders & unambiguous answer files
     private final FileSearch fileSearch;
 
     public SubmissionFileFinder() {
@@ -32,7 +29,7 @@ public class SubmissionFileFinder {
         return fileSearch.findDirectory(root, expectedFolderName);
     }
 
-    //prefer the resolved question folder > accept a relocated answer only when unambiguous
+    //prefer resolved question folder > accept a relocated answer only when unambiguous
     public Optional<Path> findAnswerFile(Path root, Optional<Path> folder, String requiredFile) throws IOException {
         if (folder.isPresent()) {
             Optional<Path> answer = findFileIgnoringCase(folder.get(), requiredFile);

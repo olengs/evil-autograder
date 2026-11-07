@@ -1,9 +1,6 @@
-//lists preparation & grading & verification & final stages of a run
-//provides shared stage names for progress tracking & terminal display
-
 package grading.progress;
 
-public enum ProgressStage {
+public enum ProgressStage { //defines preparation, grading, verification & final run stages
     loading,
     validating,
     preparing,

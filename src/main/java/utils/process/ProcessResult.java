@@ -1,9 +1,6 @@
-//stores a process exit code & captured output streams & timeout status
-//lets grading distinguish successful execution from compilation errors & runtime errors & timeouts
-
 package utils.process;
 
-public final class ProcessResult {
+public final class ProcessResult { //stores a process exit code, captured output & timeout status
     private final int exitCode;
     private final String standardOutput;
     private final String errorOutput;

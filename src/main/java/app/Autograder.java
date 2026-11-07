@@ -1,6 +1,3 @@
-//coordinates assessment loading & submission preparation & validation & grading
-//returns each submission with its question grades after cleaning up temporary extraction workspace
-
 package app;
 
 import assessment.AssessmentDefinition;
@@ -29,7 +26,7 @@ import validation.rules.AnswerFileRule;
 import validation.rules.StudentHeaderRule;
 import validation.rules.UnexpectedFileRule;
 
-public final class Autograder {
+public final class Autograder { //coordinates assessment loading, submission validation & grading
     private Autograder() {}
 
     public static Map<StudentSubmission, List<QuestionGrade>> run(Config config) throws IOException {
@@ -64,7 +61,7 @@ public final class Autograder {
                 SubmissionValidator validator = createValidator();
                 for (StudentSubmission submission : submissions) {
                     Interruptions.check("validation interrupted");
-                    progress.validationStarted(submission.getStudent() == null ? submission.getOriginalZip().getFileName().toString() : submission.getStudent().getUsername());
+                    progress.validationStarted(submission.getDisplayName());
                     validator.validate(submission, assessment);
                 }
 

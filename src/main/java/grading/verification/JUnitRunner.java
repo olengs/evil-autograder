@@ -1,6 +1,3 @@
-//runs shared junit verification for console & terminal ui against one set of grading results
-//publishes live ui checks & saves scoresheets after verification & preserves cancellation cleanup
-
 package grading.verification;
 
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
@@ -27,7 +24,7 @@ import grading.progress.JUnitSnapshot;
 import report.ScoreSheetWriter;
 import submission.StudentSubmission;
 
-public final class JUnitRunner {
+public final class JUnitRunner { //runs grading verification & coordinates progress, scoresheets & cleanup
     private static final String parallelism = "4";
 
     private JUnitRunner() {}
@@ -54,12 +51,7 @@ public final class JUnitRunner {
     }
 
     public static TestExecutionSummary run(Config config, GradingProgress progress) throws IOException, InterruptedException {
-        return run(config, progress, false);
-    }
-
-    public static TestExecutionSummary run(Config config, GradingProgress progress, boolean printResults)
-            throws IOException, InterruptedException {
-        String session = GradingSession.register(config, progress, printResults);
+        String session = GradingSession.register(config, progress);
         var listener = new UiListener(progress);
         listener.publish(); //enable JUnit before grading can report batch completion
         try {
@@ -123,7 +115,7 @@ public final class JUnitRunner {
     }
 
     private static void checkSummary(TestExecutionSummary summary, UiListener listener) throws IOException, InterruptedException {
-        // Jupiter may clear the interrupt flag while recording a setup failure.
+        // Jupiter may clear interrupt flag while recording a setup failure.
         if (Thread.currentThread().isInterrupted()
                 || summary.getFailures().stream().anyMatch(failure -> wasInterrupted(failure.getException()))) {
             Thread.currentThread().interrupt();
@@ -159,13 +151,13 @@ public final class JUnitRunner {
         }
 
         private Thread watchCancellation(Thread owner) {
-            // Forward cancellation to Jupiter's pool, including the grading setup thread.
+            // Forward cancellation to Jupiter's pool, including grading setup thread.
             return Thread.ofPlatform().daemon().name("junit-cancellation").start(() -> {
                 try {
                     while (!owner.isInterrupted()) Thread.sleep(25);
                     interruptWorkers(owner);
                 } catch (InterruptedException finished) {
-                    // The launcher completed normally.
+                    //launcher completed normally
                 }
             });
         }

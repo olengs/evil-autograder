@@ -1,6 +1,3 @@
-//lists submission archives using shared filename convention
-//keeps direct & sorted zip discovery available without depending on submission preparation
-
 package submission;
 
 import utils.files.FileUtils;
@@ -9,7 +6,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 
-public final class SubmissionArchives {
+public final class SubmissionArchives { //lists submission ZIP files in sorted order
     private SubmissionArchives() {}
 
     public static List<Path> listZipFiles(Path submissionFolder) throws IOException {

@@ -1,6 +1,3 @@
-//converts tester output text into individual test-case results
-//rejects malformed finished output & omits unfinished cases when parsing output after a timeout
-
 package grading;
 
 import java.util.ArrayList;
@@ -10,7 +7,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class TesterOutputParser {
+public class TesterOutputParser { //parses tester cases & keeps completed outcomes after a timeout
     private static final Pattern testHeader = Pattern.compile("^Test ([^:]+):.*$");
 
     public List<TestCaseResult> parse(String output) {

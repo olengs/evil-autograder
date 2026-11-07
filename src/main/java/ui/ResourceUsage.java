@@ -1,12 +1,9 @@
-//samples process cpu & heap & thread usage for terminal display
-//limits sampling frequency & formats current resource metrics
-
 package ui;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 
-final class ResourceUsage {
+final class ResourceUsage { //samples CPU, heap & thread usage for terminal display
     private final com.sun.management.OperatingSystemMXBean os = ManagementFactory.getPlatformMXBean(com.sun.management.OperatingSystemMXBean.class);
     private final java.lang.management.ThreadMXBean threads = ManagementFactory.getThreadMXBean();
     private long lastSample;

@@ -1,11 +1,8 @@
-//describes a teacher-provided tester source file & its executable main class
-//lets grading copy selected tester into a workspace & run it for matching question
-
 package assessment;
 
 import java.nio.file.Path;
 
-public class TesterDefinition {
+public class TesterDefinition { //stores a tester's source path & executable main class
     private final Path testerDirectory;
     private final Path relativePath;
     private final String mainClassName;
