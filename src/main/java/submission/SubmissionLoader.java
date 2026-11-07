@@ -14,20 +14,8 @@ import model.IssueSeverity;
 import model.AssessmentDefinition;
 import utils.FileUtils;
 
-/**
- * find all student zip submissions & extracts each one into its own folder inside workspace
- *
- * @param submissionFolder > containing student zip files
- * @param workspaceFolder > where submissions will be extracted
- * @return > list of extracted submission folder paths
- * @throws IOException > if files cannot be read \ extracted
- */
-
-public class SubmissionLoader { //find & extracts student zip files > keeping track of any that fail
-    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> students) throws IOException {
-        return loadSubmissions(submissionFolder, workspaceFolder, students, null);
-    }
-
+/** Loads student ZIP submissions into isolated workspace folders and records preparation failures. */
+public class SubmissionLoader {
     public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder,
             List<StudentDetails> students, AssessmentDefinition assessment) throws IOException {
         Files.createDirectories(workspaceFolder);
@@ -41,9 +29,7 @@ public class SubmissionLoader { //find & extracts student zip files > keeping tr
 
             try {
                 ZipExtractor.extract(zipFile, extractionDirectory);
-                if (assessment != null) {
-                    submission = new StudentSubmission(student, zipFile, findAnswerRoot(extractionDirectory, assessment));
-                }
+                submission = new StudentSubmission(student, zipFile, findAnswerRoot(extractionDirectory, assessment));
                 if (student == null) {
                     submission.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.ERROR, "no match for " + zipFile.getFileName(), null, zipFile)));
                 }
@@ -78,8 +64,7 @@ public class SubmissionLoader { //find & extracts student zip files > keeping tr
     }
 
     public static List<Path> findZipFiles(Path submissionFolder) throws IOException {
-        //@1ejun6 > find all zip files
-        try (Stream<Path> paths = Files.list(submissionFolder)) { //@1ejun6 > lists files directly inside
+        try (Stream<Path> paths = Files.list(submissionFolder)) {
             return paths.filter(Files::isRegularFile).filter(path -> path.toString().toLowerCase(Locale.ROOT).endsWith(".zip")).sorted().toList();
         }
     }

@@ -8,13 +8,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class TemplateUtils { //reads bundled text resources & fills {{name}} placeholders > shared by the prompt & tester templates
-    // {{name}} placeholder > filled in a single pass so inserted text is never re-scanned
+    //{{name}} placeholder > filled in a single pass so inserted text is never re-scanned
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([A-Za-z][A-Za-z0-9]*)}}");
 
     private TemplateUtils() {
     }
 
-    // a utf-8 resource from src/main/resources > fail loudly when it is missing from the build
+    //a utf-8 resource from src/main/resources > fail loudly when it is missing from the build
     public static String readResource(String resource) {
         try (InputStream in = TemplateUtils.class.getResourceAsStream(resource)) {
             if (in == null) {
@@ -26,7 +26,7 @@ public final class TemplateUtils { //reads bundled text resources & fills {{name
         }
     }
 
-    // replace every {{name}} with its value > an unknown name is a template typo so fail loudly
+    //replace every {{name}} with its value > an unknown name is a template typo so fail loudly
     public static String fill(String template, Map<String, String> values) {
         Matcher matcher = PLACEHOLDER.matcher(template);
         return matcher.replaceAll(match -> {

@@ -3,10 +3,10 @@ package generation.run;
 import java.nio.file.Path;
 
 public final class GenerationRequest { //one tester generation run > what to read & how to prompt & where to write
-    private final Path examPdf; // exam pdf to read questions from
-    private final Path resourcesDirectory; // answer-template folders used to enumerate questions
-    private final Path outputDirectory; // target folder for generated tester files
-    private final String userPrompt; // free-form extra instructions > empty when none
+    private final Path examPdf; //exam pdf to read questions from
+    private final Path resourcesDirectory; //answer-template folders used to enumerate questions
+    private final Path outputDirectory; //target folder for generated tester files
+    private final String userPrompt; //free-form extra instructions > empty when none
 
     public GenerationRequest(Path examPdf, Path resourcesDirectory, Path outputDirectory, String userPrompt) {
         if (examPdf == null) {

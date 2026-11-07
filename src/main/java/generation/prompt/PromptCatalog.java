@@ -8,20 +8,20 @@ import com.google.gson.JsonParseException;
 import utils.TemplateUtils;
 
 public final class PromptCatalog { //all prompt text loaded from tester-prompt.json > base & section layout
-    // bundled on the classpath from src/main/resources
+    //bundled on the classpath from src/main/resources
     private static final String DEFAULT_RESOURCE = "/generation/prompt/tester-prompt.json";
 
-    // json shape > field names must match the keys in tester-prompt.json
+    //json shape > field names must match the keys in tester-prompt.json
     public record Base(List<String> instructions) {}
 
     public record Section(String name, String requires, List<String> lines) {}
 
-    // layout of the files.md bundle > one folder header then one entry per file
+    //layout of the files.md bundle > one folder header then one entry per file
     public record Files(List<String> folder, List<String> textFile) {}
 
     private record Definition(Base base, Files files, List<Section> sections) {}
 
-    private static PromptCatalog defaultCatalog; // lazily loaded once > shared by every builder
+    private static PromptCatalog defaultCatalog; //lazily loaded once > shared by every builder
 
     private final Definition definition;
 
@@ -30,7 +30,7 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
         validate();
     }
 
-    // the bundled catalog > loaded on first use & cached
+    //the bundled catalog > loaded on first use & cached
     public static synchronized PromptCatalog loadDefault() {
         if (defaultCatalog == null) {
             defaultCatalog = parse(TemplateUtils.readResource(DEFAULT_RESOURCE), DEFAULT_RESOURCE);
@@ -51,7 +51,7 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
         }
     }
 
-    // fail at load time rather than mid-generation > missing blocks or duplicate ids
+    //fail at load time rather than mid-generation > missing blocks or duplicate ids
     private void validate() {
         if (definition.base() == null || isEmpty(definition.base().instructions())) {
             throw new IllegalStateException("prompt catalog needs base.instructions");
@@ -82,7 +82,7 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
         return definition.sections();
     }
 
-    // json stores multi-line text as an array of lines
+    //json stores multi-line text as an array of lines
     public static String join(List<String> lines) {
         return String.join("\n", lines);
     }

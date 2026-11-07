@@ -10,7 +10,7 @@ public final class PdfFileUtils { //checks for a pdf that is about to be uploade
     private PdfFileUtils() {
     }
 
-    // return the normalised path when it is a readable, non-empty pdf > otherwise fail with a clear message
+    //return the normalised path when it is a readable, non-empty pdf > otherwise fail with a clear message
     public static Path requirePdf(Path pdfFile) throws IOException {
         if (pdfFile == null) {
             throw new IOException("exam pdf path is required");
@@ -25,7 +25,7 @@ public final class PdfFileUtils { //checks for a pdf that is about to be uploade
         if (Files.size(normalised) == 0) {
             throw new IOException("exam pdf is empty > " + normalised);
         }
-        // a renamed non-pdf would only fail later inside the provider with a vague error
+        //a renamed non-pdf would only fail later inside the provider with a vague error
         try (var in = Files.newInputStream(normalised)) {
             byte[] header = in.readNBytes(PDF_MAGIC.length);
             if (!java.util.Arrays.equals(header, PDF_MAGIC)) {

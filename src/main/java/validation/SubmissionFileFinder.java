@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 
 public class SubmissionFileFinder { //finds required files in a students submission > checking both exact names & names with different capital letters
 
-    public Optional<Path> findExact(Path directory, String requiredFileName) throws IOException { //@1ejun6 > a path \ nothing
+    public Optional<Path> findExact(Path directory, String requiredFileName) throws IOException {
         if (!Files.isDirectory(directory)) {
             return Optional.empty();
         }
@@ -37,22 +37,17 @@ public class SubmissionFileFinder { //finds required files in a students submiss
         }
     }
 
+    //Prefer an exact filename; retain a unique case-insensitive candidate when capitalization differs.
+    public Optional<Path> findRequired(Path directory, String requiredFileName) throws IOException {
+        Optional<Path> exact = findExact(directory, requiredFileName);
+        return exact.isPresent() ? exact : findIgnoringCase(directory, requiredFileName);
+    }
+
     public List<Path> findSubmissionFiles(Path directory, List<String> requiredFiles) throws IOException {
         List<Path> submittedFiles = new ArrayList<>();
-
         for (String requiredFile : requiredFiles) {
-            Optional<Path> exact = findExact(directory, requiredFile);
-
-            if (exact.isPresent()) {
-                submittedFiles.add(exact.get().toAbsolutePath().normalize());
-                continue;
-            }
-
-            //@1ejun6 > if exact name is absent > keep a case insensitive candidate so we still know what student submitted
-            Optional<Path> caseInsensitive = findIgnoringCase(directory, requiredFile);
-            if (caseInsensitive.isPresent()) {
-                submittedFiles.add(caseInsensitive.get().toAbsolutePath().normalize());
-            }
+            findRequired(directory, requiredFile)
+                    .ifPresent(file -> submittedFiles.add(file.toAbsolutePath().normalize()));
         }
         return submittedFiles;
     }

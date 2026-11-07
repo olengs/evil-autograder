@@ -5,7 +5,6 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Optional;
 import java.util.Properties;
 
 public class Config {
@@ -32,13 +31,13 @@ public class Config {
         getCompilationTimeout();
         getExecutionTimeout();
 
-        // settings for LLM tester generator
+        //settings for llm tester generator
         getExamPdfFile();
         getGenerationOutputDirectory();
         getLlmModel();
         getLlmApiKeyEnv();
         isLlmSendPdf();
-        getGenerationMaxRetries();
+        getLlmRequestTimeout();
     }
 
     public Path getInputDirectory() {
@@ -73,20 +72,13 @@ public class Config {
         return getTimeout("execution.timeout.seconds");
     }
 
-    // LLM tester generation settings
-
+    //llm tester generation settings
     public Path getExamPdfFile() {
         return getInputDirectory().resolve(getRequired("exam.pdf.file"));
     }
 
     public Path getGenerationOutputDirectory() {
         return getInputDirectory().resolve(getRequired("generation.output.dir"));
-    }
-
-    // folder of example testers shown to the llm > optional > empty when blank so no exemplar is sent
-    public Optional<Path> getExemplarDirectory() {
-        String folder = getOptional("exemplar.folder", "");
-        return folder.isEmpty() ? Optional.empty() : Optional.of(getInputDirectory().resolve(folder));
     }
 
     public String getLlmModel() {
@@ -97,12 +89,12 @@ public class Config {
         return getRequired("llm.api.key.env");
     }
 
-    public boolean isLlmSendPdf() {
-        return getBoolean("llm.send.pdf");
+    public Duration getLlmRequestTimeout() {
+        return getTimeout("llm.request.timeout.seconds");
     }
 
-    public int getGenerationMaxRetries() {
-        return getNonNegativeInt("generation.max.retries");
+    public boolean isLlmSendPdf() {
+        return getBoolean("llm.send.pdf");
     }
 
     private String getRequired(String key) {
@@ -115,33 +107,13 @@ public class Config {
         return value.strip();
     }
 
-    // optional setting > fall back to default when key missing or blank
-    private String getOptional(String key, String fallback) {
-        String value = props.getProperty(key);
-        return (value == null || value.isBlank()) ? fallback : value.strip();
-    }
-
-    // required boolean > only true & false accepted
+    //required boolean > only true & false accepted
     private boolean getBoolean(String key) {
         String value = getRequired(key).toLowerCase(java.util.Locale.ROOT);
         if (!value.equals("true") && !value.equals("false")) {
             throw new IllegalArgumentException(key + " must be true or false");
         }
         return value.equals("true");
-    }
-
-    // whole number zero or greater > used for retry count
-    private int getNonNegativeInt(String key) {
-        int number;
-        try {
-            number = Integer.parseInt(getRequired(key));
-        } catch (NumberFormatException error) {
-            throw new IllegalArgumentException(key + " must be a whole number", error);
-        }
-        if (number < 0) {
-            throw new IllegalArgumentException(key + " must be zero or greater");
-        }
-        return number;
     }
 
     private Duration getTimeout(String key) {
