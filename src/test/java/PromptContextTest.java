@@ -1,7 +1,6 @@
 import static org.junit.jupiter.api.Assertions.*;
 
 import generation.prompt.PromptBuilder;
-import generation.prompt.PrompterRegistry;
 import generation.questionSpec.QuestionSpec;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,7 +38,7 @@ class PromptContextTest {
         assertFalse(bundle.text().contains("navigation noise"));
         assertFalse(bundle.text().contains("script noise"));
         assertFalse(bundle.text().contains("_SECRET"));
-        String prompt = new PromptBuilder().build(specs, bundle.text(), new PrompterRegistry().getAllAddOns(), "", null, true);
+        String prompt = new PromptBuilder().build(specs, bundle.text(), "", null, true);
         assertTrue(prompt.contains("within this count"));
         assertTrue(prompt.contains("Return only JSON"));
         assertFalse(prompt.contains("Return ONLY the Java"));

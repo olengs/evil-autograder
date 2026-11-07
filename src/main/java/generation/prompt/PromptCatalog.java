@@ -1,31 +1,27 @@
 package generation.prompt;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 
 import utils.TemplateUtils;
 
-public final class PromptCatalog { //all prompt text loaded from tester-prompt.json > base, add-ons & section layout
+public final class PromptCatalog { //all prompt text loaded from tester-prompt.json > base & section layout
     // bundled on the classpath from src/main/resources
     private static final String DEFAULT_RESOURCE = "/generation/prompt/tester-prompt.json";
 
     // json shape > field names must match the keys in tester-prompt.json
     public record Base(List<String> instructions) {}
 
-    public record AddOn(String id, String description, List<String> instructions) {}
-
     public record Section(String name, String requires, List<String> lines) {}
 
     // layout of the files.md bundle > one folder header then one entry per file
     public record Files(List<String> folder, List<String> textFile) {}
 
-    private record Definition(Base base, List<AddOn> addOns, Files files, List<Section> sections) {}
+    private record Definition(Base base, Files files, List<Section> sections) {}
 
-    private static PromptCatalog defaultCatalog; // lazily loaded once > shared by builder & registry
+    private static PromptCatalog defaultCatalog; // lazily loaded once > shared by every builder
 
     private final Definition definition;
 
@@ -67,12 +63,6 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
         if (isEmpty(definition.sections())) {
             throw new IllegalStateException("prompt catalog needs at least one section");
         }
-        Set<String> ids = new HashSet<>();
-        for (AddOn addOn : getAddOns()) {
-            if (addOn.id() == null || addOn.id().isBlank() || !ids.add(addOn.id())) {
-                throw new IllegalStateException("prompt catalog add-on id missing or duplicated > " + addOn.id());
-            }
-        }
         for (Section section : definition.sections()) {
             if (isEmpty(section.lines())) {
                 throw new IllegalStateException("prompt catalog section has no lines > " + section.name());
@@ -82,10 +72,6 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
 
     public String getBaseInstructions() {
         return join(definition.base().instructions());
-    }
-
-    public List<AddOn> getAddOns() {
-        return definition.addOns() == null ? List.of() : definition.addOns();
     }
 
     public Files getFiles() {
