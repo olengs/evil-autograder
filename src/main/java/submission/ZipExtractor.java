@@ -5,6 +5,7 @@ import utils.process.Interruptions;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.InvalidPathException;
 import java.nio.file.StandardOpenOption;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -25,7 +26,12 @@ public final class ZipExtractor { //extracts ZIP entries while rejecting paths o
             while (entries.hasMoreElements()) {
                 Interruptions.check("submission extraction interrupted");
                 ZipEntry entry = entries.nextElement();
-                Path outputPath = extractionDirectory.resolve(entry.getName()).normalize();
+                Path outputPath;
+                try {
+                    outputPath = extractionDirectory.resolve(entry.getName()).normalize();
+                } catch (InvalidPathException error) {
+                    throw new IOException("Invalid zip entry path > " + entry.getName(), error);
+                }
 
                 if (!outputPath.startsWith(extractionDirectory)) throw new IOException("Invalid zip entry: " + entry.getName());
 
