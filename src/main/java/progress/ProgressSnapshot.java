@@ -3,10 +3,11 @@ package progress;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import model.GradeStatus;
 
 //@1ejun6 > copy only current students small status list > never retain submissions \ process output
-public record ProgressSnapshot(ProgressStage stage, String message, String student, String question, List<String> questions, Map<String, GradeStatus> results, int totalStudents, int studentNumber, int processedStudents, int processedQuestions, long stageStarted, Duration timeout, long revision, boolean totalsKnown, JUnitSnapshot junit) {
+public record ProgressSnapshot(ProgressStage stage, String message, String student, String question, List<String> questions, Map<String, GradeStatus> results, int totalStudents, int studentNumber, int processedStudents, int processedQuestions, long stageStarted, Duration timeout, long revision, boolean totalsKnown, JUnitSnapshot junit, Duration totalElapsed, Optional<Duration> estimatedRemaining, Optional<Duration> estimatedTotal) {
 
     public ProgressSnapshot {
         questions = List.copyOf(questions);

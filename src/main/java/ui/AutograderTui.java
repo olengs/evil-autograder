@@ -1,12 +1,16 @@
 package ui;
 
-import config.Config;
+import config.SetupConfig;
 import dev.tamboui.tui.TuiConfig;
 import dev.tamboui.tui.TuiRunner;
 import dev.tamboui.tui.event.KeyCode;
 import dev.tamboui.tui.event.KeyEvent;
+import dev.tamboui.tui.event.PasteEvent;
 import dev.tamboui.tui.event.TickEvent;
 import java.time.Duration;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import progress.GradingProgress;
@@ -15,10 +19,16 @@ import verification.JUnitGradingRun;
 public class AutograderTui { //manages terminal interface while grading runs in background
     //@1ejun6 > creates shared progress state & grading task > updates screen > handles keyboard input > waits for cleanup before closing
 
-    public void run(Config config) throws Exception {
+    private ProgressView view;
+    private IOException setupFailure;
+
+    public void run(Path configFile) throws Exception {
         GradingProgress progress = new GradingProgress();
-        ProgressView view = new ProgressView(config.getInputDirectory(), progress.getSnapshot());
-        var task = new FutureTask<>(() -> JUnitGradingRun.run(config, progress));
+        SetupConfig setup = new SetupConfig(configFile);
+        StringBuilder input = new StringBuilder();
+        view = null;
+        setupFailure = null;
+        var task = new FutureTask<>(() -> JUnitGradingRun.run(setup.config(), progress));
         Thread worker = new Thread(task, "worker"); //@1ejun6 > lambda > execute > store grades > task object
         ResourceUsage resources = new ResourceUsage();
 
@@ -26,10 +36,40 @@ public class AutograderTui { //manages terminal interface while grading runs in 
         TuiConfig terminalConfig = TuiConfig.builder().tickRate(Duration.ofMillis(250)).build();
         try (TuiRunner terminal = TuiRunner.create(terminalConfig)) {
             try {
-                worker.start(); //@1ejun6 > starts background thread
+                if (setup.issue() == null) {
+                    view = new ProgressView(setup.config().getInputDirectory(), progress.getSnapshot());
+                    worker.start();
+                } else progress.pauseElapsedTime();
                 terminal.run((event, runner) -> { //@1ejun6 > event loop
                     //@1ejun6 > redraw only when progress \ elapsed time changes
 
+                    if (event instanceof KeyEvent key && key.isCtrlC()) {
+                        runner.quit();
+                        return true;
+                    }
+                    if (view == null) {
+                        if (event instanceof PasteEvent paste) {
+                            input.append(paste.text());
+                            return true;
+                        }
+                        if (!(event instanceof KeyEvent key)) return false;
+                        if (key.code() == KeyCode.ENTER) {
+                            progress.resumeElapsedTime();
+                            try {
+                                setup.replace(input.toString());
+                                input.setLength(0);
+                                if (setup.issue() == null) {
+                                    view = new ProgressView(setup.config().getInputDirectory(), progress.getSnapshot());
+                                    worker.start();
+                                } else progress.pauseElapsedTime();
+                            } catch (IOException error) {
+                                setupFailure = error;
+                                runner.quit();
+                            }
+                        } else if (key.code() == KeyCode.BACKSPACE && !input.isEmpty()) input.delete(input.offsetByCodePoints(input.length(), -1), input.length());
+                        else if (key.code() == KeyCode.CHAR && !Character.isISOControl(key.codePoint())) input.append(key.string());
+                        return true;
+                    }
                     //@1ejun6 > on each tick > read latest grading progress > redraw if changed
                     if (event instanceof TickEvent) {
                         var snapshot = progress.getSnapshot();
@@ -45,14 +85,21 @@ public class AutograderTui { //manages terminal interface while grading runs in 
                     }
 
                     return false; //ignore other keys
-                }, view::render);
+                }, frame -> {
+                    if (view == null) SetupScreen.draw(frame, setup.issue(), input.toString());
+                    else view.render(frame);
+                });
             } finally {
                 //@1ejun6 > cancel unfinished grading > wait for worker cleanup before closing
                 if (!task.isDone()) task.cancel(true);
                 awaitWorker(worker, task);
             }
+        } finally {
+            progress.finishElapsedTime();
         }
 
+        if (setupFailure != null) throw setupFailure;
+        if (view == null) throw new CancellationException("setup interrupted");
         try {
             task.get(); //propagate grading failures after cleanup
         } catch (ExecutionException failure) {

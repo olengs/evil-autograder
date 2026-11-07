@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import model.GradeStatus;
 
 final class ProgressState { //@1ejun6 > stores current progress values & reuses latest snapshot
@@ -18,6 +19,15 @@ final class ProgressState { //@1ejun6 > stores current progress values & reuses 
     int processedStudents;
     int processedQuestions;
     long stageStarted = System.nanoTime();
+    final long runStarted = stageStarted;
+    long inputStarted;
+    long inputNanos;
+    long runFinished;
+    boolean waitingForInput;
+    boolean timerFinished;
+    Duration batchStartedElapsed = Duration.ZERO;
+    Optional<Duration> estimatedRemaining = Optional.empty();
+    Optional<Duration> estimatedTotal = Optional.empty();
     Duration timeout = Duration.ZERO;
     long revision;
     ProgressSnapshot cachedSnapshot; //@1ejun6 > copy of progress information for ui
@@ -26,11 +36,18 @@ final class ProgressState { //@1ejun6 > stores current progress values & reuses 
     JUnitSnapshot junit = JUnitSnapshot.DISABLED;
 
     ProgressSnapshot snapshot() {
-        //@1ejun6 > creates a snapshot only when there is no cached one \ its revision is older than the trackers revision
-        if (cachedSnapshot == null || cachedSnapshot.revision() != revision) {
-            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, studentNumber, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, junit);
+        //refreshes live time every tick & reuses snapshots while paused or finished
+        Duration elapsed = totalElapsed();
+        if (cachedSnapshot == null || cachedSnapshot.revision() != revision || cachedSnapshot.totalElapsed().toMillis() / 250 != elapsed.toMillis() / 250) {
+            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, studentNumber, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, junit, elapsed, estimatedRemaining, estimatedTotal);
         }
         return cachedSnapshot;
+    }
+
+    Duration totalElapsed() {
+        long end = timerFinished ? runFinished : System.nanoTime();
+        long paused = inputNanos + (waitingForInput ? end - inputStarted : 0);
+        return Duration.ofNanos(Math.max(0, end - runStarted - paused));
     }
 
     void setStage(ProgressStage stage, String message, Duration timeout) { //@1ejun6 > sets stage & message & timeout > resets timer & increments change number

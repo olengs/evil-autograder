@@ -26,7 +26,7 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
 
     public boolean update(ProgressSnapshot next) { //@1ejun6 > checks whether screen needs to be redrawn
         long second = next.isFinished() ? 0 : next.elapsedSeconds();
-        if (next.revision() == snapshot.revision() && second == displayedSecond) return false;
+        if (next.revision() == snapshot.revision() && second == displayedSecond && next.totalElapsed().equals(snapshot.totalElapsed())) return false;
         snapshot = next;
         displayedSecond = second;
         return true;
@@ -47,16 +47,18 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
             return;
         }
 
-        if (area.width() >= 79 && area.height() >= 20) {
+        int framedHeight = snapshot.isFinished() ? (snapshot.stage() == ProgressStage.failed ? 23 : 22) : 20;
+        if (area.width() >= 79 && area.height() >= framedHeight) {
             FramedLayout.draw(frame, area, project, snapshot, displayedSecond, resources);
             return;
         }
 
         int width = Math.min(area.width() - 4, 96);
         boolean columns = width >= 68;
-        int wantedHeight = snapshot.isFinished() ? (snapshot.junit().enabled() ? 13 : 8) + (snapshot.stage() == ProgressStage.failed ? 3 : 0)
-                : Math.max(14, Math.min(24, snapshot.questions().size() + (columns ? 9 : 13)));
-        boolean showResources = area.height() >= (snapshot.stage() == ProgressStage.failed ? 22 : 19);
+        int wantedHeight = snapshot.isFinished() ? (snapshot.junit().enabled() ? 15 : 10) + (snapshot.stage() == ProgressStage.failed ? 3 : 0)
+                : Math.max(14, Math.min(24, snapshot.questions().size() + (columns ? 9 : 13))) + (columns ? 0 : 3);
+        int resourceMinimum = snapshot.isFinished() ? (snapshot.stage() == ProgressStage.failed ? 23 : 20) : (columns ? 19 : 22);
+        boolean showResources = area.height() >= resourceMinimum;
         int height = Math.min(area.height() - 2, wantedHeight + (showResources ? 4 : 0));
         Rect content = new Rect(area.x() + (area.width() - width) / 2, area.y() + 1, width, height);
 
@@ -74,7 +76,7 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
         Rect body = new Rect(content.x(), content.y() + 3, content.width(), content.height() - (showResources ? 9 : 5));
         int leftWidth = columns ? (body.width() - 4) * 2 / 5 : body.width();
         BatchPanel.drawBatch(frame, new Rect(body.x(), body.y(), leftWidth, body.height()), columns, snapshot);
-        Rect student = columns ? new Rect(body.x() + leftWidth + 4, body.y(), body.width() - leftWidth - 4, body.height()) : new Rect(body.x(), body.y() + 4, body.width(), body.height() - 4);
+        Rect student = columns ? new Rect(body.x() + leftWidth + 4, body.y(), body.width() - leftWidth - 4, body.height()) : new Rect(body.x(), body.y() + 7, body.width(), body.height() - 7);
         StudentPanel.drawStudent(frame, student, snapshot, displayedSecond);
         if (showResources) drawResources(frame, content);
     }
