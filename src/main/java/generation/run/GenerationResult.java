@@ -1,12 +1,13 @@
 package generation.run;
 
 import java.util.List;
+import generation.run.QuestionGenerationOutcome.GenerationStatus;
 
 public final class GenerationResult { //summary of one generation run > every question's outcome & counts
     private final List<QuestionGenerationOutcome> outcomes;
 
     public GenerationResult(List<QuestionGenerationOutcome> outcomes) {
-        // copy so the summary cannot be mutated after the run > empty when null
+        //copy so the summary cannot be mutated after the run > empty when null
         this.outcomes = outcomes == null ? List.of() : List.copyOf(outcomes);
     }
 
@@ -14,7 +15,7 @@ public final class GenerationResult { //summary of one generation run > every qu
         return outcomes;
     }
 
-    // count outcomes matching one status > used for the run summary
+    //count outcomes matching one status > used for the run summary
     public long countByStatus(GenerationStatus status) {
         return outcomes.stream().filter(outcome -> outcome.getStatus() == status).count();
     }
@@ -23,7 +24,7 @@ public final class GenerationResult { //summary of one generation run > every qu
         return countByStatus(GenerationStatus.WRITTEN);
     }
 
-    // true when every question produced a written tester
+    //true when every question produced a written tester
     public boolean isFullySuccessful() {
         return !outcomes.isEmpty() && getWrittenCount() == outcomes.size();
     }

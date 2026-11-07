@@ -5,12 +5,11 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Map;
 
 public class Config { //loads grading paths & process time limits from configuration
-    private final Properties props;
+    private final Properties properties;
     private final Path inputDirectory;
     private final Path outputDirectory;
     private final Path submissionsDirectory;
@@ -29,8 +28,7 @@ public class Config { //loads grading paths & process time limits from configura
     }
 
     public Config(Path configFile, Map<String, String> overrides) throws IOException {
-        props = new Properties();
-        Properties properties = props;
+        properties = new Properties();
         try (Reader reader = Files.newBufferedReader(configFile)) {
             properties.load(reader);
         }
@@ -79,80 +77,52 @@ public class Config { //loads grading paths & process time limits from configura
         return executionTimeout;
     }
 
-    // LLM tester generation settings
-
+    // Generation settings are read only when generating testers, so grading needs no API setup.
     public Path getExamPdfFile() {
-        return getInputDirectory().resolve(getRequired("exam.pdf.file"));
+        return inputDirectory.resolve(getRequired(properties, "exam.pdf.file"));
     }
 
     public Path getGenerationOutputDirectory() {
-        return getInputDirectory().resolve(getRequired("generation.output.dir"));
-    }
-
-    // folder of example testers shown to the llm > optional > empty when blank so no exemplar is sent
-    public Optional<Path> getExemplarDirectory() {
-        String folder = getOptional("exemplar.folder", "");
-        return folder.isEmpty() ? Optional.empty() : Optional.of(getInputDirectory().resolve(folder));
+        String key = properties.containsKey("generation.files.dir") ? "generation.files.dir" : "generation.output.dir";
+        return inputDirectory.resolve(getRequired(properties, key));
     }
 
     public String getLlmModel() {
-        return getRequired("llm.model");
+        return getRequired(properties, "llm.model");
+    }
+
+    public String getLlmReasoningEffort() {
+        return getRequired(properties, "llm.reasoning.effort");
     }
 
     public String getLlmApiKeyEnv() {
-        return getRequired("llm.api.key.env");
+        return getRequired(properties, "llm.api.key.env");
+    }
+
+    public Duration getLlmRequestTimeout() {
+        return getTimeout(properties, "llm.request.timeout.seconds");
     }
 
     public boolean isLlmSendPdf() {
-        return getBoolean("llm.send.pdf");
-    }
-
-    public int getGenerationMaxRetries() {
-        return getNonNegativeInt("generation.max.retries");
-    }
-
-    private String getRequired(String key) {
-        String value = props.getProperty(key); //@1ejun6 > finds value belonging to this key
-
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("config > missing setting >" + key);
+        String value = getRequired(properties, "llm.send.pdf");
+        if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
+            throw new IllegalArgumentException("llm.send.pdf must be true or false");
         }
-
-        return value.strip();
+        return Boolean.parseBoolean(value);
     }
 
-    // optional setting > fall back to default when key missing or blank
-    private String getOptional(String key, String fallback) {
-        String value = props.getProperty(key);
-        return (value == null || value.isBlank()) ? fallback : value.strip();
-    }
-
-    // required boolean > only true & false accepted
-    private boolean getBoolean(String key) {
-        String value = getRequired(key).toLowerCase(java.util.Locale.ROOT);
-        if (!value.equals("true") && !value.equals("false")) {
-            throw new IllegalArgumentException(key + " must be true or false");
-        }
-        return value.equals("true");
-    }
-
-    // whole number zero or greater > used for retry count
-    private int getNonNegativeInt(String key) {
-        int number;
-        try {
-            number = Integer.parseInt(getRequired(key));
-        } catch (NumberFormatException error) {
-            throw new IllegalArgumentException(key + " must be a whole number", error);
-        }
-        if (number < 0) {
-            throw new IllegalArgumentException(key + " must be zero or greater");
-        }
-        return number;
+    public void validateGenerationSettings() {
+        getExamPdfFile();
+        getGenerationOutputDirectory();
+        getLlmModel();
+        getLlmReasoningEffort();
+        getLlmApiKeyEnv();
+        getLlmRequestTimeout();
+        isLlmSendPdf();
     }
 
     private static String getRequired(Properties properties, String key) {
         String value = properties.getProperty(key);
-
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("config > missing setting >" + key);
         }
@@ -162,17 +132,13 @@ public class Config { //loads grading paths & process time limits from configura
 
     private static Duration getTimeout(Properties properties, String key) {
         long seconds;
-
         try {
             seconds = Long.parseLong(getRequired(properties, key));
         } catch (NumberFormatException error) {
             throw new IllegalArgumentException(key + " must be a positive whole number", error);
         }
 
-        if (seconds <= 0) {
-            throw new IllegalArgumentException(key + " must be greater than zero");
-        }
-
+        if (seconds <= 0) throw new IllegalArgumentException(key + " must be greater than zero");
         return Duration.ofSeconds(seconds);
     }
 }
