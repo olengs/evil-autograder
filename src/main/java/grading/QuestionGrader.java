@@ -3,6 +3,7 @@ package grading;
 import assessment.QuestionDefinition;
 import assessment.TesterDefinition;
 import utils.files.FileUtils;
+import utils.files.TemporaryDirectory;
 import utils.process.JavaTools;
 import utils.process.ProcessExecutor;
 import utils.process.ProcessResult;
@@ -28,13 +29,15 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
     public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester, ProgressListener progress) throws IOException {
         try (GradingWorkspace workspace = new GradingWorkspace()) {
             workspace.prepare(question, attempt, tester);
-            return gradeInWorkspace(question.getId(), tester.getMainClassName(), workspace.getDirectory(), progress);
+            try (TemporaryDirectory classes = new TemporaryDirectory("autograder-classes-")) {
+                return gradeInWorkspace(question.getId(), tester.getMainClassName(), workspace.getDirectory(), classes.path(), progress);
+            }
         }
     }
 
-    private QuestionGrade gradeInWorkspace(String questionId, String mainClassName, Path workspaceDirectory, ProgressListener progress) throws IOException {
+    private QuestionGrade gradeInWorkspace(String questionId, String mainClassName, Path workspaceDirectory, Path classesDirectory, ProgressListener progress) throws IOException {
         progress.compilationStarted(questionId, compilationTimeout);
-        ProcessResult compilationResult = compile(workspaceDirectory);
+        ProcessResult compilationResult = compile(workspaceDirectory, classesDirectory);
         if (compilationResult.isTimedOut()) {
             return failedGrade(questionId, GradeStatus.timeout, compilationResult, "compilation timed out");
         }
@@ -43,7 +46,7 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
         }
 
         progress.executionStarted(questionId, executionTimeout);
-        ProcessResult executionResult = executeTester(workspaceDirectory, mainClassName);
+        ProcessResult executionResult = executeTester(workspaceDirectory, classesDirectory, mainClassName);
         if (!executionResult.isTimedOut() && !executionResult.isSuccessful()) {
             return failedGrade(questionId, GradeStatus.runtimeError, executionResult, "tester failed");
         }
@@ -53,6 +56,7 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
         GradeStatus status;
         String message;
 
+        try {
         if (executionResult.isTimedOut()) {
             //keep marks for completed cases > unfinished case has no trustworthy outcome
             testResults = parser.parseCompleted(executionResult.getStandardOutput());
@@ -63,6 +67,10 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
             status = GradeStatus.completed;
             message = "grading completed";
         }
+        } catch (IllegalArgumentException error) {
+            return failedGrade(questionId, GradeStatus.runtimeError, executionResult,
+                    "invalid tester output > " + error.getMessage());
+        }
 
         double earnedMarks = 0;
         for (TestCaseResult testCase : testResults) {
@@ -71,8 +79,7 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
         return new QuestionGrade(questionId, status, earnedMarks, testResults, executionResult, message);
     }
 
-    private ProcessResult compile(Path workspaceDirectory) throws IOException {
-        Path classesDirectory = Files.createDirectories(workspaceDirectory.resolve("classes"));
+    private ProcessResult compile(Path workspaceDirectory, Path classesDirectory) throws IOException {
         List<String> command = new ArrayList<>();
         command.add(JavaTools.getCompilerPath().toString());
         command.add("-d");
@@ -96,9 +103,9 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
         return ProcessExecutor.run(builder, compilationTimeout, "javac could not be started");
     }
 
-    private ProcessResult executeTester(Path workspaceDirectory, String mainClassName) {
+    private ProcessResult executeTester(Path workspaceDirectory, Path classesDirectory, String mainClassName) {
         //include compiled classes & workspace resources > use current os's classpath separator
-        String classpath = workspaceDirectory.resolve("classes") + java.io.File.pathSeparator + workspaceDirectory;
+        String classpath = classesDirectory + java.io.File.pathSeparator + workspaceDirectory;
         ProcessBuilder builder = new ProcessBuilder(JavaTools.getRuntimePath().toString(), "-cp", classpath, mainClassName);
         builder.directory(workspaceDirectory.toFile());
         return ProcessExecutor.run(builder, executionTimeout, "java execution failed");

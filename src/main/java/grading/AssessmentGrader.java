@@ -4,6 +4,7 @@ import assessment.AssessmentDefinition;
 import assessment.QuestionDefinition;
 import assessment.TesterDefinition;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,7 +60,13 @@ public class AssessmentGrader { //grades each submission in question order & rec
         if (skipReason == null && !attempt.isValid()) { skipReason = "attempt has validation errors"; }
         if (skipReason == null && tester == null) { skipReason = "missing tester"; }
         if (skipReason != null) return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), null, skipReason);
-        return questionGrader.grade(question, attempt, tester, progress);
+        try {
+            return questionGrader.grade(question, attempt, tester, progress);
+        } catch (IOException error) {
+            if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
+            return new QuestionGrade(question.getId(), GradeStatus.runtimeError, 0, List.of(), null,
+                    "question grading failed > " + error.getMessage());
+        }
     }
 
     private String findBlockingIssue(StudentSubmission submission, String questionId) {
