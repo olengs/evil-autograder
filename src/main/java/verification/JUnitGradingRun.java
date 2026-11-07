@@ -47,6 +47,7 @@ public final class JUnitGradingRun {
             throw failure;
         } finally {
             GradingSession.release(session);
+            progress.finishElapsedTime();
         }
     }
 

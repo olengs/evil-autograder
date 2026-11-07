@@ -5,6 +5,8 @@ import dev.tamboui.style.Color;
 import dev.tamboui.style.Style;
 import dev.tamboui.terminal.Frame;
 import dev.tamboui.text.CharWidth;
+import dev.tamboui.widgets.block.Block;
+import dev.tamboui.widgets.block.Borders;
 import java.util.regex.Pattern;
 
 public final class UiDrawing { //shared colors & safe > allocation-light text drawing
@@ -19,6 +21,12 @@ public final class UiDrawing { //shared colors & safe > allocation-light text dr
     private static final Pattern CONTROLS = Pattern.compile("\\p{Cntrl}");
 
     private UiDrawing() {}
+
+    public static Rect box(Frame frame, Rect area, String title) {
+        Block block = Block.builder().borders(Borders.ALL).title(" " + title + " ").borderStyle(muted).build();
+        frame.renderWidget(block, area);
+        return block.inner(area);
+    }
 
     public static void drawLine(Frame frame, Rect area, int row, String value, Style style) {
         if (row < 0 || row >= area.height()) return; //@1ejun6 > stops if row is outside the available area

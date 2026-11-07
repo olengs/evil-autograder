@@ -16,8 +16,11 @@ public final class SummaryPanel {
         boolean failed = snapshot.stage() == ProgressStage.failed;
 
         drawLine(frame, area, 0, failed ? "grading stopped" : "grading complete", failed ? red : green);
-        int gap = area.height() >= (snapshot.junit().enabled() ? 9 : 4) + (failed ? 1 : 0) ? 1 : 0;
-        int row = 1 + gap;
+        String estimate = snapshot.estimatedTotal().map(duration -> String.format(Locale.ROOT, "~%.1fs", duration.toNanos() / 1_000_000_000.0)).orElse("unavailable");
+        drawLine(frame, area, 1, (area.width() >= 29 ? "estimated total > " : "estimate > ") + estimate, muted);
+        drawLine(frame, area, 2, String.format(Locale.ROOT, "actual duration > %.1fs", snapshot.totalElapsed().toNanos() / 1_000_000_000.0), muted);
+        int gap = area.height() >= (snapshot.junit().enabled() ? 11 : 6) + (failed ? 1 : 0) ? 1 : 0;
+        int row = 3 + gap;
         drawLine(frame, area, row++, metric("students", snapshot.totalsKnown() ? snapshot.processedStudents() + " / " + snapshot.totalStudents() : "not available"), base);
         drawLine(frame, area, row++, metric("questions", snapshot.totalsKnown() ? snapshot.processedQuestions() + " / " + snapshot.totalQuestions() : "not available"), base);
         if (snapshot.junit().enabled()) {

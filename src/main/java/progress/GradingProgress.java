@@ -2,6 +2,7 @@ package progress;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import model.GradeStatus;
@@ -11,6 +12,27 @@ import model.GradeStatus;
 public class GradingProgress implements ProgressListener { //@1ejun6 > records grading progress & provides snapshots to ui
     private final ProgressState state = new ProgressState();
     private final Set<Long> junitThreads = ConcurrentHashMap.newKeySet();
+
+    public synchronized void pauseElapsedTime() {
+        if (state.waitingForInput || state.timerFinished) return;
+        state.inputStarted = System.nanoTime();
+        state.waitingForInput = true;
+        state.revision++;
+    }
+
+    public synchronized void resumeElapsedTime() {
+        if (!state.waitingForInput || state.timerFinished) return;
+        state.inputNanos += System.nanoTime() - state.inputStarted;
+        state.waitingForInput = false;
+        state.revision++;
+    }
+
+    public synchronized void finishElapsedTime() {
+        if (state.timerFinished) return;
+        state.runFinished = System.nanoTime();
+        state.timerFinished = true;
+        state.revision++;
+    }
 
     public void junitThreadStarted(long threadId) {
         junitThreads.add(threadId);
@@ -37,6 +59,9 @@ public class GradingProgress implements ProgressListener { //@1ejun6 > records g
         state.questions = List.copyOf(questions);
         state.totalsKnown = true;
         state.student = "";
+        state.batchStartedElapsed = state.totalElapsed();
+        state.estimatedRemaining = Optional.empty();
+        state.estimatedTotal = Optional.empty();
         state.setStage(ProgressStage.preparing, "starting batch grading", Duration.ZERO);
     }
 
@@ -76,6 +101,18 @@ public class GradingProgress implements ProgressListener { //@1ejun6 > records g
         if (!state.submissionActive || !state.questions.contains(question) || status == GradeStatus.pending) return;
         if (state.results.putIfAbsent(question, status) != null) return;
         state.processedQuestions++;
+        int totalQuestions = state.totalStudents * state.questions.size();
+        if (state.processedQuestions >= (totalQuestions < 3 ? 1 : 3)) {
+            //averages completed questions from batch start & excludes setup waiting
+            Duration elapsed = state.totalElapsed();
+            Duration average = elapsed.minus(state.batchStartedElapsed).dividedBy(state.processedQuestions);
+            Duration remaining = average.multipliedBy(totalQuestions - state.processedQuestions);
+            state.estimatedRemaining = Optional.of(remaining);
+            //keeps the first prediction so progress & summary compare the same estimate with actual time
+            if (state.estimatedTotal.isEmpty() && state.processedQuestions < totalQuestions) {
+                state.estimatedTotal = Optional.of(elapsed.plus(remaining));
+            }
+        }
         state.setStage(ProgressStage.preparing, "question processed", Duration.ZERO);
     }
 

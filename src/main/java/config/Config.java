@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Properties;
+import java.util.Map;
 
 public class Config {
 
@@ -17,10 +18,15 @@ public class Config {
     }
 
     public Config(Path configFile) throws IOException {
+        this(configFile, Map.of());
+    }
+
+    public Config(Path configFile, Map<String, String> overrides) throws IOException {
         try (
             Reader reader = Files.newBufferedReader(configFile)) {
             props.load(reader); //@1ejun6 > reads files key=value pairs into props
         }
+        props.putAll(overrides); //replacement paths apply to this run only
 
         getInputDirectory();
         getOutputDirectory();

@@ -3,8 +3,6 @@ package ui;
 import static ui.UiDrawing.*;
 import dev.tamboui.layout.Rect;
 import dev.tamboui.terminal.Frame;
-import dev.tamboui.widgets.block.Block;
-import dev.tamboui.widgets.block.Borders;
 import java.nio.file.Path;
 import progress.ProgressSnapshot;
 import ui.panel.BatchPanel;
@@ -36,7 +34,7 @@ final class FramedLayout { //draws framed layout when terminal has room for all 
             Rect summary = box(frame, body, "summary");
             SummaryPanel.drawSummary(frame, summary, snapshot);
         } else {
-            int leftWidth = (body.width() - 1) * 2 / 5;
+            int leftWidth = Math.max(29, (body.width() - 1) * 2 / 5);
             Rect batch = box(frame, new Rect(body.x(), body.y(), leftWidth, body.height()), "batch progress");
             Rect student = box(frame, new Rect(body.x() + leftWidth + 1, body.y(), body.width() - leftWidth - 1, body.height()), "student");
             BatchPanel.drawBatch(frame, horizontalPadding(batch), false, snapshot);
@@ -52,12 +50,6 @@ final class FramedLayout { //draws framed layout when terminal has room for all 
         drawLine(frame, resource, metricsRow + 2, "threads > " + resources.threads(), muted);
         Rect commands = box(frame, new Rect(content.x(), commandY, content.width(), 3), "commands");
         drawLine(frame, commands, 0, "[enter] close  [q] close", cyan);
-    }
-
-    private static Rect box(Frame frame, Rect area, String title) {
-        Block block = Block.builder().borders(Borders.ALL).title(" " + title + " ").borderStyle(muted).build();
-        frame.renderWidget(block, area);
-        return block.inner(area);
     }
 
     private static Rect horizontalPadding(Rect area) {
