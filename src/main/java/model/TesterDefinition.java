@@ -19,15 +19,11 @@ public class TesterDefinition { //stores where a tester file is & which java cla
         return questionId;
     }
 
-    public Path getRelativePath() {
-        return relativePath;
-    }
-
-    public Path getSourceFile() { //@1ejun6 > resolve the source file under tester directory
+    public Path getSourceFile() {
         return testerDirectory.resolve(relativePath);
     }
 
-    public String getMainClassName() { //@1ejun6 > return exact java class name to run
+    public String getMainClassName() {
         return mainClassName;
     }
 }

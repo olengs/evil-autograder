@@ -34,7 +34,7 @@ public final class SupportContextCollector {
         for (QuestionSpec spec : specs) support.addAll(spec.getSupportFiles());
         for (String name : support) {
             String lower = name.toLowerCase(Locale.ROOT);
-            // Keep reference answers, grader programs and grades out even if placed among resources.
+            //Keep reference answers, grader programs and grades out even if placed among resources.
             if (lower.contains("groundtruth") || lower.contains("ground-truth") || lower.contains("ground_truth")
                     || lower.endsWith("tester.java") || lower.endsWith("tester.class")) continue;
             try {

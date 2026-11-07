@@ -1,7 +1,6 @@
 package generation;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -10,17 +9,14 @@ import java.util.Map;
 
 import config.Config;
 import generation.llm.LlmClient;
-import generation.llm.LlmClientFactory;
-import generation.llm.LlmException;
+import generation.llm.OpenAiClient;
 import generation.llm.LlmRequest;
-import generation.llm.UploadedDocument;
 import generation.output.TesterWriter;
 import generation.prompt.PromptBuilder;
 import generation.questionSpec.QuestionSpec;
-import generation.questionSpec.QuestionSpecCollector;
 import generation.run.GenerationRequest;
 import generation.run.GenerationResult;
-import generation.run.GenerationStatus;
+import generation.run.QuestionGenerationOutcome.GenerationStatus;
 import generation.run.QuestionGenerationOutcome;
 import generation.schema.GeneratedTesters;
 import generation.validation.GeneratedTesterValidator;
@@ -28,7 +24,6 @@ import generation.validation.ValidationResult;
 import utils.PdfFileUtils;
 
 public class TesterGenerator { //exam pdf + all question templates -> one prompt -> llm json -> validate & write each tester
-    private final QuestionSpecCollector collector = new QuestionSpecCollector();
     private final PromptBuilder promptBuilder = new PromptBuilder();
     private final TesterWriter writer = new TesterWriter();
 
@@ -37,48 +32,37 @@ public class TesterGenerator { //exam pdf + all question templates -> one prompt
     private final GeneratedTesterValidator validator;
 
     public TesterGenerator(Config config) {
-        this(config, LlmClientFactory.create(config),
+        this(config, OpenAiClient.create(config),
                 new GeneratedTesterValidator(config.getCompilationTimeout(), config.getExecutionTimeout()));
     }
 
-    // explicit-dependency constructor > lets a ui or a test inject a stub llm client
+    //explicit-dependency constructor > lets a ui or a test inject a stub llm client
     public TesterGenerator(Config config, LlmClient llmClient, GeneratedTesterValidator validator) {
         this.config = config;
         this.llmClient = llmClient;
         this.validator = validator;
     }
 
-    // run generation for every discovered question > one bad question never aborts the rest
+    //generate every discovered question in one model request, then validate each returned tester
     public GenerationResult generate(GenerationRequest request) throws IOException {
-        if (config.getGenerationMaxRetries() != 0) {
-            throw new IllegalArgumentException("one-shot generation requires generation.max.retries=0");
-        }
-        // 1 > enumerate questions from the answer-template folders
-        List<QuestionSpec> specs = collector.collect(request.getResourcesDirectory());
+        //1 > enumerate questions from the answer-template folders
+        List<QuestionSpec> specs = QuestionSpec.collect(request.getResourcesDirectory());
 
-        // 2 > optional: one tester from exemplar.folder as a format example > none when the setting is blank
-        String exemplar = config.getExemplarDirectory().map(this::findExemplarTester).orElse(null);
-
-        if (!llmClient.supportsStructuredOutput()) {
-            throw new LlmException(llmClient.providerName() + " cannot return structured output > "
-                    + "generating testers as json needs it");
-        }
-
-        // 3 > bundle every question & subpart into one prompt > keep folder labels inside the bundle
+        //2 > bundle every question & subpart into one prompt > keep folder labels inside the bundle
         var bundle = promptBuilder.collectFiles(specs);
         writer.deletePrevious(specs, request.getOutputDirectory());
-        writer.writeFilesBundle("all", bundle.text(), request.getOutputDirectory());
+        writer.writeFilesBundle(bundle.text(), request.getOutputDirectory());
 
-        // 4 > upload the exam pdf once when configured > an unsupported provider fails here before the llm call
-        UploadedDocument exam = config.isLlmSendPdf()
+        //3 > upload the optional exam pdf once for the combined generation request
+        String exam = config.isLlmSendPdf()
                 ? llmClient.uploadPdf(PdfFileUtils.requirePdf(request.getExamPdf()))
                 : null;
 
         try {
             return new GenerationResult(generateTesters(specs, bundle,
-                    request.getUserPrompt(), exemplar, exam, request.getOutputDirectory()));
+                    request.getUserPrompt(), exam, request.getOutputDirectory()));
         } finally {
-            // always remove the uploaded copy > even when generation blew up
+            //remove the uploaded copy after the single request and local validation, including on failure
             if (exam != null) {
                 llmClient.deleteUpload(exam);
             }
@@ -86,17 +70,17 @@ public class TesterGenerator { //exam pdf + all question templates -> one prompt
     }
 
     private List<QuestionGenerationOutcome> generateTesters(List<QuestionSpec> specs, PromptBuilder.FileBundle bundle,
-            String userPrompt, String exemplar, UploadedDocument exam,
+            String userPrompt, String exam,
             Path outputDirectory) throws IOException {
         GeneratedTesters reply;
         try {
-            String prompt = promptBuilder.build(specs, bundle.text(), userPrompt, exemplar, exam != null);
+            String prompt = promptBuilder.build(specs, bundle.text(), userPrompt, exam != null);
             reply = llmClient.completeStructured(new LlmRequest(config.getLlmModel(), prompt, exam), GeneratedTesters.class);
         } catch (RuntimeException error) {
             return failedBatch(specs, "generation failed > " + error.getMessage());
         }
-        // Preserve the returned payload even when its ids or entries are invalid.
-        writer.writeReply("all", reply, outputDirectory);
+        //preserve the returned payload even when its ids or entries are invalid.
+        writer.writeReply(reply, outputDirectory);
         Map<String, GeneratedTesters.Tester> generated;
         try {
             generated = byQuestionId(reply, specs);
@@ -153,20 +137,4 @@ public class TesterGenerator { //exam pdf + all question templates -> one prompt
         return entries;
     }
 
-    // pick the lexicographically first existing *Tester.java as a format example > null when none
-    private String findExemplarTester(Path exemplarDirectory) {
-        if (!Files.isDirectory(exemplarDirectory)) {
-            return null;
-        }
-        try (var files = Files.list(exemplarDirectory)) {
-            Path exemplar = files.filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().endsWith("Tester.java"))
-                    .sorted()
-                    .findFirst()
-                    .orElse(null);
-            return exemplar == null ? null : Files.readString(exemplar);
-        } catch (IOException error) {
-            return null; // exemplar is optional > never fail generation over it
-        }
-    }
 }

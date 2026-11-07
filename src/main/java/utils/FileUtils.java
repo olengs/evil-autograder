@@ -1,21 +1,13 @@
 package utils;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.channels.OverlappingFileLockException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class FileUtils { //copies files & folders & deletes temporary folders
     public enum CopyOptions {
@@ -24,20 +16,7 @@ public class FileUtils { //copies files & folders & deletes temporary folders
     }
 
     //#region file copy
-    private static final Path COPY_LOCK = Path.of(System.getProperty("java.io.tmpdir"), "evil-autograder-directory-copy.lock");
-
-    public record CopyPaths(Path source, Path destination) {}
-
-    public static synchronized void CopyDirectorySafe(Path from, Path to, CopyOptions option) throws IOException {
-        CopyPaths paths = checkCopyPaths(from, to, option);
-
-        try (FileChannel lockChannel = FileChannel.open(COPY_LOCK,
-                StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-                FileLock lock = lockChannel.lock()) {
-
-            copyDirectory(paths.source, paths.destination, option);
-        }
-    }
+    private record CopyPaths(Path source, Path destination) {}
 
     public static void copyDirectory(Path from, Path to, CopyOptions option) throws IOException {
         CopyPaths paths = checkCopyPaths(from, to, option);
@@ -107,60 +86,6 @@ public class FileUtils { //copies files & folders & deletes temporary folders
         } else {
             Files.copy(source, destination);
         }
-    }
-
-    public static void CopyFileSafe(Path source, Path destinationFolder, CopyOptions option) throws IOException {
-        Path sourceKey = resolveExistingPath(source);
-        if (!Files.isRegularFile(sourceKey)) {
-            throw new IOException("Copy source is not a regular file: " + source);
-        }
- 
-        if (destinationFolder == null) {
-            throw new IOException("Copy destination folder path is required");
-        }
- 
-        Path dest = resolveExistingPath(destinationFolder);
-        if (dest == null || !Files.isDirectory(dest)) {
-            throw new IOException("Copy destination parent is not a directory: " + dest);
-        }
-
-        Path destinationKey = dest.resolve(sourceKey.getFileName()); 
-        Path first = sourceKey.compareTo(destinationKey) < 0 ? sourceKey : destinationKey;
-        Path second = first.equals(sourceKey) ? destinationKey : sourceKey;
- 
-        // create locks for both channel
-        try (FileChannel firstChannel = FileChannel.open(fileLockPath(first),
-                StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-             FileChannel secondChannel = FileChannel.open(fileLockPath(second),
-                StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
- 
-            while (true) {
-                //recursively try to lock, if fail or waiting, exit and wait to prevent deadlock
-                try (FileLock firstLock = firstChannel.tryLock()) {
-                    if (firstLock != null) {
-                        try (FileLock secondLock = secondChannel.tryLock()) {
-                            if (secondLock != null) {
-                                copyFile(sourceKey, destinationKey, option);
-                                return;
-                            }
-                        }
-                    }
-                } catch (OverlappingFileLockException ignored) {
-                    // A thread in this JVM already holds one of the file locks.
-                }
-                try {
-                    Thread.sleep(ThreadLocalRandom.current().nextInt(1, 11));
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new InterruptedIOException("Interrupted while waiting for file locks");
-                }
-            } 
-        }
-    }
- 
-    private static Path fileLockPath(Path file) {
-        UUID id = UUID.nameUUIDFromBytes(file.toString().getBytes(StandardCharsets.UTF_8));
-        return Path.of(System.getProperty("java.io.tmpdir"), "evil-autograder-file-" + id + ".lock");
     }
 
     //#endregion file copy
