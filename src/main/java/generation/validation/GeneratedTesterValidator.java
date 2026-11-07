@@ -28,8 +28,9 @@ public class GeneratedTesterValidator { //checks a generated tester actually com
     }
 
     // validate one generated tester against the question's answer template in an isolated temp dir
-    // returns a result instead of throwing so the caller can retry or skip
-    public ValidationResult validate(QuestionSpec spec, String testerSource) {
+    // returns a result instead of throwing so remaining questions can still be processed
+    public ValidationResult validate(QuestionSpec spec, String testerSource, int expectedCases) {
+        if (expectedCases <= 0) return ValidationResult.failed(Stage.PARSE, "positive marks are required");
         Path workspace;
         try {
             workspace = Files.createTempDirectory("autograder-gen-validate-");
@@ -54,18 +55,37 @@ public class GeneratedTesterValidator { //checks a generated tester actually com
                 return ValidationResult.failed(Stage.COMPILE, truncate(compile.getErrorOutput()));
             }
 
-            // 2 > run the tester main class > a timeout here still lets us parse completed cases
+            // A generated tester must finish; partial student grading is a separate concern.
             ProcessResult run = executeTester(workspace, spec.getTesterMainClass());
-            if (!run.isTimedOut() && !run.isSuccessful()) {
+            if (run.isTimedOut()) return ValidationResult.failed(Stage.RUN, "tester execution timed out");
+            if (!run.isSuccessful()) {
                 return ValidationResult.failed(Stage.RUN, truncate(run.getErrorOutput()));
             }
 
-            // 3 > parse output the same way the grader will > must yield at least one case
+            // Parse complete cases and require the declared count and a consistent final score.
             List<TestCaseResult> cases;
             try {
-                cases = run.isTimedOut()
-                        ? parser.parseCompleted(run.getStandardOutput())
-                        : parser.parse(run.getStandardOutput());
+                String output = run.getStandardOutput();
+                // The grader's permissive parser ignores outcomes before the first header.
+                // Generation must reject those orphan outcomes instead.
+                boolean headerSeen = false;
+                for (String line : output.lines().map(String::strip).toList()) {
+                    if (line.matches("Test [^:]+:.*")) headerSeen = true;
+                    if (!headerSeen && (line.equalsIgnoreCase("Passed") || line.equalsIgnoreCase("Failed")
+                            || line.startsWith("Failed -> "))) {
+                        return ValidationResult.failed(Stage.PARSE, "outcome appeared before a test header");
+                    }
+                }
+                cases = parser.parse(output);
+                if (cases.size() != expectedCases) {
+                    return ValidationResult.failed(Stage.PARSE, "expected " + expectedCases + " cases but found " + cases.size());
+                }
+                List<String> lines = output.strip().lines().toList();
+                double total = Double.parseDouble(lines.getLast().strip());
+                long passed = cases.stream().filter(TestCaseResult::isPassed).count();
+                if (!Double.isFinite(total) || total != passed) {
+                    return ValidationResult.failed(Stage.PARSE, "final score must equal passed-case count " + passed);
+                }
             } catch (RuntimeException error) {
                 return ValidationResult.failed(Stage.PARSE, error.getMessage());
             }
@@ -74,8 +94,8 @@ public class GeneratedTesterValidator { //checks a generated tester actually com
             }
 
             return ValidationResult.ok(cases.size());
-        } catch (IOException error) {
-            return ValidationResult.failed(Stage.COMPILE, "could not write sources > " + error.getMessage());
+        } catch (IOException | RuntimeException error) {
+            return ValidationResult.failed(Stage.COMPILE, "could not prepare or validate tester > " + error.getMessage());
         } finally {
             // always clean up the throwaway workspace
             try {
@@ -99,7 +119,7 @@ public class GeneratedTesterValidator { //checks a generated tester actually com
             }
             Path source = resourceDir.resolve(name);
             if (!Files.isRegularFile(source)) {
-                continue; // missing support file > let compilation surface the real error
+                throw new IOException("missing support file > " + name);
             }
             Path destination = workspace.resolve(name);
             if (destination.getParent() != null) {
@@ -144,7 +164,7 @@ public class GeneratedTesterValidator { //checks a generated tester actually com
         return ProcessExecutor.run(builder, executionTimeout, "prc-002", "java execution failed");
     }
 
-    // keep error output short so it fits a retry prompt without flooding it
+    // keep diagnostics readable in the per-question summary
     private static String truncate(String text) {
         if (text == null || text.isBlank()) {
             return "(no output)";

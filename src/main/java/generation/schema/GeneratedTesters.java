@@ -19,8 +19,14 @@ public class GeneratedTesters {
                 + "The tester is written to <id>Tester.java.")
         public String id;
 
+        @JsonPropertyDescription("Positive integer mark allocation from the exam; exactly this many one-mark cases. Zero when unknown.")
+        public int marks;
+
+        @JsonPropertyDescription("Empty for a complete tester. Otherwise explain missing or conflicting requirements and leave testCode empty.")
+        public String issue;
+
         @JsonPropertyDescription("The complete Java source of <id>Tester.java, following the tester template in the prompt. "
-                + "Plain source only > no markdown fences.")
+                + "Plain source only > no markdown fences. Empty when issue is nonempty.")
         public String testCode;
     }
 }
