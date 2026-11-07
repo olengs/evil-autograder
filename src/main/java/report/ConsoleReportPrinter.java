@@ -22,7 +22,7 @@ public final class ConsoleReportPrinter { //prints student identities, validatio
                 if (grade.getStatus() != GradeStatus.completed) System.out.println("    " + grade.getMessage());
             }
 
-            double totalMarks = entry.getValue().stream().mapToDouble(QuestionGrade::getEarnedMarks).sum();
+            double totalMarks = QuestionGrade.totalMarks(entry.getValue());
             System.out.println("  total > " + totalMarks);
         }
     }

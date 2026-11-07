@@ -20,9 +20,10 @@ public class StudentRosterReader { //reads student identities from CSV & logs in
             String[] row;
 
             while ((row = csvReader.readNext()) != null) {
-                if (row.length == 1 && row[0].isBlank()) continue;
+                if (ScoreSheetColumns.isBlankRow(row)) continue;
 
                 if (!hasSkippedHeader) {
+                    ScoreSheetColumns.validateHeader(row);
                     hasSkippedHeader = true;
                     continue;
                 }
@@ -47,9 +48,9 @@ public class StudentRosterReader { //reads student identities from CSV & logs in
         String studentId = row[ScoreSheetColumns.orgDefinedId].strip();
         String listedUsername = row[ScoreSheetColumns.username].strip().replaceAll("[^\\p{Alnum}.]", "").replaceAll("^\\.+|\\.+$", "");
         String email = row[ScoreSheetColumns.email].strip();
-        int atIndex = email.indexOf('@');
+        var emailUsername = StudentDetails.usernameFromEmail(email);
 
-        if (atIndex <= 0 || atIndex != email.lastIndexOf('@') || atIndex == email.length() - 1) {
+        if (emailUsername.isEmpty()) {
             JsonLineLogger.append(logFile, Map.of("status", "skipped", "row", recordNumber,
                     "issue", "invalid email; > student skipped", "studentid", studentId,
                     "name", name, "email", email));
@@ -57,7 +58,7 @@ public class StudentRosterReader { //reads student identities from CSV & logs in
         }
 
         //email is identity source when listed username contains decorations or disagrees
-        String username = email.substring(0, atIndex);
+        String username = emailUsername.orElseThrow();
         if (!listedUsername.equals(username)) {
             JsonLineLogger.append(logFile, Map.of("status", "fixed", "row", recordNumber, "issue", "username mismatch > email username used", "studentid", studentId, "name", name, "listedusername", listedUsername, "emailusername", username));
         }
