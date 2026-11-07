@@ -1,14 +1,16 @@
-//supplies junit with configuration & optional existing grading results for one run
-//shares results across console & parallel ui checks without grading submissions again
+//supplies junit with configuration & progress & results for one grading run
+//shares results from junit setup across console & parallel ui checks without grading again
 
 package grading.verification;
 
 import config.Config;
 import grading.QuestionGrade;
+import grading.progress.GradingProgress;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -21,12 +23,48 @@ public final class GradingSession implements ParameterResolver {
     static final String sessionParameter = "autograder.session";
     private static final Map<String, Input> sessions = new ConcurrentHashMap<>();
 
-    public record Input(Config config, Map<StudentSubmission, List<QuestionGrade>> results) {}
+    public static final class Input {
+        private final Config config;
+        private final GradingProgress progress;
+        private final boolean printResults;
+        private volatile Map<StudentSubmission, List<QuestionGrade>> results;
+
+        private Input(Config config, GradingProgress progress, boolean printResults, Map<StudentSubmission, List<QuestionGrade>> results) {
+            this.config = config;
+            this.progress = progress;
+            this.printResults = printResults;
+            this.results = results;
+        }
+
+        public Config config() { return config; }
+        public GradingProgress progress() { return progress; }
+        public boolean printResults() { return printResults; }
+        public Map<StudentSubmission, List<QuestionGrade>> results() { return results; }
+
+        synchronized void complete(Map<StudentSubmission, List<QuestionGrade>> results) {
+            if (this.results != null) throw new IllegalStateException("grading session already has results");
+            this.results = Objects.requireNonNull(results);
+        }
+    }
 
     static String register(Config config, Map<StudentSubmission, List<QuestionGrade>> results) {
+        return register(new Input(config, new GradingProgress(), false, Objects.requireNonNull(results)));
+    }
+
+    static String register(Config config, GradingProgress progress, boolean printResults) {
+        return register(new Input(config, progress, printResults, null));
+    }
+
+    private static String register(Input input) {
         String id = UUID.randomUUID().toString();
-        sessions.put(id, new Input(config, results));
+        sessions.put(id, input);
         return id;
+    }
+
+    static Input input(String id) {
+        Input input = sessions.get(id);
+        if (input == null) throw new ParameterResolutionException("grading session has already closed");
+        return input;
     }
 
     static void release(String id) {
@@ -42,14 +80,12 @@ public final class GradingSession implements ParameterResolver {
     public Input resolveParameter(ParameterContext parameter, ExtensionContext context) {
         var id = context.getConfigurationParameter(sessionParameter);
         if (id.isPresent()) {
-            Input input = sessions.get(id.get());
-            if (input == null) throw new ParameterResolutionException("grading session has already closed");
-            return input;
+            return input(id.get());
         }
         // Standalone Maven/IDE execution also supports -Dautograder.config=path.
         String configFile = context.getConfigurationParameter("autograder.config").orElse("config.properties");
         try {
-            return new Input(new Config(Path.of(configFile)), null);
+            return new Input(new Config(Path.of(configFile)), new GradingProgress(), true, null);
         } catch (IOException | RuntimeException failure) {
             throw new ParameterResolutionException("cannot load grading configuration > " + configFile, failure);
         }

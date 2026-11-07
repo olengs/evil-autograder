@@ -48,8 +48,6 @@ public final class ProcessExecutor {
             boolean finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
             if (!finished) {
                 destroyProcessTree(process);
-                //give output readers time to collect buffered text after termination
-                process.waitFor(2, TimeUnit.SECONDS);
             }
 
             String standardOutput = collectStream(standardOutputTask);
@@ -63,11 +61,14 @@ public final class ProcessExecutor {
         } catch (IOException error) {
             throw new ProcessExecutionException("prc-003", "Cannot close process input", error);
         } finally {
-            destroyProcessTree(process);
-            IOUtils.closeQuietly(process.getInputStream());
-            IOUtils.closeQuietly(process.getErrorStream());
-            IOUtils.closeQuietly(process.getOutputStream());
-            outputReaders.shutdownNow();
+            try {
+                destroyProcessTree(process);
+            } finally {
+                IOUtils.closeQuietly(process.getInputStream());
+                IOUtils.closeQuietly(process.getErrorStream());
+                IOUtils.closeQuietly(process.getOutputStream());
+                outputReaders.shutdownNow();
+            }
         }
     }
 
@@ -96,6 +97,22 @@ public final class ProcessExecutor {
         process.descendants().forEach(ProcessHandle::destroyForcibly);
         if (process.isAlive()) {
             process.destroyForcibly();
+        }
+        //forced termination is asynchronous > wait for exit even when caller was interrupted
+        boolean interrupted = false;
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        try {
+            while (process.isAlive()) {
+                long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) throw new ProcessExecutionException("prc-005", "Process did not stop after forced termination", null);
+                try {
+                    process.waitFor(remaining, TimeUnit.NANOSECONDS);
+                } catch (InterruptedException error) {
+                    interrupted = true;
+                }
+            }
+        } finally {
+            if (interrupted) Thread.currentThread().interrupt();
         }
     }
 
