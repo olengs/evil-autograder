@@ -2,16 +2,12 @@ package grading;
 
 import assessment.QuestionDefinition;
 import assessment.TesterDefinition;
-import utils.files.FileUtils;
 import utils.files.TemporaryDirectory;
 import utils.process.JavaTools;
-import utils.process.ProcessExecutor;
 import utils.process.ProcessResult;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import submission.QuestionAttempt;
 import grading.progress.ProgressListener;
@@ -37,7 +33,7 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
 
     private QuestionGrade gradeInWorkspace(String questionId, String mainClassName, Path workspaceDirectory, Path classesDirectory, ProgressListener progress) throws IOException {
         progress.compilationStarted(questionId, compilationTimeout);
-        ProcessResult compilationResult = compile(workspaceDirectory, classesDirectory);
+        ProcessResult compilationResult = JavaTools.compile(workspaceDirectory, classesDirectory, compilationTimeout);
         if (compilationResult.isTimedOut()) {
             return failedGrade(questionId, GradeStatus.timeout, compilationResult, "compilation timed out");
         }
@@ -46,7 +42,7 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
         }
 
         progress.executionStarted(questionId, executionTimeout);
-        ProcessResult executionResult = executeTester(workspaceDirectory, classesDirectory, mainClassName);
+        ProcessResult executionResult = JavaTools.run(workspaceDirectory, classesDirectory, mainClassName, executionTimeout);
         if (!executionResult.isTimedOut() && !executionResult.isSuccessful()) {
             return failedGrade(questionId, GradeStatus.runtimeError, executionResult, "tester failed");
         }
@@ -77,38 +73,6 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
             earnedMarks += testCase.getEarnedMarks();
         }
         return new QuestionGrade(questionId, status, earnedMarks, testResults, executionResult, message);
-    }
-
-    private ProcessResult compile(Path workspaceDirectory, Path classesDirectory) throws IOException {
-        List<String> command = new ArrayList<>();
-        command.add(JavaTools.getCompilerPath().toString());
-        command.add("-d");
-        command.add(classesDirectory.toString());
-        command.add("-cp");
-        command.add(workspaceDirectory.toString());
-
-        List<Path> sources;
-        //workspace's direct java files are compilation unit > nested data stays as resources
-        try (var files = FileUtils.streamRegularFiles(workspaceDirectory)) {
-            sources = files.filter(path -> path.getFileName().toString().endsWith(".java")).sorted().toList();
-        }
-        if (sources.isEmpty()) {
-            throw new IOException("No Java sources in " + workspaceDirectory);
-        }
-        for (Path source : sources) {
-            command.add(source.toString());
-        }
-
-        ProcessBuilder builder = new ProcessBuilder(command).directory(workspaceDirectory.toFile());
-        return ProcessExecutor.run(builder, compilationTimeout, "javac could not be started");
-    }
-
-    private ProcessResult executeTester(Path workspaceDirectory, Path classesDirectory, String mainClassName) {
-        //include compiled classes & workspace resources > use current os's classpath separator
-        String classpath = classesDirectory + java.io.File.pathSeparator + workspaceDirectory;
-        ProcessBuilder builder = new ProcessBuilder(JavaTools.getRuntimePath().toString(), "-cp", classpath, mainClassName);
-        builder.directory(workspaceDirectory.toFile());
-        return ProcessExecutor.run(builder, executionTimeout, "java execution failed");
     }
 
     private QuestionGrade failedGrade(String questionId, GradeStatus status, ProcessResult process, String message) {

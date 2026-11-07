@@ -48,6 +48,21 @@
             <artifactId>junit-platform-launcher</artifactId>
             <version>1.13.4</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.openai</groupId>
+            <artifactId>openai-java</artifactId>
+            <version>4.85.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId>
+            <version>2.0.16</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -58,6 +73,13 @@
                 <version>3.5.0</version>
                 <configuration><mainClass>app.TerminalMain</mainClass></configuration>
                 <executions>
+                    <execution>
+                        <id>generate</id>
+                        <goals><goal>java</goal></goals>
+                        <configuration>
+                            <mainClass>generation.TesterGeneratorMain</mainClass>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>console</id>
                         <goals><goal>java</goal></goals>

@@ -1,0 +1,21 @@
+        {
+            System.out.printf("Test %d: {{methodName}}%n", tcNum++);
+            boolean passed = false;
+            String failure = "Failed";
+            try {
+{{setupCode}}
+                {{ReturnType}} expected = {{expectedValue}};
+                {{ReturnType}} result = {{methodName}}({{arguments}});
+                System.out.println("Expected: " + expected);
+                System.out.println("Actual: " + result);
+                passed = {{comparison}};
+            } catch (Exception e) {
+                failure = "Failed -> " + e.getClass().getSimpleName();
+            }
+            if (passed) {
+                score += 1;
+                System.out.println("Passed");
+            } else {
+                System.out.println(failure);
+            }
+        }

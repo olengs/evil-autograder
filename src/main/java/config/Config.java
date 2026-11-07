@@ -9,6 +9,7 @@ import java.util.Properties;
 import java.util.Map;
 
 public class Config { //loads grading paths & process time limits from configuration
+    private final Properties properties;
     private final Path inputDirectory;
     private final Path outputDirectory;
     private final Path submissionsDirectory;
@@ -27,7 +28,7 @@ public class Config { //loads grading paths & process time limits from configura
     }
 
     public Config(Path configFile, Map<String, String> overrides) throws IOException {
-        Properties properties = new Properties();
+        properties = new Properties();
         try (Reader reader = Files.newBufferedReader(configFile)) {
             properties.load(reader);
         }
@@ -74,6 +75,44 @@ public class Config { //loads grading paths & process time limits from configura
 
     public Duration getExecutionTimeout() {
         return executionTimeout;
+    }
+
+    // Generation settings are read only when generating testers, so grading needs no API setup.
+    public Path getExamPdfFile() {
+        return inputDirectory.resolve(getRequired(properties, "exam.pdf.file"));
+    }
+
+    public Path getGenerationOutputDirectory() {
+        return inputDirectory.resolve(getRequired(properties, "generation.output.dir"));
+    }
+
+    public String getLlmModel() {
+        return getRequired(properties, "llm.model");
+    }
+
+    public String getLlmApiKeyEnv() {
+        return getRequired(properties, "llm.api.key.env");
+    }
+
+    public Duration getLlmRequestTimeout() {
+        return getTimeout(properties, "llm.request.timeout.seconds");
+    }
+
+    public boolean isLlmSendPdf() {
+        String value = getRequired(properties, "llm.send.pdf");
+        if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
+            throw new IllegalArgumentException("llm.send.pdf must be true or false");
+        }
+        return Boolean.parseBoolean(value);
+    }
+
+    public void validateGenerationSettings() {
+        getExamPdfFile();
+        getGenerationOutputDirectory();
+        getLlmModel();
+        getLlmApiKeyEnv();
+        getLlmRequestTimeout();
+        isLlmSendPdf();
     }
 
     private static String getRequired(Properties properties, String key) {
