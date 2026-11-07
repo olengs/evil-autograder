@@ -1,13 +1,12 @@
-// Defines the validation contract for a whole student submission.
-// Returns issues that apply across the assessment rather than to one question.
+//defines validation contract for checks spanning a student submission & its assessment
+//returns findings that submissionvalidator collects before building question attempts
 
 package validation;
 
-import model.AssessmentDefinition;
-import model.StudentSubmission;
-import model.SubmissionIssue;
+import assessment.AssessmentDefinition;
 import java.util.List;
+import submission.StudentSubmission;
 
 public interface SubmissionValidationRule {
-    List<SubmissionIssue> validate(StudentSubmission submission, AssessmentDefinition assessment);
+    List<SubmissionIssue> validate(StudentSubmission submission, AssessmentDefinition assessment, ValidationFiles files);
 }

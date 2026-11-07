@@ -1,100 +1,108 @@
-// Runs submission and question checks using one cached file finder per submission.
-// Builds question attempts containing selected answer paths and validation issues.
+//runs submission & question validation rules & builds attempts consumed by grading
+//keeps each question's selected files & findings while adding those findings to combined issue list
 
 package validation;
 
-import model.AssessmentDefinition;
-import model.IssueSeverity;
-import model.QuestionAttempt;
-import model.QuestionDefinition;
-import model.StudentSubmission;
-import model.SubmissionIssue;
-import utils.StudentHeaderUtils;
-import utils.SubmissionFileFinder;
-
+import assessment.AssessmentDefinition;
+import assessment.QuestionDefinition;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import submission.QuestionAttempt;
+import submission.StudentSubmission;
+import submission.files.StudentHeaderReader;
+import submission.files.SubmissionFileFinder;
 
 public class SubmissionValidator {
     private final List<QuestionValidationRule> questionRules;
     private final List<SubmissionValidationRule> submissionRules;
-    private final SubmissionFileFinder fileLocator;
+    private final SubmissionFileFinder fileFinder;
     private final Map<QuestionDefinition, TemplateSelection> templateSelections = new HashMap<>();
-    private record TemplateSelection(List<String> filenames, IOException error) {}
 
-    public SubmissionValidator(List<QuestionValidationRule> questionRules, List<SubmissionValidationRule> submissionRules, SubmissionFileFinder fileLocator) {
+    private record TemplateSelection(List<String> fileNames, IOException error) {}
+
+    public SubmissionValidator(List<QuestionValidationRule> questionRules, List<SubmissionValidationRule> submissionRules, SubmissionFileFinder fileFinder) {
         this.questionRules = List.copyOf(questionRules);
         this.submissionRules = List.copyOf(submissionRules);
-        this.fileLocator = fileLocator;
+        this.fileFinder = fileFinder;
     }
 
     public StudentSubmission validate(StudentSubmission submission, AssessmentDefinition assessment) {
-        if (!submission.getQuestionAttempts().isEmpty()) {
-            throw new IllegalStateException("submission already has question attempts");
-        }
+        if (!submission.getQuestionAttempts().isEmpty()) throw new IllegalStateException("submission already has question attempts");
 
-        //@1ejun6 > step 1 > rules that need to inspect entire submission
+        ValidationFiles files = new ValidationFiles(submission, fileFinder);
         for (SubmissionValidationRule rule : submissionRules) {
-            List<SubmissionIssue> issues = rule.validate(submission, assessment);
+            List<SubmissionIssue> issues = rule.validate(submission, assessment, files);
             submission.addIssues(issues);
         }
 
-        //@1ejun6 > step 2 > validate every question
-        SubmissionFileFinder files = fileLocator.forSubmission();
         for (QuestionDefinition question : assessment.getQuestions()) {
-            validateQuestion(submission, question, files);
+            validateQuestion(submission, question, files.question(question));
         }
+        
         return submission;
     }
 
-    private void validateQuestion(StudentSubmission submission, QuestionDefinition question, SubmissionFileFinder files) {
+    private void validateQuestion(StudentSubmission submission, QuestionDefinition question, ValidationFiles.QuestionFiles files) {
         List<SubmissionIssue> issues = new ArrayList<>();
         for (QuestionValidationRule rule : questionRules) {
             issues.addAll(rule.validate(submission, question, files));
         }
 
-        Path questionDirectory = submission.getRootDirectory().resolve(question.getExpectedFolder()).toAbsolutePath().normalize();
-        List<Path> submittedFiles = locateSubmittedAnswerFiles(submission, question, issues, files);
-        QuestionAttempt attempt = new QuestionAttempt(question, questionDirectory, submittedFiles, issues);
+        Path questionDirectory = files.expectedFolder().toAbsolutePath().normalize();
+        List<Path> answerFiles = locateSubmittedAnswerFiles(question, issues, files);
+        QuestionAttempt attempt = new QuestionAttempt(question, questionDirectory, answerFiles, issues);
 
         submission.addQuestionAttempt(attempt);
+        //attempt keeps its own findings > submission also collects them for reporting & blocking
         submission.addIssues(issues);
     }
 
-    private List<Path> locateSubmittedAnswerFiles(StudentSubmission submission, QuestionDefinition question,
-            List<SubmissionIssue> issues, SubmissionFileFinder files) {
-        Path questionFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
-        
+    private List<Path> locateSubmittedAnswerFiles(QuestionDefinition question, List<SubmissionIssue> issues, ValidationFiles.QuestionFiles files) {
+        List<String> editableFiles;
         try {
-            return files.findAnswerFiles(submission.getRootDirectory(), question.getExpectedFolder(), selectEditableFileNames(question));
-        } catch (IOException e) {
-            issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR, "unable to locate answer files > " + e.getMessage(), question.getId(), questionFolder));
-            return new ArrayList<>();
+            editableFiles = selectEditableFileNames(question);
+        } catch (IOException error) {
+            issues.add(SubmissionIssue.error("file read error", "unable to locate answer files > " + error.getMessage(), question.getId(), files.expectedFolder()));
+            return List.of();
         }
+
+        List<Path> found = new ArrayList<>();
+        boolean failed = files.actualFolder().error() != null;
+        for (String filename : new LinkedHashSet<>(editableFiles)) {
+            ValidationFiles.Lookup lookup = files.answer(filename);
+            if (lookup.error() != null) {
+                failed = true;
+                //required lookup failures belong to answerfilerule > report only new optional-file failures here
+                if (files.actualFolder().error() == null && !files.requiredAnswers().containsKey(filename)) issues.add(SubmissionIssue.error("file read error", "unable to locate answer files > " + lookup.error().getMessage(), question.getId(), files.expectedFolder().resolve(filename)));
+            } else lookup.path().ifPresent(path -> found.add(path.toAbsolutePath().normalize()));
+        }
+        return failed ? List.of() : found;
     }
 
-    //required answers & any template java file with a name & email section > a missing optional file is just left out
+    //required answers plus java helpers with student header labels are editable > missing helpers are optional
+
     private List<String> selectEditableFileNames(QuestionDefinition question) throws IOException {
         TemplateSelection selection = templateSelections.get(question);
         if (selection == null) {
             try {
-                List<String> editable = new ArrayList<>(question.getRequiredFiles());
-                for (String resource : question.getAllowedResourceFiles()) {
-                    if (resource.endsWith(".java") && StudentHeaderUtils.hasStudentHeader(question.getResourceDirectory().resolve(resource))) {
-                        editable.add(resource);
+                List<String> editableFileNames = new ArrayList<>(question.getRequiredAnswerFiles());
+                for (String resource : question.getSupportFiles()) {
+                    if (resource.endsWith(".java") && StudentHeaderReader.hasStudentHeader(question.getResourceDirectory().resolve(resource))) {
+                        editableFileNames.add(resource);
                     }
                 }
-                selection = new TemplateSelection(List.copyOf(editable), null);
+                selection = new TemplateSelection(List.copyOf(editableFileNames), null);
             } catch (IOException error) {
                 selection = new TemplateSelection(List.of(), error);
             }
             templateSelections.put(question, selection);
         }
         if (selection.error() != null) throw selection.error();
-        return selection.filenames();
+        return selection.fileNames();
     }
 }

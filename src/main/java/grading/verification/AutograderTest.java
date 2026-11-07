@@ -1,0 +1,91 @@
+//checks grading result coverage & consistency for selected assessment
+//runs through junitrunner against existing grades or a standalone run without assuming student scores
+
+package grading.verification;
+
+import app.Autograder;
+import assessment.AssessmentDefinition;
+import assessment.AssessmentLoader;
+import assessment.QuestionDefinition;
+import assessment.TesterDefinition;
+import assessment.TesterLoader;
+import config.Config;
+import grading.QuestionGrade;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.TestInstance;
+import static org.junit.jupiter.api.Assertions.*;
+import report.ConsoleReportPrinter;
+import submission.StudentSubmission;
+import submission.SubmissionArchives;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class AutograderTest {
+    private Map<StudentSubmission, List<QuestionGrade>> results;
+    private AssessmentDefinition assessment;
+    private Map<String, TesterDefinition> testers;
+    private Set<Path> archives;
+
+    @BeforeAll
+    void gradeProject() throws Exception {
+        var run = JUnitRunner.currentRun();
+        Config config = run == null ? new Config(Path.of(System.getProperty("autograder.config", "config.properties"))) : run.config();
+        assessment = AssessmentLoader.load(config.getResourcesDirectory());
+        testers = TesterLoader.load(config.getTestersDirectory());
+        
+        archives = new HashSet<>();
+        List<Path> zipFiles = SubmissionArchives.listZipFiles(config.getSubmissionsDirectory());
+        for (int i = 0; i < zipFiles.size(); i++) archives.add(zipFiles.get(i).toAbsolutePath().normalize());
+        results = run == null ? Autograder.run(config) : run.results();
+        if (run == null) ConsoleReportPrinter.print(results);
+    }
+
+    @Test
+    void everyZipAndQuestionHasAResult() {
+        assertFalse(archives.isEmpty(), "assessment must contain submission ZIPs");
+        assertEquals(archives.size(), results.size(), "every ZIP must have one result entry");
+        Set<Path> gradedArchives = new HashSet<>();
+        for (var submission : results.keySet()) {
+            gradedArchives.add(submission.getOriginalZip().toAbsolutePath().normalize());
+        }
+        assertEquals(archives, gradedArchives);
+
+        List<String> questionIds = new ArrayList<>();
+        for (QuestionDefinition question : assessment.getQuestions()) {
+            questionIds.add(question.getId());
+        }
+        for (var grades : results.values()) {
+            List<String> gradedQuestionIds = new ArrayList<>();
+            for (QuestionGrade grade : grades) {
+                gradedQuestionIds.add(grade.getQuestionId());
+            }
+            assertEquals(questionIds, gradedQuestionIds);
+        }
+    }
+
+    @TestFactory
+    List<DynamicTest> checkEachStudentQuestion() {
+        List<DynamicTest> tests = new ArrayList<>();
+
+        for (var entry : results.entrySet()) {
+            var submission = entry.getKey();
+
+            for (var grade : entry.getValue()) {
+                String name = submission.getOriginalZip().getFileName() + " " + grade.getQuestionId();
+                boolean hasTester = testers.containsKey(grade.getQuestionId().toLowerCase(Locale.ROOT));
+                tests.add(DynamicTest.dynamicTest(name,() -> GradeAssertions.check(submission, grade, hasTester)));
+            }
+        }
+
+        return tests;
+    }
+}
