@@ -5,8 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public final class PdfFileUtils { //checks for a pdf that is about to be uploaded to openai
-    public static final String PDF_MIME_TYPE = "application/pdf";
-
     private static final byte[] PDF_MAGIC = "%PDF-".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
 
     private PdfFileUtils() {
@@ -35,10 +33,5 @@ public final class PdfFileUtils { //checks for a pdf that is about to be uploade
             }
         }
         return normalised;
-    }
-
-    // name shown by the provider for the uploaded file
-    public static String displayName(Path pdfFile) {
-        return pdfFile.getFileName().toString();
     }
 }
