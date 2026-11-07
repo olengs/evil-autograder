@@ -1,5 +1,5 @@
-//checks grading result coverage & consistency for selected assessment
-//runs through junitrunner against existing grades or a standalone run without assuming student scores
+//grades once in junit setup & checks result coverage & consistency for selected assessment
+//requires a positive completed grade & shares ui verification rules across runtime checks
 
 package grading.verification;
 
@@ -11,6 +11,7 @@ import assessment.TesterDefinition;
 import assessment.TesterLoader;
 import config.Config;
 import grading.QuestionGrade;
+import grading.GradeStatus;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -49,8 +50,11 @@ class AutograderTest {
         archives = new HashSet<>();
         List<Path> zipFiles = SubmissionArchives.listZipFiles(config.getSubmissionsDirectory());
         for (int i = 0; i < zipFiles.size(); i++) archives.add(zipFiles.get(i).toAbsolutePath().normalize());
-        results = run.results() == null ? Autograder.run(config) : run.results();
-        if (run.results() == null) ConsoleReportPrinter.print(results);
+        if (run.results() == null) {
+            results = Autograder.run(config, run.progress());
+            run.complete(results);
+            if (run.printResults()) ConsoleReportPrinter.print(results);
+        } else results = run.results();
     }
 
     @Test
@@ -67,13 +71,18 @@ class AutograderTest {
         for (QuestionDefinition question : assessment.getQuestions()) {
             questionIds.add(question.getId());
         }
+        boolean hasPassingGrade = false;
         for (var grades : results.values()) {
             List<String> gradedQuestionIds = new ArrayList<>();
             for (QuestionGrade grade : grades) {
                 gradedQuestionIds.add(grade.getQuestionId());
             }
             assertEquals(questionIds, gradedQuestionIds);
+            for (QuestionGrade grade : grades) {
+                if (grade.getStatus() == GradeStatus.completed && grade.getEarnedMarks() > 0) hasPassingGrade = true;
+            }
         }
+        assertTrue(hasPassingGrade, "grader must actually compile & run answers > not skip everything");
     }
 
     @TestFactory

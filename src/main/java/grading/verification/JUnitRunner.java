@@ -5,7 +5,6 @@ package grading.verification;
 
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 
-import app.Autograder;
 import config.Config;
 import grading.QuestionGrade;
 import java.io.IOException;
@@ -25,7 +24,6 @@ import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
 import grading.progress.GradingProgress;
 import grading.progress.JUnitSnapshot;
-import report.ConsoleReportPrinter;
 import report.ScoreSheetWriter;
 import submission.StudentSubmission;
 
@@ -61,15 +59,14 @@ public final class JUnitRunner {
 
     public static TestExecutionSummary run(Config config, GradingProgress progress, boolean printResults)
             throws IOException, InterruptedException {
-        String session = null;
+        String session = GradingSession.register(config, progress, printResults);
         var listener = new UiListener(progress);
         listener.publish(); //enable JUnit before grading can report batch completion
         try {
-            var results = Autograder.run(config, progress);
-            if (printResults) ConsoleReportPrinter.print(results);
-            session = GradingSession.register(config, results);
             TestExecutionSummary summary = executeChecks(session, listener);
             checkSummary(summary, listener);
+            var results = GradingSession.input(session).results();
+            if (results == null) throw new IOException("JUnit setup did not produce grading results");
             progress.preparing("saving scoresheet");
             ScoreSheetWriter.write(config.getScoresheetFile(), results,
                     config.getOutputDirectory().resolve(config.getScoresheetFile().getFileName()));
@@ -82,7 +79,7 @@ public final class JUnitRunner {
             progress.failed(failureMessage(failure));
             throw failure;
         } finally {
-            if (session != null) GradingSession.release(session);
+            GradingSession.release(session);
             progress.finishElapsedTime();
         }
     }
@@ -102,11 +99,15 @@ public final class JUnitRunner {
         var summary = new SummaryGeneratingListener();
         //external listeners may print console output > keep them away from terminal ui
         var config = LauncherConfig.builder().enableTestExecutionListenerAutoRegistration(!ui).build();
+        Thread owner = Thread.currentThread();
+        Thread cancellation = null;
         try (var launcher = LauncherFactory.openSession(config)) {
-            Thread cancellation = ui ? listener.watchCancellation(Thread.currentThread()) : null;
+            cancellation = ui ? listener.watchCancellation(owner) : null;
+            if (ui) launcher.getLauncher().execute(request.build(), summary, listener);
+            else launcher.getLauncher().execute(request.build(), summary);
+        } finally {
             try {
-                if (ui) launcher.getLauncher().execute(request.build(), summary, listener);
-                else launcher.getLauncher().execute(request.build(), summary);
+                if (ui) listener.awaitWorkers(owner);
             } finally {
                 if (cancellation != null) cancellation.interrupt();
             }
@@ -162,11 +163,36 @@ public final class JUnitRunner {
             return Thread.ofPlatform().daemon().name("junit-cancellation").start(() -> {
                 try {
                     while (!owner.isInterrupted()) Thread.sleep(25);
-                    workers.values().forEach(Thread::interrupt);
+                    interruptWorkers(owner);
                 } catch (InterruptedException finished) {
                     // The launcher completed normally.
                 }
             });
+        }
+
+        private void interruptWorkers(Thread owner) {
+            workers.values().stream().filter(thread -> thread != owner).forEach(Thread::interrupt);
+        }
+
+        private void awaitWorkers(Thread owner) {
+            //Jupiter may return early on interruption > let grading finish workspace cleanup first
+            boolean interrupted = Thread.interrupted();
+            try {
+                if (interrupted) interruptWorkers(owner);
+                for (Thread worker : workers.values()) {
+                    if (worker == owner) continue;
+                    while (worker.isAlive()) {
+                        try {
+                            worker.join();
+                        } catch (InterruptedException error) {
+                            interrupted = true;
+                            interruptWorkers(owner);
+                        }
+                    }
+                }
+            } finally {
+                if (interrupted) owner.interrupt();
+            }
         }
 
         @Override
