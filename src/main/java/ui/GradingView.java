@@ -3,7 +3,7 @@
 
 package ui;
 
-import static ui.UiDrawing.*;
+import static utils.ui.UiDrawing.*;
 import dev.tamboui.buffer.Cell;
 import dev.tamboui.layout.Rect;
 import dev.tamboui.terminal.Frame;

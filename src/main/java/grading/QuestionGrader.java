@@ -101,7 +101,7 @@ public class QuestionGrader implements QuestionGrading {
         }
 
         ProcessBuilder builder = new ProcessBuilder(command).directory(workspaceDirectory.toFile());
-        return ProcessExecutor.run(builder, compilationTimeout, "prc-001", "javac could not be started");
+        return ProcessExecutor.run(builder, compilationTimeout, "javac could not be started");
     }
 
     private ProcessResult executeTester(Path workspaceDirectory, String mainClassName) {
@@ -109,7 +109,7 @@ public class QuestionGrader implements QuestionGrading {
         String classpath = workspaceDirectory.resolve("classes") + java.io.File.pathSeparator + workspaceDirectory;
         ProcessBuilder builder = new ProcessBuilder(JavaTools.getRuntimePath().toString(), "-cp", classpath, mainClassName);
         builder.directory(workspaceDirectory.toFile());
-        return ProcessExecutor.run(builder, executionTimeout, "prc-002", "java execution failed");
+        return ProcessExecutor.run(builder, executionTimeout, "java execution failed");
     }
 
     private QuestionGrade failedGrade(String questionId, GradeStatus status, ProcessResult process, String message) {

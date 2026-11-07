@@ -12,8 +12,8 @@ import grading.AssessmentGrader;
 import grading.QuestionGrade;
 import grading.QuestionGrader;
 import utils.files.TemporaryDirectory;
+import utils.process.Interruptions;
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +63,7 @@ public final class Autograder {
 
                 SubmissionValidator validator = createValidator();
                 for (StudentSubmission submission : submissions) {
-                    if (Thread.currentThread().isInterrupted()) throw new InterruptedIOException("validation interrupted");
+                    Interruptions.check("validation interrupted");
                     progress.validationStarted(submission.getStudent() == null ? submission.getOriginalZip().getFileName().toString() : submission.getStudent().getUsername());
                     validator.validate(submission, assessment);
                 }

@@ -67,7 +67,7 @@ public class SubmissionValidator {
         try {
             editableFiles = selectEditableFileNames(question);
         } catch (IOException error) {
-            issues.add(SubmissionIssue.error("file read error", "unable to locate answer files > " + error.getMessage(), question.getId(), files.expectedFolder()));
+            issues.add(SubmissionIssue.error("file read error", "unable to locate answer files > " + error.getMessage(), question.getId()));
             return List.of();
         }
 
@@ -78,7 +78,7 @@ public class SubmissionValidator {
             if (lookup.error() != null) {
                 failed = true;
                 //required lookup failures belong to answerfilerule > report only new optional-file failures here
-                if (files.actualFolder().error() == null && !files.requiredAnswers().containsKey(filename)) issues.add(SubmissionIssue.error("file read error", "unable to locate answer files > " + lookup.error().getMessage(), question.getId(), files.expectedFolder().resolve(filename)));
+                if (files.actualFolder().error() == null && !files.requiredAnswers().containsKey(filename)) issues.add(SubmissionIssue.error("file read error", "unable to locate answer files > " + lookup.error().getMessage(), question.getId()));
             } else lookup.path().ifPresent(path -> found.add(path.toAbsolutePath().normalize()));
         }
         return failed ? List.of() : found;

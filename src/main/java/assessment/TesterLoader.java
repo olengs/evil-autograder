@@ -31,7 +31,7 @@ public final class TesterLoader {
 
                 if (questionId.isBlank() || testers.containsKey(questionId)) throw new IOException("invalid / duplicate tester id > " + name);
 
-                testers.put(questionId, new TesterDefinition(questionId, testerDirectoryPath, testerDirectoryPath.relativize(file), mainClassName));
+                testers.put(questionId, new TesterDefinition(testerDirectoryPath, testerDirectoryPath.relativize(file), mainClassName));
             }
         }
         return testers;

@@ -34,10 +34,6 @@ public class QuestionAttempt {
         return submittedFiles;
     }
 
-    public List<SubmissionIssue> getIssues() {
-        return issues;
-    }
-
     public boolean isValid() {
         for (SubmissionIssue issue : issues) {
             if (issue.getSeverity() == IssueSeverity.error) {

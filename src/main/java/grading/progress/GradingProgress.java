@@ -7,12 +7,9 @@ import grading.GradeStatus;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class GradingProgress implements ProgressListener {
     private final ProgressState state = new ProgressState();
-    private final Set<Long> junitThreads = ConcurrentHashMap.newKeySet();
 
     public synchronized void pauseElapsedTime() {
         if (state.waitingForInput || state.timerFinished) return;
@@ -35,14 +32,6 @@ public class GradingProgress implements ProgressListener {
         state.revision++;
     }
 
-    public void junitThreadStarted(long threadId) {
-        junitThreads.add(threadId);
-    }
-
-    public Set<Long> junitThreadIds() {
-        return Set.copyOf(junitThreads);
-    }
-
     @Override
     public synchronized void preparing(String message) {
         state.setStage(ProgressStage.loading, message, Duration.ZERO);
@@ -61,7 +50,6 @@ public class GradingProgress implements ProgressListener {
         state.totalsKnown = true;
         state.student = "";
         state.batchStartedElapsed = state.totalElapsed();
-        state.estimatedRemaining = Optional.empty();
         state.estimatedTotal = Optional.empty();
         state.setStage(ProgressStage.preparing, "starting batch grading", Duration.ZERO);
     }
@@ -69,7 +57,6 @@ public class GradingProgress implements ProgressListener {
     @Override
     public synchronized void submissionStarted(String student) {
         state.student = student;
-        state.studentNumber = state.processedStudents + 1;
         state.question = "";
         state.results.clear(); //only this student remains in UI state
         state.submissionActive = true;
@@ -108,7 +95,6 @@ public class GradingProgress implements ProgressListener {
             Duration elapsed = state.totalElapsed();
             Duration average = elapsed.minus(state.batchStartedElapsed).dividedBy(state.processedQuestions);
             Duration remaining = average.multipliedBy(totalQuestions - state.processedQuestions);
-            state.estimatedRemaining = Optional.of(remaining);
             //keeps the first prediction so progress & summary compare the same estimate with actual time
             if (state.estimatedTotal.isEmpty() && state.processedQuestions < totalQuestions) {
                 state.estimatedTotal = Optional.of(elapsed.plus(remaining));

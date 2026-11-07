@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public record ProgressSnapshot(ProgressStage stage, String message, String student, String question, List<String> questions, Map<String, GradeStatus> results, int totalStudents, int studentNumber, int processedStudents, int processedQuestions, long stageStarted, Duration timeout, long revision, boolean totalsKnown, JUnitSnapshot junit, Duration totalElapsed, Optional<Duration> estimatedRemaining, Optional<Duration> estimatedTotal) {
+public record ProgressSnapshot(ProgressStage stage, String message, String student, String question, List<String> questions, Map<String, GradeStatus> results, int totalStudents, int processedStudents, int processedQuestions, long stageStarted, Duration timeout, long revision, boolean totalsKnown, JUnitSnapshot junit, Duration totalElapsed, Optional<Duration> estimatedTotal) {
 
     public ProgressSnapshot {
         questions = List.copyOf(questions);

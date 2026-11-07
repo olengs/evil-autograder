@@ -16,10 +16,6 @@ public final class ProcessResult {
         this.timedOut = timedOut;
     }
 
-    public int getExitCode() {
-        return exitCode;
-    }
-
     public String getStandardOutput() {
         return standardOutput;
     }
