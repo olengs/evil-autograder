@@ -6,6 +6,8 @@ import java.util.List;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.errors.OpenAIException;
+import com.openai.models.Reasoning;
+import com.openai.models.ReasoningEffort;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionContentPart;
 import com.openai.models.chat.completions.ChatCompletionContentPartText;
@@ -42,6 +44,10 @@ public final class OpenAiCompatibleClient implements LlmClient { //openai / groq
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
                 .apiKey(apiKey == null || apiKey.isBlank() ? NO_KEY_PLACEHOLDER : apiKey)
                 .timeout(REQUEST_TIMEOUT); // same budget as the gemini client
+        if (officialOpenAi) {
+            // keep one-shot generation to one attempt even on timeouts, rate limits or server errors
+            builder.maxRetries(0);
+        }
         if (baseUrl != null && !baseUrl.isBlank()) {
             builder.baseUrl(baseUrl);
         }
@@ -95,11 +101,13 @@ public final class OpenAiCompatibleClient implements LlmClient { //openai / groq
                         .content(request.getPrompt())
                         .build());
 
-        StructuredResponseCreateParams<T> params = ResponseCreateParams.builder()
+        ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
                 .model(request.getModel())
-                .inputOfResponse(List.of(system, user))
-                .text(type)
-                .build();
+                .inputOfResponse(List.of(system, user));
+        if ("gpt-6.1-sol".equals(request.getModel()) || "gpt-6.1-terra".equals(request.getModel())) {
+            builder.reasoning(Reasoning.builder().effort(ReasoningEffort.HIGH).build());
+        }
+        StructuredResponseCreateParams<T> params = builder.text(type).build();
 
         StructuredResponse<T> response;
         try {

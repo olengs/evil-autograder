@@ -26,14 +26,15 @@ public class TesterGeneratorApp { //thin standalone entry point > the console ui
             GenerationResult result = new TesterGenerator(config).generate(request);
             printSummary(result);
 
-            // non-zero exit when no tester was written at all > useful for scripts
-            if (result.getWrittenCount() == 0) {
-                System.exit(1);
-            }
+            System.exit(exitCode(result));
         } catch (IOException | RuntimeException error) {
             System.err.println("tester generation error > " + error.getMessage());
             System.exit(1);
         }
+    }
+
+    public static int exitCode(GenerationResult result) {
+        return result.isFullySuccessful() ? 0 : 1;
     }
 
     private static void printSummary(GenerationResult result) {

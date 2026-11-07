@@ -14,6 +14,10 @@ public class JavaProcessUtils { //finds java & javac belonging to jdk running gr
         return findTool("java");
     }
 
+    public static Path getDisassemblerPath() {
+        return findTool("javap");
+    }
+
     private static Path findTool(String toolName) { //find tool in java.home/bin & check file exists
         String javaHome = System.getProperty("java.home"); //running jdk folder
         String executableName = toolName;

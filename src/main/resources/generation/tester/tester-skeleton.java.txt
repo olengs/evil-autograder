@@ -2,9 +2,7 @@ import java.util.*;
 {{imports}}
 
 public class {{questionId}}Tester extends {{questionId}} {
-
     private static double score;
-    private static String qn = "{{questionId}}";
 
     public static void main(String[] args) {
         grade();
@@ -12,14 +10,8 @@ public class {{questionId}}Tester extends {{questionId}} {
     }
 
     public static void grade() {
-        System.out.println("-------------------------------------------------------");
-        System.out.println("---------------------- " + qn + " ----------------------------");
-        System.out.println("-------------------------------------------------------");
-
         int tcNum = 1;
-        {
 {{testCases}}
-        }
     }
 {{helperCode}}
 }
