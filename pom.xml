@@ -10,6 +10,7 @@
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <tamboui.version>0.6.0</tamboui.version>
+        <exec.mainClass>app.TerminalMain</exec.mainClass>
     </properties>
 
     <dependencies>
@@ -39,6 +40,18 @@
             <version>5.12.0</version>
         </dependency>
         <dependency>
+            <!-- read the api key from a git-ignored .env file > host env vars take precedence-->
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+        <dependency>
+            <!-- official openai sdk -->
+            <groupId>com.openai</groupId>
+            <artifactId>openai-java</artifactId>
+            <version>4.85.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.13.4</version>
@@ -48,6 +61,12 @@
             <artifactId>junit-platform-launcher</artifactId>
             <version>1.13.4</version>
         </dependency>
+        <!-- silences the slf4j "no providers" warning from the openai sdk -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId>
+            <version>2.0.16</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -56,7 +75,7 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
-                <configuration><mainClass>app.TerminalMain</mainClass></configuration>
+                <configuration><mainClass>${exec.mainClass}</mainClass></configuration>
                 <executions>
                     <execution>
                         <id>console</id>
