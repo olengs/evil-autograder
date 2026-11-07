@@ -1,9 +1,9 @@
+package verification;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import app.GradingRun;
-import progress.GradingProgress;
 import config.AssessmentLoader;
-import config.Config;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -13,12 +13,17 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import submission.SubmissionLoader;
 
 //@1ejun6 > !update
 //@1ejun6 > reuse one test instance > all checks share results from one grading run
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class QuestionGraderTest { //@1ejun6 > runs integration tests using real project submissions
+@ExtendWith(GradingSession.class)
+@Execution(ExecutionMode.CONCURRENT)
+public class GradingChecks { //same JUnit suite used by the TUI and Maven
     private Map<StudentSubmission, List<QuestionGrade>> results;
     private AssessmentDefinition assessment;
     private long zipCount;
@@ -26,19 +31,19 @@ class QuestionGraderTest { //@1ejun6 > runs integration tests using real project
     //@1ejun6 > 1 > run integration once before checking its results
     //@1ejun6 > config reads project location > tests need actual project input files
     @BeforeAll
-    void gradeProject() throws Exception {
-        Config config = new Config();
+    protected void gradeProject(GradingSession.Input input) throws Exception {
+        var config = input.config();
         assessment = AssessmentLoader.load(config.getResourcesDirectory());
         zipCount = SubmissionLoader.findZipFiles(config.getSubmissionsDirectory()).size();
 
         //@1ejun6 > run extraction & validation & compilation & testing together
-        results = GradingRun.run(config, new GradingProgress());
-        GradingRun.printResults(results);
+        results = GradingRun.run(config, input.progress());
+        if (input.printResults()) GradingRun.printResults(results);
     }
 
     //@1ejun6 > 2 > check that every submission zip has a result for every question
     @Test
-    void everyZipAndQuestionHasAResult() {
+    protected void everyZipAndQuestionHasAResult() {
         assertTrue(zipCount > 0, "project must contain submission ZIPs");
         assertEquals(zipCount, results.size());
 
@@ -69,7 +74,7 @@ class QuestionGraderTest { //@1ejun6 > runs integration tests using real project
     //@1ejun6 > 3 > create a named JUnit check for each student question result
     //@1ejun6 > each test name identifies its submission zip & question
     @TestFactory
-    List<DynamicTest> checkEachStudentQuestion() {
+    protected List<DynamicTest> checkEachStudentQuestion() {
         List<DynamicTest> tests = new ArrayList<>();
         for (var entry : results.entrySet()) {
             StudentSubmission submission = entry.getKey();

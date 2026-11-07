@@ -15,6 +15,14 @@ import exceptions.ProcessExecutionException;
 import model.ProcessResult;
 
 public class ProcessExecutor {
+    private static String outputReaderPrefix(long workerId) {
+        return "autograder-process-output-" + workerId + "-";
+    }
+
+    public static boolean isOutputReader(String threadName, long workerId) {
+        return threadName.startsWith(outputReaderPrefix(workerId));
+    }
+
     public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorCode, String startErrorMessage) {
         if (timeout.isZero() || timeout.isNegative()) {
             throw new IllegalArgumentException("Process timeout must be positive");
@@ -27,7 +35,7 @@ public class ProcessExecutor {
             throw new ProcessExecutionException(startErrorCode, startErrorMessage, error);
         }
 
-        ExecutorService outputReaders = Executors.newFixedThreadPool(2, Thread.ofPlatform().daemon().factory());
+        ExecutorService outputReaders = Executors.newFixedThreadPool(2, Thread.ofPlatform().daemon().name(outputReaderPrefix(Thread.currentThread().threadId()), 0).factory());
         try {
             process.getOutputStream().close();
             //streams have limited memory > background threads drain them to prevent deadlock
