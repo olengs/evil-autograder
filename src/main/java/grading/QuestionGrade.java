@@ -23,6 +23,12 @@ public final class QuestionGrade { //stores a question's marks, status, test cas
         this.message = message == null ? "" : message;
     }
 
+    public static double totalMarks(List<QuestionGrade> grades) {
+        double total = 0;
+        for (QuestionGrade grade : grades) total += grade.getEarnedMarks();
+        return total;
+    }
+
     public String getQuestionId() {
         return questionId;
     }

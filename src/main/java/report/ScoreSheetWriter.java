@@ -43,15 +43,9 @@ public final class ScoreSheetWriter { //writes totals & question marks from each
 
             //keep one whole submission > question scores must add up to chosen final total
             selected.merge(student.getUsername(), entry.getValue(),
-                    (previous, current) -> totalMarks(current) > totalMarks(previous) ? current : previous);
+                    (previous, current) -> QuestionGrade.totalMarks(current) > QuestionGrade.totalMarks(previous) ? current : previous);
         }
         return selected;
-    }
-
-    private static double totalMarks(List<QuestionGrade> grades) {
-        double total = 0;
-        for (QuestionGrade grade : grades) total += grade.getEarnedMarks();
-        return total;
     }
 
     private static Map<String, Integer> questionColumns(List<String> header, List<String> questions) {
@@ -72,7 +66,11 @@ public final class ScoreSheetWriter { //writes totals & question marks from each
     private static List<List<String>> readRows(Path scoresheet, List<String> questions) throws IOException {
         try (CSVReader reader = new CSVReader(Files.newBufferedReader(scoresheet))) {
             List<List<String>> rows = new ArrayList<>();
-            for (String[] row : reader.readAll()) rows.add(new ArrayList<>(Arrays.asList(row)));
+            for (String[] row : reader.readAll()) {
+                if (ScoreSheetColumns.isBlankRow(row)) continue;
+                if (rows.isEmpty()) ScoreSheetColumns.validateHeader(row);
+                rows.add(new ArrayList<>(Arrays.asList(row)));
+            }
             if (rows.isEmpty()) return rows;
             List<String> header = rows.getFirst();
             while (header.size() <= ScoreSheetColumns.gradeDenominator) header.add(ScoreSheetColumns.header()[header.size()]);
@@ -98,14 +96,13 @@ public final class ScoreSheetWriter { //writes totals & question marks from each
             if (row.get(ScoreSheetColumns.lastName).equals("_")) row.set(ScoreSheetColumns.lastName, "");
             if (row.get(ScoreSheetColumns.firstName).equals("_")) row.set(ScoreSheetColumns.firstName, "");
 
-            String email = row.get(ScoreSheetColumns.email).strip();
-            int atIndex = email.indexOf('@');
-            if (atIndex <= 0) continue;
+            var username = StudentDetails.usernameFromEmail(row.get(ScoreSheetColumns.email));
+            if (username.isEmpty()) continue;
 
-            List<QuestionGrade> grades = selected.get(email.substring(0, atIndex));
+            List<QuestionGrade> grades = selected.get(username.orElseThrow());
             if (grades == null) continue;
 
-            row.set(ScoreSheetColumns.gradeNumerator, formatMarks(totalMarks(grades)));
+            row.set(ScoreSheetColumns.gradeNumerator, formatMarks(QuestionGrade.totalMarks(grades)));
             for (QuestionGrade grade : grades) {
                 row.set(questionColumns.get(grade.getQuestionId()), formatMarks(grade.getEarnedMarks()));
             }

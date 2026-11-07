@@ -56,8 +56,9 @@ public class UnexpectedFileRule implements SubmissionValidationRule { //warns ab
 
         for (QuestionDefinition question : assessment.getQuestions()) {
             String questionDirectory = question.getExpectedFolderName();
-            expectedFilesByFolder.computeIfAbsent(questionDirectory, key -> new TreeSet<>(String.CASE_INSENSITIVE_ORDER)).addAll(question.getRequiredAnswerFiles());
-            expectedFilesByFolder.get(questionDirectory).addAll(question.getSupportFiles());
+            Set<String> expectedFiles = expectedFilesByFolder.computeIfAbsent(questionDirectory, key -> new TreeSet<>(String.CASE_INSENSITIVE_ORDER));
+            expectedFiles.addAll(question.getRequiredAnswerFiles());
+            expectedFiles.addAll(question.getSupportFiles());
         }
         expectedFilesByFolder.replaceAll((folder, names) -> Collections.unmodifiableSet(names));
         return Collections.unmodifiableMap(expectedFilesByFolder);

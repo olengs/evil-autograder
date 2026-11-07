@@ -68,7 +68,7 @@ public class SubmissionValidator { //runs validation rules & builds question att
 
         List<Path> found = new ArrayList<>();
         boolean failed = files.actualFolder().error() != null;
-        for (String filename : new LinkedHashSet<>(editableFiles)) {
+        for (String filename : editableFiles) {
             ValidationFiles.Lookup lookup = files.answer(filename);
             if (lookup.error() != null) {
                 failed = true;
@@ -85,7 +85,7 @@ public class SubmissionValidator { //runs validation rules & builds question att
         TemplateSelection selection = templateSelections.get(question);
         if (selection == null) {
             try {
-                List<String> editableFileNames = new ArrayList<>(question.getRequiredAnswerFiles());
+                var editableFileNames = new LinkedHashSet<>(question.getRequiredAnswerFiles());
                 for (String resource : question.getSupportFiles()) {
                     if (resource.endsWith(".java") && StudentHeaderReader.hasStudentHeader(question.getResourceDirectory().resolve(resource))) {
                         editableFileNames.add(resource);

@@ -2,6 +2,8 @@ package grading.verification;
 
 import grading.GradeStatus;
 import grading.QuestionGrade;
+import grading.TesterOutputParser;
+import grading.TestCaseResult;
 import static org.junit.jupiter.api.Assertions.*;
 import submission.QuestionAttempt;
 import submission.StudentSubmission;
@@ -42,8 +44,10 @@ final class GradeAssertions { //checks question grades against validation findin
                 var process = grade.getProcessResult().orElseThrow();
                 assertTrue(process.isSuccessful());
                 assertFalse(grade.getTestCaseResults().isEmpty());
-                String printedTotal = process.getStandardOutput().strip().lines().toList().getLast();
-                assertEquals(Double.parseDouble(printedTotal), grade.getEarnedMarks(), "marks must match tester's printed total");
+                var recordedCases = new TesterOutputParser().parse(process.getStandardOutput());
+                assertEquals(recordedCases.size(), grade.getTestCaseResults().size(), "all completed cases must be recorded");
+                double recordedTotal = recordedCases.stream().mapToDouble(TestCaseResult::getEarnedMarks).sum();
+                assertEquals(recordedTotal, grade.getEarnedMarks(), "marks must match completed tester outcomes");
             }
             case compileError, runtimeError -> {
                 var process = grade.getProcessResult().orElseThrow();

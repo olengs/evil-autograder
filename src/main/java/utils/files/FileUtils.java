@@ -18,18 +18,12 @@ public final class FileUtils { //lists files, copies replacement files & deletes
 
     //replaces an existing file after validation > callers create parent directories
     public static void copyFileReplacing(Path source, Path destination) throws IOException {
-        checkFileCopy(source, destination);
-        Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
-    }
-
-    //reject non-file paths & copying a file onto itself before replacement
-
-    private static void checkFileCopy(Path source, Path destination) throws IOException {
         if (!Files.isRegularFile(source)) throw new IOException("copy source is not a regular file > " + source);
         if (Files.exists(destination)) {
             if (!Files.isRegularFile(destination)) throw new IOException("destination is not a regular file > " + destination);
             if (Files.isSameFile(source, destination)) throw new IOException("source & destination refer to same file");
         }
+        Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
     }
 
     public static void deleteDirectory(Path folder) throws IOException {
