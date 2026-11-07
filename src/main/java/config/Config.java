@@ -1,3 +1,6 @@
+//reads application paths & compilation & execution time limits from a properties file
+//checks required settings before application starts preparing \ grading submissions
+
 package config;
 
 import java.io.IOException;
@@ -8,64 +11,70 @@ import java.time.Duration;
 import java.util.Properties;
 
 public class Config {
+    private final Path inputDirectory;
+    private final Path outputDirectory;
+    private final Path submissionsDirectory;
+    private final Path testersDirectory;
+    private final Path resourcesDirectory;
+    private final Path scoresheetFile;
+    private final Duration compilationTimeout;
+    private final Duration executionTimeout;
 
-    private final Properties props = new Properties(); //@1ejun6 > specialised collection used to manage application settings & configuration data
-    //@1ejun6 > extends as a hashtable class & provides convenient methods for reading & storing & updating property values from external files
-
-    public Config() throws IOException { //@1ejun6 > ioexception is passed to caller if file cannot be read > checked
+    public Config() throws IOException {
         this(Path.of("config.properties"));
     }
 
     public Config(Path configFile) throws IOException {
-        try (
-            Reader reader = Files.newBufferedReader(configFile)) {
-            props.load(reader); //@1ejun6 > reads files key=value pairs into props
+        Properties properties = new Properties();
+        try (Reader reader = Files.newBufferedReader(configFile)) {
+            properties.load(reader);
         }
 
-        getInputDirectory();
-        getOutputDirectory();
-        getSubmissionsDirectory();
-        getTestersDirectory();
-        getResourcesDirectory();
-        getScoresheetFile();
-        getCompilationTimeout();
-        getExecutionTimeout();
+        //fail before grading starts if any required setting is missing or invalid
+        inputDirectory = Path.of(getRequired(properties, "input.directory")).toAbsolutePath().normalize();
+        outputDirectory = Path.of(getRequired(properties, "output.directory")).toAbsolutePath().normalize();
+        submissionsDirectory = inputDirectory.resolve(getRequired(properties, "submissions.folder"));
+        testersDirectory = inputDirectory.resolve(getRequired(properties, "testers.folder"));
+        resourcesDirectory = inputDirectory.resolve(getRequired(properties, "resources.folder"));
+        scoresheetFile = inputDirectory.resolve(getRequired(properties, "scoresheet.file"));
+        compilationTimeout = getTimeout(properties, "compilation.timeout.seconds");
+        executionTimeout = getTimeout(properties, "execution.timeout.seconds");
     }
 
     public Path getInputDirectory() {
-        return Path.of(getRequired("input.directory")).toAbsolutePath().normalize();
+        return inputDirectory;
     }
 
     public Path getOutputDirectory() {
-        return Path.of(getRequired("output.directory")).toAbsolutePath().normalize();
+        return outputDirectory;
     }
 
     public Path getSubmissionsDirectory() {
-        return getInputDirectory().resolve(getRequired("submissions.folder"));
+        return submissionsDirectory;
     }
 
     public Path getTestersDirectory() {
-        return getInputDirectory().resolve(getRequired("testers.folder"));
+        return testersDirectory;
     }
 
     public Path getResourcesDirectory() {
-        return getInputDirectory().resolve(getRequired("resources.folder"));
+        return resourcesDirectory;
     }
 
     public Path getScoresheetFile() {
-        return getInputDirectory().resolve(getRequired("scoresheet.file"));
+        return scoresheetFile;
     }
 
     public Duration getCompilationTimeout() {
-        return getTimeout("compilation.timeout.seconds");
+        return compilationTimeout;
     }
 
     public Duration getExecutionTimeout() {
-        return getTimeout("execution.timeout.seconds");
+        return executionTimeout;
     }
 
-    private String getRequired(String key) {
-        String value = props.getProperty(key); //@1ejun6 > finds value belonging to this key
+    private static String getRequired(Properties properties, String key) {
+        String value = properties.getProperty(key);
 
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("config > missing setting >" + key);
@@ -74,17 +83,17 @@ public class Config {
         return value.strip();
     }
 
-    private Duration getTimeout(String key) {
-        long seconds; //@1ejun6 > java automatically converts the int to a long
+    private static Duration getTimeout(Properties properties, String key) {
+        long seconds;
 
         try {
-            seconds = Long.parseLong(getRequired(key));
+            seconds = Long.parseLong(getRequired(properties, key));
         } catch (NumberFormatException error) {
-            throw new IllegalArgumentException(key + " must be a positive whole number", error); //@1ejun6 > unchecked
+            throw new IllegalArgumentException(key + " must be a positive whole number", error);
         }
 
         if (seconds <= 0) {
-            throw new IllegalArgumentException(key + " must be greater than zero"); //@1ejun6 > unchecked
+            throw new IllegalArgumentException(key + " must be greater than zero");
         }
 
         return Duration.ofSeconds(seconds);

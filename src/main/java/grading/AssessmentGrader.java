@@ -1,72 +1,64 @@
+//produces an ordered grade for every question in every student submission
+//explains skipped questions & passes eligible attempts to questiongrader for compilation & testing
+
 package grading;
 
+import assessment.AssessmentDefinition;
+import assessment.QuestionDefinition;
+import assessment.TesterDefinition;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
-import model.AssessmentDefinition;
-import model.GradeStatus;
-import model.IssueSeverity;
-import model.QuestionAttempt;
-import model.QuestionDefinition;
-import model.QuestionGrade;
-import model.StudentSubmission;
-import model.SubmissionIssue;
-import model.TesterDefinition;
+import submission.QuestionAttempt;
+import submission.StudentSubmission;
+import validation.SubmissionIssue;
 
 public class AssessmentGrader {
-    private final QuestionGrader questionGrader;
+    private final QuestionGrading questionGrader;
 
-    public AssessmentGrader(QuestionGrader questionGrader) {
+    public AssessmentGrader(QuestionGrading questionGrader) {
         this.questionGrader = questionGrader;
     }
 
-    //@1ejun6 > connect validated submissions to QuestionGrader > handle one question at a time
     public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, AssessmentDefinition assessment, Map<String, TesterDefinition> testers) throws IOException {
-        //@1ejun6 > keep student results in submission order for reporting
+        //keep submission order so console reports & verification are predictable
         Map<StudentSubmission, List<QuestionGrade>> results = new LinkedHashMap<>();
-
         for (StudentSubmission submission : submissions) {
-            List<QuestionGrade> grades = new ArrayList<>();
-
-            for (QuestionDefinition question : assessment.getQuestions()) {
-                //@1ejun6 > 1 > match this question with its validated attempt & tester
-                String skipReason = findBlockingIssue(submission, question.getId());
-                QuestionAttempt attempt = submission.findAttempt(question.getId()).orElse(null);
-                TesterDefinition tester = testers.get(question.getId().toLowerCase(Locale.ROOT));
-
-                //@1ejun6 > 2 > keep whichever blocking reason appears first
-                //@1ejun6 > check for a missing attempt before reading its validation status
-                if (skipReason == null && attempt == null) { skipReason = "no validated attempt"; }
-                if (skipReason == null && !attempt.isValid()) { skipReason = "attempt has validation errors"; }
-                if (skipReason == null && tester == null) { skipReason = "missing tester"; }
-
-                //@1ejun6 > 3 > record a result even when a question is skipped
-                //@1ejun6 > otherwise pass its answer to QuestionGrader > compile & run tests & calculate marks
-                if (skipReason != null) {
-                    grades.add(new QuestionGrade(question.getId(), GradeStatus.SKIPPED, 0, List.of(), null, skipReason));
-                } else {
-                    grades.add(questionGrader.grade(question, attempt, tester));
-                }
-            }
-            results.put(submission, grades);
+            results.put(submission, gradeSubmission(submission, assessment, testers));
         }
         return results;
     }
 
-    //@1ejun6 > errors without a question id block grading for this submission
-    //@1ejun6 > errors with a question id block only that question > warnings allow grading
-    private String findBlockingIssue(StudentSubmission submission, String questionId) {
-        for (SubmissionIssue issue : submission.getSubmissionIssues()) {
-            boolean iserror = issue.getSeverity() == IssueSeverity.ERROR;
-            boolean affectsquestion = issue.getQuestionId() == null || issue.getQuestionId().equals(questionId);
-
-            if (iserror && affectsquestion) { return issue.getMessage(); }
+    private List<QuestionGrade> gradeSubmission(StudentSubmission submission, AssessmentDefinition assessment, Map<String, TesterDefinition> testers) throws IOException {
+        List<QuestionGrade> grades = new ArrayList<>();
+        for (QuestionDefinition question : assessment.getQuestions()) {
+            TesterDefinition tester = testers.get(question.getId().toLowerCase(Locale.ROOT));
+            grades.add(gradeOrSkipQuestion(submission, question, tester));
         }
+        return grades;
+    }
 
+    private QuestionGrade gradeOrSkipQuestion(StudentSubmission submission, QuestionDefinition question,
+            TesterDefinition tester) throws IOException {
+        QuestionAttempt attempt = submission.findAttempt(question.getId()).orElse(null);
+        String skipReason = findBlockingIssue(submission, question.getId());
+
+        //keep first reason > reported errors & missing attempt & invalid attempt > then missing tester
+        if (skipReason == null && attempt == null) { skipReason = "no validated attempt"; }
+        if (skipReason == null && !attempt.isValid()) { skipReason = "attempt has validation errors"; }
+        if (skipReason == null && tester == null) { skipReason = "missing tester"; }
+        if (skipReason != null) return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), null, skipReason);
+        return questionGrader.grade(question, attempt, tester);
+    }
+
+    private String findBlockingIssue(StudentSubmission submission, String questionId) {
+        //warnings allow grading > an error without a question id blocks entire submission
+        for (SubmissionIssue issue : submission.getSubmissionIssues()) {
+            if (issue.blocksQuestion(questionId)) return issue.getMessage();
+        }
         return null;
     }
 }

@@ -51,7 +51,7 @@
                         <id>run-tests</id>
                         <goals><goal>java</goal></goals>
                         <configuration>
-                            <mainClass>junit.JUnitRunner</mainClass>
+                            <mainClass>grading.verification.JUnitRunner</mainClass>
                         </configuration>
                     </execution>
                 </executions>
@@ -62,11 +62,10 @@
                 <version>3.16.0</version>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId> <!--@1ejun6 > connects maven to junit so mvn test actually runs your tests-->
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.6.0</version>
                 <configuration>
-                    <!--@1ejun6 > keep terminal input available for project folder prompt-->
                     <forkCount>0</forkCount>
                 </configuration>
             </plugin>

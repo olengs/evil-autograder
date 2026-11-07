@@ -1,30 +1,28 @@
-// Loads student ZIP archives into separate temporary submission workspaces.
-// Associates roster records and retains extraction failures for later reporting.
+//extracts submission zips into separate workspaces & matches them to students in the student list
+//finds each answer root & keeps preparation failures as issues for later grading & reporting
 
 package submission;
 
+import assessment.AssessmentDefinition;
+import utils.files.FileUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
-import model.StudentSubmission;
-import model.StudentDetails;
-import model.SubmissionIssue;
-import model.IssueSeverity;
-import model.AssessmentDefinition;
-import utils.FileUtils;
+import validation.IssueSeverity;
+import validation.SubmissionIssue;
 
-public class SubmissionLoader {
-    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder,
-            List<StudentDetails> students, AssessmentDefinition assessment) throws IOException {
+public final class SubmissionLoader {
+    private SubmissionLoader() {}
+
+    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> roster, AssessmentDefinition assessment) throws IOException {
         Files.createDirectories(workspaceFolder);
         List<StudentSubmission> submissions = new ArrayList<>();
         StudentIdentifier studentIdentifier = new StudentIdentifier();
 
-        for (Path zipFile : findZipFiles(submissionFolder)) {
-            StudentDetails student = studentIdentifier.identify(zipFile, students);
+        for (Path zipFile : SubmissionArchives.listZipFiles(submissionFolder)) {
+            StudentDetails student = studentIdentifier.identify(zipFile, roster);
             Path extractionDirectory = Files.createTempDirectory(workspaceFolder, "submission-");
             StudentSubmission submission = new StudentSubmission(student, zipFile, extractionDirectory);
 
@@ -32,7 +30,7 @@ public class SubmissionLoader {
                 ZipExtractor.extract(zipFile, extractionDirectory);
                 submission = new StudentSubmission(student, zipFile, findAnswerRoot(extractionDirectory, assessment));
                 if (student == null) {
-                    submission.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.ERROR, "no match for " + zipFile.getFileName(), null, zipFile)));
+                    submission.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.error, "no match for " + zipFile.getFileName(), null, zipFile)));
                 }
             } catch (IOException error) {
                 try {
@@ -40,7 +38,7 @@ public class SubmissionLoader {
                 } catch (IOException cleanupError) {
                     error.addSuppressed(cleanupError);
                 }
-                submission.addIssues(List.of(new SubmissionIssue("submission preparation error", IssueSeverity.ERROR, error.toString(), null, zipFile)));
+                submission.addIssues(List.of(new SubmissionIssue("submission preparation error", IssueSeverity.error, error.toString(), null, zipFile)));
             }
             submissions.add(submission);
         }
@@ -51,22 +49,17 @@ public class SubmissionLoader {
         Path candidate = extracted;
         while (true) {
             for (var question : assessment.getQuestions()) {
-                if (Files.isDirectory(candidate.resolve(question.getExpectedFolder()))) return candidate;
+                if (Files.isDirectory(candidate.resolve(question.getExpectedFolderName()))) return candidate;
             }
+
             List<Path> children;
             try (var entries = Files.list(candidate)) {
                 children = entries.filter(path -> !path.getFileName().toString().startsWith(".")).toList();
             }
-            //@1ejun6 > unwrap a single outer folder > never guess between several answer folders
+            
             if (children.size() != 1 || !Files.isDirectory(children.getFirst())) return candidate;
+            //unwrap one outer folder at a time > never guess between several candidates
             candidate = children.getFirst();
         }
     }
-
-    public static List<Path> findZipFiles(Path submissionFolder) throws IOException {
-        try (Stream<Path> paths = FileUtils.streamRegularFiles(submissionFolder)) {
-            return paths.filter(SubmissionFileNames::hasZipExtension).sorted().toList();
-        }
-    }
-
 }

@@ -1,69 +1,68 @@
-// Checks direct files against the combined allowed names for each question folder.
-// Records unexpected files as submission warnings without deleting or blocking them.
+//checks direct files in each question folder against combined allowed filenames
+//records unexpected files as warnings without deleting them or preventing grading
 
 package validation.rules;
 
-import model.AssessmentDefinition;
-import model.IssueSeverity;
-import model.QuestionDefinition;
-import model.StudentSubmission;
-import model.SubmissionIssue;
-import utils.FileUtils;
-import validation.SubmissionValidationRule;
-
+import assessment.AssessmentDefinition;
+import assessment.QuestionDefinition;
+import utils.files.FileUtils;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Stream;
+import submission.StudentSubmission;
+import validation.SubmissionIssue;
+import validation.SubmissionValidationRule;
+import validation.ValidationFiles;
 
 public class UnexpectedFileRule implements SubmissionValidationRule {
-    @Override
-    public List<SubmissionIssue> validate(StudentSubmission submission, AssessmentDefinition assessment) {
-        List<SubmissionIssue> issues = new ArrayList<>();
+    private final Map<AssessmentDefinition, Map<String, Set<String>>> expectedFilesCache = new HashMap<>();
 
-        Map<String, Set<String>> expectedFilesByFolder = buildExpectedFilesMap(assessment);
+    @Override
+    public List<SubmissionIssue> validate(StudentSubmission submission, AssessmentDefinition assessment, ValidationFiles validationFiles) {
+        List<SubmissionIssue> issues = new ArrayList<>();
+        Map<String, Set<String>> expectedFilesByFolder = expectedFilesCache.computeIfAbsent(assessment, this::buildExpectedFilesMap);
 
         for (Map.Entry<String, Set<String>> entry : expectedFilesByFolder.entrySet()) {
             String questionFolderName = entry.getKey();
             Set<String> expectedFiles = entry.getValue();
-            Path questionDirectory = submission.getRootDirectory().resolve(questionFolderName);
-
-            if (!Files.isDirectory(questionDirectory)) {
-                continue;
-            }
+            ValidationFiles.Lookup folder = validationFiles.folder(questionFolderName);
+            //question rules report failed folder lookups > missing folders have no files to inspect
+            if (folder.path().isEmpty()) continue;
+            Path questionDirectory = folder.path().get();
 
             try (Stream<Path> files = FileUtils.streamRegularFiles(questionDirectory)) {
                 files.forEach(file -> {
                     String actualName = file.getFileName().toString();
 
-                    if (expectedFiles.stream().noneMatch(expected -> expected.equalsIgnoreCase(actualName))) {
-                        issues.add(new SubmissionIssue("unexpected file", IssueSeverity.WARNING,
-                                "unexpected file " + actualName + " found in " + questionFolderName + ".", null,
-                                file));
+                    if (!expectedFiles.contains(actualName)) {
+                        issues.add(SubmissionIssue.warning("unexpected file", "unexpected file " + actualName + " found in " + questionFolderName + ".", null, file));
                     }
                 });
-            } catch (IOException error) {
-                issues.add(new SubmissionIssue("folder read error", IssueSeverity.ERROR,
-                        "Unable to inspect folder " + questionFolderName + ": " + error.getMessage(), null, questionDirectory));
+            } catch (IOException | UncheckedIOException error) {
+                issues.add(SubmissionIssue.error("folder read error", "Unable to inspect folder " + questionFolderName + ": " + error.getMessage(), null, questionDirectory));
             }
         }
         return issues;
     }
 
     private Map<String, Set<String>> buildExpectedFilesMap(AssessmentDefinition assessment) {
-        Map<String, Set<String>> expectedFilesByFolder = new HashMap<>();
+        Map<String, Set<String>> expectedFilesByFolder = new LinkedHashMap<>();
 
         for (QuestionDefinition question : assessment.getQuestions()) {
-            String questionDirectory = question.getExpectedFolder();
-            expectedFilesByFolder.computeIfAbsent(questionDirectory, key -> new HashSet<>()).addAll(question.getRequiredFiles());
-            expectedFilesByFolder.get(questionDirectory).addAll(question.getAllowedResourceFiles());
+            String questionDirectory = question.getExpectedFolderName();
+            expectedFilesByFolder.computeIfAbsent(questionDirectory, key -> new TreeSet<>(String.CASE_INSENSITIVE_ORDER)).addAll(question.getRequiredAnswerFiles());
+            expectedFilesByFolder.get(questionDirectory).addAll(question.getSupportFiles());
         }
-        return expectedFilesByFolder;
+        expectedFilesByFolder.replaceAll((folder, names) -> Collections.unmodifiableSet(names));
+        return Collections.unmodifiableMap(expectedFilesByFolder);
     }
 }

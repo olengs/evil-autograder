@@ -1,3 +1,6 @@
+//converts tester output text into individual test-case results
+//rejects malformed finished output & omits unfinished cases when parsing output after a timeout
+
 package grading;
 
 import java.util.ArrayList;
@@ -7,66 +10,49 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import model.TestCaseResult;
-
-public class TesterOutputParser { //converts tester output text into individual test-case results without running a process
-    //@1ejun6 > match Test id: > capture id as group 1
-    private static final Pattern TEST_HEADER = Pattern.compile("^Test ([^:]+):.*$");
+public class TesterOutputParser {
+    private static final Pattern testHeader = Pattern.compile("^Test ([^:]+):.*$");
 
     public List<TestCaseResult> parse(String output) {
         return parse(output, false);
     }
 
+    //used after a timeout > unfinished cases are omitted > malformed completed cases still fail
     public List<TestCaseResult> parseCompleted(String output) {
         return parse(output, true);
     }
 
-    private List<TestCaseResult> parse(String output, boolean allowIncomplete) {
+    private List<TestCaseResult> parse(String output, boolean ignoreIncompleteCases) {
         List<TestCaseResult> results = new ArrayList<>();
         Set<String> seenIds = new HashSet<>();
         String caseId = null;
-        Boolean passed = null; //@1ejun6 > null means no outcome found yet
+        Boolean passed = null; //no outcome has been reported for current case yet
 
         for (String line : output.lines().toList()) {
-            String trimmedLine = line.strip(); //@1ejun6 > remove whitespace at both ends
-            Matcher testHeader = TEST_HEADER.matcher(trimmedLine);
-            if (testHeader.matches()) {
-                //@1ejun6 > save previous test before starting next test
-                if (caseId != null && (!allowIncomplete || passed != null)) {
-                    results.add(createResult(caseId, passed));
-                }
-                caseId = testHeader.group(1).strip();
-                if (!seenIds.add(caseId)) {
-                    throw new IllegalArgumentException("duplicate test id " + caseId);
-                }
-                passed = null; //@1ejun6 > reset outcome for new test
-            } else if (caseId != null && (trimmedLine.equalsIgnoreCase("Passed")
-                    || trimmedLine.equalsIgnoreCase("Failed") || trimmedLine.startsWith("Failed -> "))) {
-                //@1ejun6 > accept outcome lines & tester failure details after a test header
-                if (passed != null) {
-                    //@1ejun6 > reject more than one outcome for the same test
-                    throw new IllegalArgumentException("repeated outcome for test " + caseId);
-                }
+            String trimmedLine = line.strip();
+            Matcher headerMatch = testHeader.matcher(trimmedLine);
+            if (headerMatch.matches()) {
+                if (caseId != null && (!ignoreIncompleteCases || passed != null)) results.add(createResult(caseId, passed));
+                caseId = headerMatch.group(1).strip();
+
+                if (!seenIds.add(caseId)) throw new IllegalArgumentException("duplicate test id " + caseId);
+                passed = null;
+            } else if (caseId != null && (trimmedLine.equalsIgnoreCase("Passed") || trimmedLine.equalsIgnoreCase("Failed") || trimmedLine.startsWith("Failed -> "))) {
+                if (passed != null) throw new IllegalArgumentException("repeated outcome for test " + caseId);
                 passed = trimmedLine.equalsIgnoreCase("Passed");
             }
         }
-        //@1ejun6 > save final test > no next header to trigger it
-        if (caseId != null && (!allowIncomplete || passed != null)) {
-            results.add(createResult(caseId, passed));
-        }
-        //@1ejun6 > reject output with no test cases
-        if (results.isEmpty() && !allowIncomplete) {
-            throw new IllegalArgumentException("no test cases found in tester output");
-        }
+        //last case has no following header to trigger saving it
+        if (caseId != null && (!ignoreIncompleteCases || passed != null)) results.add(createResult(caseId, passed));
+        if (results.isEmpty() && !ignoreIncompleteCases) throw new IllegalArgumentException("no test cases found in tester output");
         return results;
     }
 
     private TestCaseResult createResult(String caseId, Boolean passed) {
-        //@1ejun6 > every test header must have an outcome
         if (passed == null) {
             throw new IllegalArgumentException("missing outcome for test " + caseId);
         }
-        //@1ejun6 > passed earns 1 mark > failed earns 0
+        //each passed case earns one mark > a failed case earns zero
         return new TestCaseResult(caseId, passed, passed ? 1 : 0, "completed");
     }
 }

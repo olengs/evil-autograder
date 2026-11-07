@@ -1,14 +1,12 @@
-// Defines the validation contract for one question.
-// Uses the submission's shared file finder and returns question-specific issues.
+//defines validation contract for checking one question in a student submission
+//uses shared question files & returns question-specific findings without modifying answer files
 
 package validation;
 
-import model.QuestionDefinition;
-import model.StudentSubmission;
-import model.SubmissionIssue;
-import utils.SubmissionFileFinder;
+import assessment.QuestionDefinition;
 import java.util.List;
+import submission.StudentSubmission;
 
 public interface QuestionValidationRule {
-    List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question, SubmissionFileFinder files);
+    List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question, ValidationFiles.QuestionFiles files);
 }

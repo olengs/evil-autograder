@@ -1,70 +1,54 @@
-// Checks question folders and required answer files through the shared file finder.
-// Reports missing answers and recoverable folder or filename differences.
+//checks question folders & required answer files through shared lookup results
+//reports missing answers as errors & recoverable folder or filename differences as warnings
 
 package validation.rules;
 
-import java.io.IOException;
+import assessment.QuestionDefinition;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import model.IssueSeverity;
-import model.QuestionDefinition;
-import model.StudentSubmission;
-import model.SubmissionIssue;
-import utils.SubmissionFileFinder;
+import submission.StudentSubmission;
 import validation.QuestionValidationRule;
+import validation.SubmissionIssue;
+import validation.ValidationFiles;
 
 public class AnswerFileRule implements QuestionValidationRule {
     @Override
-    public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question,
-            SubmissionFileFinder files) {
+    public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question, ValidationFiles.QuestionFiles files) {
         List<SubmissionIssue> issues = new ArrayList<>();
-        checkQuestionFolder(submission, question, files, issues);
-        for (String requiredFile : question.getRequiredFiles()) {
+        if (files.actualFolder().error() != null) {
+            issues.add(SubmissionIssue.error("file read error", files.actualFolder().error().getMessage(), question.getId(), files.expectedFolder()));
+            return issues;
+        }
+        checkQuestionFolder(question, files, issues);
+
+        for (String requiredFile : files.requiredAnswers().keySet()) {
             checkRequiredAnswer(submission, question, requiredFile, files, issues);
         }
         return issues;
     }
 
-    private void checkQuestionFolder(StudentSubmission submission, QuestionDefinition question,
-            SubmissionFileFinder files, List<SubmissionIssue> issues) {
-        Path expectedFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
-        try {
-            Optional<Path> actual = files.findQuestionFolder(submission.getRootDirectory(), question.getExpectedFolder());
-            if (actual.isPresent() && actual.get().getFileName().toString().equals(question.getExpectedFolder())) return;
-            boolean recoverable = !files.findAnswerFiles(submission.getRootDirectory(),
-                    question.getExpectedFolder(), question.getRequiredFiles()).isEmpty();
-            issues.add(new SubmissionIssue(recoverable ? "question folder layout" : "missing question folder",
-                    recoverable ? IssueSeverity.WARNING : IssueSeverity.ERROR,
-                    recoverable ? "answers found outside expected folder spelling > copied only when grading"
-                            : "expected folder " + question.getExpectedFolder() + " is missing",
-                    question.getId(), expectedFolder));
-        } catch (IOException error) {
-            issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR,
-                    error.getMessage(), question.getId(), expectedFolder));
-        }
+    private void checkQuestionFolder(QuestionDefinition question, ValidationFiles.QuestionFiles files, List<SubmissionIssue> issues) {
+        var actual = files.actualFolder().path();
+        if (actual.isPresent() && actual.get().getFileName().toString().equals(question.getExpectedFolderName())) return;
+        //lookup errors are reported with their required files > do not describe them as missing folders
+        if (files.requiredAnswers().values().stream().anyMatch(lookup -> lookup.error() != null)) return;
+
+        boolean recoverable = files.requiredAnswers().values().stream().anyMatch(lookup -> lookup.path().isPresent());
+        if (recoverable) issues.add(SubmissionIssue.warning("question folder layout", "answers found outside expected folder spelling > copied only when grading", question.getId(), files.expectedFolder()));
+        else issues.add(SubmissionIssue.error("missing question folder", "expected folder " + question.getExpectedFolderName() + " is missing", question.getId(), files.expectedFolder()));
     }
 
-    private void checkRequiredAnswer(StudentSubmission submission, QuestionDefinition question, String requiredFile,
-            SubmissionFileFinder files, List<SubmissionIssue> issues) {
-        Path questionFolder = submission.getRootDirectory().resolve(question.getExpectedFolder());
-        try {
-            Optional<Path> answer = files.findAnswerFile(submission.getRootDirectory(),
-                    question.getExpectedFolder(), requiredFile);
-            // Compare spelling explicitly because Windows Path.equals ignores capitalization.
-            if (answer.isEmpty()) {
-                issues.add(new SubmissionIssue("missing required file", IssueSeverity.ERROR,
-                        "required file " + requiredFile + " is missing.", question.getId(), questionFolder.resolve(requiredFile)));
-            } else if (!answer.get().toString().equals(questionFolder.resolve(requiredFile).toString())) {
-                issues.add(new SubmissionIssue("wrong file name", IssueSeverity.WARNING,
-                        "answer will be copied as " + question.getExpectedFolder() + "/" + requiredFile
-                                + " > found " + submission.getRootDirectory().relativize(answer.get()),
-                        question.getId(), answer.get()));
-            }
-        } catch (IOException error) {
-            issues.add(new SubmissionIssue("file read error", IssueSeverity.ERROR,
-                    "unable to inspect " + questionFolder + " > " + error.getMessage(), question.getId(), questionFolder));
+    private void checkRequiredAnswer(StudentSubmission submission, QuestionDefinition question, String requiredFile, ValidationFiles.QuestionFiles files, List<SubmissionIssue> issues) {
+        Path questionFolder = files.expectedFolder();
+        ValidationFiles.Lookup lookup = files.answer(requiredFile);
+        if (lookup.error() != null) {
+            issues.add(SubmissionIssue.error("file read error", "unable to inspect " + questionFolder + " > " + lookup.error().getMessage(), question.getId(), questionFolder.resolve(requiredFile)));
+            return;
         }
+        var answer = lookup.path();
+        //compare spelling explicitly because windows path.equals ignores capitalization
+        if (answer.isEmpty()) issues.add(SubmissionIssue.error("missing required file", "required file " + requiredFile + " is missing.", question.getId(), questionFolder.resolve(requiredFile)));
+        else if (!answer.get().toString().equals(questionFolder.resolve(requiredFile).toString())) issues.add(SubmissionIssue.warning("wrong file name", "answer will be copied as " + question.getExpectedFolderName() + "/" + requiredFile + " > found " + submission.getRootDirectory().relativize(answer.get()), question.getId(), answer.get()));
     }
 }
