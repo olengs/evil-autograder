@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import submission.QuestionAttempt;
+import grading.progress.ProgressListener;
 
 public class QuestionGrader implements QuestionGrading {
     private final Duration compilationTimeout;
@@ -28,13 +29,19 @@ public class QuestionGrader implements QuestionGrading {
 
     @Override
     public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester) throws IOException {
+        return grade(question, attempt, tester, ProgressListener.NONE);
+    }
+
+    @Override
+    public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester, ProgressListener progress) throws IOException {
         try (GradingWorkspace workspace = new GradingWorkspace()) {
             workspace.prepare(question, attempt, tester);
-            return gradeInWorkspace(question.getId(), tester.getMainClassName(), workspace.getDirectory());
+            return gradeInWorkspace(question.getId(), tester.getMainClassName(), workspace.getDirectory(), progress);
         }
     }
 
-    private QuestionGrade gradeInWorkspace(String questionId, String mainClassName, Path workspaceDirectory) throws IOException {
+    private QuestionGrade gradeInWorkspace(String questionId, String mainClassName, Path workspaceDirectory, ProgressListener progress) throws IOException {
+        progress.compilationStarted(questionId, compilationTimeout);
         ProcessResult compilationResult = compile(workspaceDirectory);
         if (compilationResult.isTimedOut()) {
             return failedGrade(questionId, GradeStatus.timeout, compilationResult, "compilation timed out");
@@ -43,6 +50,7 @@ public class QuestionGrader implements QuestionGrading {
             return failedGrade(questionId, GradeStatus.compileError, compilationResult, "compilation failed");
         }
 
+        progress.executionStarted(questionId, executionTimeout);
         ProcessResult executionResult = executeTester(workspaceDirectory, mainClassName);
         if (!executionResult.isTimedOut() && !executionResult.isSuccessful()) {
             return failedGrade(questionId, GradeStatus.runtimeError, executionResult, "tester failed");
