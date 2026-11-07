@@ -31,16 +31,10 @@
             <version>3.2.0</version>
         </dependency>
         <dependency>
-            <!-- official openai sdk > talks to openai & any openai-compatible endpoint (groq / openrouter / ollama)-->
+            <!-- official openai sdk -->
             <groupId>com.openai</groupId>
             <artifactId>openai-java</artifactId>
             <version>4.85.0</version>
-        </dependency>
-        <dependency>
-            <!-- official google gen ai sdk > gemini generateContent with native pdf input-->
-            <groupId>com.google.genai</groupId>
-            <artifactId>google-genai</artifactId>
-            <version>1.78.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -48,7 +42,7 @@
             <version>5.13.4</version>
             <scope>test</scope> <!--@1ejun6 > make junit available only to test code-->
         </dependency>
-        <!-- silences the slf4j "no providers" warning from the genai sdk -->
+        <!-- silences the slf4j "no providers" warning from the openai sdk -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-nop</artifactId>

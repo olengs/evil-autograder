@@ -8,17 +8,7 @@ public final class LlmClientFactory { //builds the configured LlmClient & reads 
     }
 
     public static LlmClient create(Config config) {
-        String provider = config.getLlmProvider();
-        String apiKey = readApiKey(config.getLlmApiKeyEnv());
-
-        return switch (provider) {
-            case "gemini" -> new GeminiClient(apiKey, config.getLlmBaseUrl());
-            // only the real openai platform takes pdf file parts & structured outputs
-            case "openai" -> new OpenAiCompatibleClient(apiKey, config.getLlmBaseUrl(), true);
-            case "openai-compatible", "ollama" -> new OpenAiCompatibleClient(apiKey, config.getLlmBaseUrl(), false);
-            default -> throw new LlmException("unknown llm.provider > " + provider
-                    + " > expected gemini | openai | openai-compatible | ollama");
-        };
+        return new OpenAiClient(readApiKey(config.getLlmApiKeyEnv()));
     }
 
     // the key comes from a real environment variable first > then a git-ignored .env file
