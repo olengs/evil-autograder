@@ -30,19 +30,11 @@ public final class OpenAiClient implements LlmClient { //talks to the openai pla
     private final OpenAIClient client;
 
     public OpenAiClient(String apiKey) {
-        this(apiKey, null);
-    }
-
-    // a blank baseUrl uses the sdk's default https://api.openai.com/v1 > a custom one lets a test point at a local server
-    public OpenAiClient(String apiKey, String baseUrl) {
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
                 .apiKey(apiKey)
                 // keep one-shot generation to one attempt even on timeouts, rate limits or server errors
                 .maxRetries(0)
                 .timeout(REQUEST_TIMEOUT);
-        if (baseUrl != null && !baseUrl.isBlank()) {
-            builder.baseUrl(baseUrl);
-        }
         this.client = builder.build();
     }
 
