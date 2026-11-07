@@ -124,7 +124,7 @@ public class FileUtils { //copies files & folders & deletes temporary folders
             throw new IOException("Copy destination parent is not a directory: " + dest);
         }
 
-        Path destinationKey = dest.resolve(sourceKey.getFileName()); 
+        Path destinationKey = dest.resolve(sourceKey.getFileName());
         Path first = sourceKey.compareTo(destinationKey) < 0 ? sourceKey : destinationKey;
         Path second = first.equals(sourceKey) ? destinationKey : sourceKey;
  
@@ -162,7 +162,7 @@ public class FileUtils { //copies files & folders & deletes temporary folders
         UUID id = UUID.nameUUIDFromBytes(file.toString().getBytes(StandardCharsets.UTF_8));
         return Path.of(System.getProperty("java.io.tmpdir"), "evil-autograder-file-" + id + ".lock");
     }
-
+    
     //#endregion file copy
     
     public static void deleteDirectory(Path folder) throws IOException {

@@ -6,6 +6,7 @@ public enum ProgressStage { //@1ejun6 > defines 7 stages of a grading run
     preparing,
     compiling,
     running,
+    verifying,
     completed,
     failed
 }

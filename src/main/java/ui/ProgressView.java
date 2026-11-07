@@ -17,7 +17,7 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
     private final Path project;
     private ProgressSnapshot snapshot;
     private long displayedSecond;
-    private ResourceUsage.Sample resources = new ResourceUsage.Sample("measuring", 0, 0, 0, 0, 0);
+    private ResourceUsage.Sample resources = new ResourceUsage.Sample("measuring", 0);
 
     public ProgressView(Path project, ProgressSnapshot initial) {
         this.project = project;
@@ -54,8 +54,7 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
 
         int width = Math.min(area.width() - 4, 96);
         boolean columns = width >= 68;
-        int wantedHeight = snapshot.isFinished()
-                ? (snapshot.stage() == ProgressStage.failed ? (columns ? 12 : 14) : (columns ? 9 : 12))
+        int wantedHeight = snapshot.isFinished() ? (snapshot.junit().enabled() ? 13 : 8) + (snapshot.stage() == ProgressStage.failed ? 3 : 0)
                 : Math.max(14, Math.min(24, snapshot.questions().size() + (columns ? 9 : 13)));
         boolean showResources = area.height() >= (snapshot.stage() == ProgressStage.failed ? 22 : 19);
         int height = Math.min(area.height() - 2, wantedHeight + (showResources ? 4 : 0));
@@ -67,7 +66,7 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
         drawLine(frame, content, content.height() - 1, "[enter] close  [q] close", cyan);
 
         if (snapshot.isFinished()) {
-            SummaryPanel.drawSummary(frame, content, columns, snapshot);
+            SummaryPanel.drawSummary(frame, new Rect(content.x(), content.y() + 3, content.width(), content.height() - (showResources ? 8 : 4)), snapshot);
             if (showResources) drawResources(frame, content);
             return;
         }
@@ -82,8 +81,6 @@ public class ProgressView { //own view state & responsive layout > helpers draw 
 
     private void drawResources(Frame frame, Rect content) {
         drawLine(frame, content, content.height() - 5, resources.summary(), muted);
-        drawLine(frame, content, content.height() - 4, "threads > ui  prepare & validate  compile & test  results & cleanup  other", muted);
-        drawLine(frame, content, content.height() - 3, String.format(java.util.Locale.ROOT,
-                "          %-4d%-20d%-16d%-19d%d", resources.ui(), resources.prepare(), resources.grading(), resources.results(), resources.other()), muted);
+        drawLine(frame, content, content.height() - 4, "threads > " + resources.threads(), muted);
     }
 }

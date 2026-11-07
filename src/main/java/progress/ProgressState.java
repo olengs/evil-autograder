@@ -23,12 +23,12 @@ final class ProgressState { //@1ejun6 > stores current progress values & reuses 
     ProgressSnapshot cachedSnapshot; //@1ejun6 > copy of progress information for ui
     boolean totalsKnown;
     boolean submissionActive;
+    JUnitSnapshot junit = JUnitSnapshot.DISABLED;
 
     ProgressSnapshot snapshot() {
         //@1ejun6 > creates a snapshot only when there is no cached one \ its revision is older than the trackers revision
         if (cachedSnapshot == null || cachedSnapshot.revision() != revision) {
-            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents,
-                    studentNumber, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown);
+            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, studentNumber, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, junit);
         }
         return cachedSnapshot;
     }

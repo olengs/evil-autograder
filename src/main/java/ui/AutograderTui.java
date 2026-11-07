@@ -1,6 +1,5 @@
 package ui;
 
-import app.GradingRun;
 import config.Config;
 import dev.tamboui.tui.TuiConfig;
 import dev.tamboui.tui.TuiRunner;
@@ -11,6 +10,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import progress.GradingProgress;
+import verification.JUnitGradingRun;
 
 public class AutograderTui { //manages terminal interface while grading runs in background
     //@1ejun6 > creates shared progress state & grading task > updates screen > handles keyboard input > waits for cleanup before closing
@@ -18,7 +18,7 @@ public class AutograderTui { //manages terminal interface while grading runs in 
     public void run(Config config) throws Exception {
         GradingProgress progress = new GradingProgress();
         ProgressView view = new ProgressView(config.getInputDirectory(), progress.getSnapshot());
-        var task = new FutureTask<>(() -> GradingRun.run(config, progress));
+        var task = new FutureTask<>(() -> JUnitGradingRun.run(config, progress));
         Thread worker = new Thread(task, "worker"); //@1ejun6 > lambda > execute > store grades > task object
         ResourceUsage resources = new ResourceUsage();
 
@@ -34,7 +34,7 @@ public class AutograderTui { //manages terminal interface while grading runs in 
                     if (event instanceof TickEvent) {
                         var snapshot = progress.getSnapshot();
                         boolean progressChanged = view.update(snapshot);
-                        boolean resourcesChanged = view.updateResources(resources.sample(Thread.currentThread(), worker, snapshot));
+                        boolean resourcesChanged = view.updateResources(resources.sample());
                         return progressChanged || resourcesChanged;
                     }
                     //@1ejun6 > ignore non keyboard events > otherwise store event as key
@@ -48,7 +48,7 @@ public class AutograderTui { //manages terminal interface while grading runs in 
                 }, view::render);
             } finally {
                 //@1ejun6 > cancel unfinished grading > wait for worker cleanup before closing
-                if (!progress.getSnapshot().isFinished()) task.cancel(true);
+                if (!task.isDone()) task.cancel(true);
                 awaitWorker(worker, task);
             }
         }

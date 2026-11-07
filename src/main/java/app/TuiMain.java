@@ -11,7 +11,7 @@ public class TuiMain { //terminal entry point shared by Main and the TUI launche
         Path logFile = Path.of("log", "tui.log.jsonl");
         try {
             Config config = args.length == 0 ? new Config() : new Config(Path.of(args[0]));
-            new AutograderTui().run(config, args.length == 0 ? null : Path.of(args[0]));
+            new AutograderTui().run(config);
         } catch (CancellationException error) {
             Logger.log(logFile, "cancelled", "grading cancelled > process & workspace cleanup finished");
             System.exit(130);

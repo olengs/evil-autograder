@@ -13,6 +13,12 @@ public final class StudentPanel { //student panel
     }
 
     public static void drawStudent(Frame frame, Rect area, ProgressSnapshot snapshot, long displayedSecond) {
+        if (snapshot.stage() == progress.ProgressStage.verifying) {
+            drawLine(frame, area, 0, "running JUnit checks", cyan);
+            drawLine(frame, area, 1, snapshot.junit().currentTest(), base);
+            drawLine(frame, area, 2, snapshot.junit().summary(), muted);
+            return;
+        }
         //@1ejun6 > show current student and grading stage
         if (snapshot.student().isEmpty()) {
             drawLine(frame, area, 0, snapshot.message(), cyan);
