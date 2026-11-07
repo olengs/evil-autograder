@@ -20,6 +20,10 @@ public final class ScoreSheetWriter {
     private ScoreSheetWriter() {}
 
     public static void write(Path scoresheet, Map<StudentSubmission, List<QuestionGrade>> results, Path output) throws IOException {
+        if (scoresheet.toAbsolutePath().normalize().equals(output.toAbsolutePath().normalize())
+                || (Files.exists(output) && Files.isSameFile(scoresheet, output))) {
+            throw new IOException("output scoresheet must differ from input scoresheet > " + output);
+        }
         List<String[]> rows = readRows(scoresheet);
         Map<String, Double> totals = highestStudentTotals(results);
         fillGrades(rows, totals);
