@@ -18,6 +18,8 @@ public final class JsonLineLogger {
     }
 
     public static void append(Path logFile, Map<String, ?> fields) throws IOException {
+        Path parent = logFile.toAbsolutePath().getParent();
+        if (parent != null) Files.createDirectories(parent);
         Files.writeString(logFile, gson.toJson(fields) + System.lineSeparator(), StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
 }

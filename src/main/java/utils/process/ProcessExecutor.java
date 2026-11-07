@@ -18,6 +18,14 @@ import org.apache.commons.io.IOUtils;
 public final class ProcessExecutor {
     private ProcessExecutor() {}
 
+    private static String outputReaderPrefix(long workerId) {
+        return "autograder-process-output-" + workerId + "-";
+    }
+
+    public static boolean isOutputReader(String threadName, long workerId) {
+        return threadName.startsWith(outputReaderPrefix(workerId));
+    }
+
     public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorCode, String startErrorMessage) {
         if (timeout.isZero() || timeout.isNegative()) {
             throw new IllegalArgumentException("Process timeout must be positive");
@@ -30,7 +38,7 @@ public final class ProcessExecutor {
             throw new ProcessExecutionException(startErrorCode, startErrorMessage, error);
         }
 
-        ExecutorService outputReaders = Executors.newFixedThreadPool(2, Thread.ofPlatform().daemon().factory());
+        ExecutorService outputReaders = Executors.newFixedThreadPool(2, Thread.ofPlatform().daemon().name(outputReaderPrefix(Thread.currentThread().threadId()), 0).factory());
         try {
             process.getOutputStream().close();
             //drain both streams while process runs so a full pipe cannot block it

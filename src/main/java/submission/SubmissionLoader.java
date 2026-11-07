@@ -6,6 +6,7 @@ package submission;
 import assessment.AssessmentDefinition;
 import utils.files.FileUtils;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ public final class SubmissionLoader {
         StudentIdentifier studentIdentifier = new StudentIdentifier();
 
         for (Path zipFile : SubmissionArchives.listZipFiles(submissionFolder)) {
+            if (Thread.currentThread().isInterrupted()) throw new InterruptedIOException("submission loading interrupted");
             StudentDetails student = studentIdentifier.identify(zipFile, roster);
             Path extractionDirectory = Files.createTempDirectory(workspaceFolder, "submission-");
             StudentSubmission submission = new StudentSubmission(student, zipFile, extractionDirectory);
@@ -33,6 +35,7 @@ public final class SubmissionLoader {
                     submission.addIssues(List.of(new SubmissionIssue("unknown student", IssueSeverity.error, "no match for " + zipFile.getFileName(), null, zipFile)));
                 }
             } catch (IOException error) {
+                if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
                 try {
                     FileUtils.deleteDirectory(extractionDirectory);
                 } catch (IOException cleanupError) {

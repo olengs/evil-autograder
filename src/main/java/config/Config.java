@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Properties;
+import java.util.Map;
 
 public class Config {
     private final Path inputDirectory;
@@ -25,10 +26,15 @@ public class Config {
     }
 
     public Config(Path configFile) throws IOException {
+        this(configFile, Map.of());
+    }
+
+    public Config(Path configFile, Map<String, String> overrides) throws IOException {
         Properties properties = new Properties();
         try (Reader reader = Files.newBufferedReader(configFile)) {
             properties.load(reader);
         }
+        properties.putAll(overrides); //replacement paths apply to this run only
 
         //fail before grading starts if any required setting is missing or invalid
         inputDirectory = Path.of(getRequired(properties, "input.directory")).toAbsolutePath().normalize();

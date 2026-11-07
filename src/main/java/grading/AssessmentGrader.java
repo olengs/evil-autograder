@@ -7,6 +7,7 @@ import assessment.AssessmentDefinition;
 import assessment.QuestionDefinition;
 import assessment.TesterDefinition;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.Map;
 import submission.QuestionAttempt;
 import submission.StudentSubmission;
 import validation.SubmissionIssue;
+import grading.progress.ProgressListener;
 
 public class AssessmentGrader {
     private final QuestionGrading questionGrader;
@@ -24,25 +26,38 @@ public class AssessmentGrader {
     }
 
     public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, AssessmentDefinition assessment, Map<String, TesterDefinition> testers) throws IOException {
+        return grade(submissions, assessment, testers, ProgressListener.NONE);
+    }
+
+    public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, AssessmentDefinition assessment, Map<String, TesterDefinition> testers, ProgressListener progress) throws IOException {
         //keep submission order so console reports & verification are predictable
         Map<StudentSubmission, List<QuestionGrade>> results = new LinkedHashMap<>();
+        List<String> questionIds = assessment.getQuestions().stream().map(QuestionDefinition::getId).toList();
+        progress.batchStarted(submissions.size(), questionIds);
         for (StudentSubmission submission : submissions) {
-            results.put(submission, gradeSubmission(submission, assessment, testers));
+            checkInterrupted();
+            progress.submissionStarted(submission.getStudent() == null ? submission.getOriginalZip().getFileName().toString() : submission.getStudent().getUsername());
+            results.put(submission, gradeSubmission(submission, assessment, testers, progress));
+            progress.submissionFinished();
         }
         return results;
     }
 
-    private List<QuestionGrade> gradeSubmission(StudentSubmission submission, AssessmentDefinition assessment, Map<String, TesterDefinition> testers) throws IOException {
+    private List<QuestionGrade> gradeSubmission(StudentSubmission submission, AssessmentDefinition assessment, Map<String, TesterDefinition> testers, ProgressListener progress) throws IOException {
         List<QuestionGrade> grades = new ArrayList<>();
         for (QuestionDefinition question : assessment.getQuestions()) {
+            checkInterrupted();
+            progress.questionStarted(question.getId());
             TesterDefinition tester = testers.get(question.getId().toLowerCase(Locale.ROOT));
-            grades.add(gradeOrSkipQuestion(submission, question, tester));
+            QuestionGrade grade = gradeOrSkipQuestion(submission, question, tester, progress);
+            grades.add(grade);
+            progress.questionFinished(question.getId(), grade.getStatus());
         }
         return grades;
     }
 
     private QuestionGrade gradeOrSkipQuestion(StudentSubmission submission, QuestionDefinition question,
-            TesterDefinition tester) throws IOException {
+            TesterDefinition tester, ProgressListener progress) throws IOException {
         QuestionAttempt attempt = submission.findAttempt(question.getId()).orElse(null);
         String skipReason = findBlockingIssue(submission, question.getId());
 
@@ -51,7 +66,11 @@ public class AssessmentGrader {
         if (skipReason == null && !attempt.isValid()) { skipReason = "attempt has validation errors"; }
         if (skipReason == null && tester == null) { skipReason = "missing tester"; }
         if (skipReason != null) return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), null, skipReason);
-        return questionGrader.grade(question, attempt, tester);
+        return questionGrader.grade(question, attempt, tester, progress);
+    }
+
+    private static void checkInterrupted() throws InterruptedIOException {
+        if (Thread.currentThread().isInterrupted()) throw new InterruptedIOException("grading interrupted");
     }
 
     private String findBlockingIssue(StudentSubmission submission, String questionId) {

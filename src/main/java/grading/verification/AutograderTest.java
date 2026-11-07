@@ -23,12 +23,17 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import static org.junit.jupiter.api.Assertions.*;
 import report.ConsoleReportPrinter;
 import submission.StudentSubmission;
 import submission.SubmissionArchives;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(GradingSession.class)
+@Execution(ExecutionMode.CONCURRENT)
 class AutograderTest {
     private Map<StudentSubmission, List<QuestionGrade>> results;
     private AssessmentDefinition assessment;
@@ -36,17 +41,16 @@ class AutograderTest {
     private Set<Path> archives;
 
     @BeforeAll
-    void gradeProject() throws Exception {
-        var run = JUnitRunner.currentRun();
-        Config config = run == null ? new Config(Path.of(System.getProperty("autograder.config", "config.properties"))) : run.config();
+    void gradeProject(GradingSession.Input run) throws Exception {
+        Config config = run.config();
         assessment = AssessmentLoader.load(config.getResourcesDirectory());
         testers = TesterLoader.load(config.getTestersDirectory());
         
         archives = new HashSet<>();
         List<Path> zipFiles = SubmissionArchives.listZipFiles(config.getSubmissionsDirectory());
         for (int i = 0; i < zipFiles.size(); i++) archives.add(zipFiles.get(i).toAbsolutePath().normalize());
-        results = run == null ? Autograder.run(config) : run.results();
-        if (run == null) ConsoleReportPrinter.print(results);
+        results = run.results() == null ? Autograder.run(config) : run.results();
+        if (run.results() == null) ConsoleReportPrinter.print(results);
     }
 
     @Test

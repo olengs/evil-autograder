@@ -9,9 +9,20 @@
     <properties>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <tamboui.version>0.6.0</tamboui.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>dev.tamboui</groupId>
+            <artifactId>tamboui-tui</artifactId>
+            <version>${tamboui.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.tamboui</groupId>
+            <artifactId>tamboui-jline3-backend</artifactId>
+            <version>${tamboui.version}</version>
+        </dependency>
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
@@ -45,8 +56,15 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
-                <configuration><mainClass>app.Main</mainClass></configuration>
+                <configuration><mainClass>app.TerminalMain</mainClass></configuration>
                 <executions>
+                    <execution>
+                        <id>console</id>
+                        <goals><goal>java</goal></goals>
+                        <configuration>
+                            <mainClass>app.Main</mainClass>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>run-tests</id>
                         <goals><goal>java</goal></goals>
