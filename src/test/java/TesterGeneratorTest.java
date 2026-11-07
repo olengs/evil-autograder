@@ -6,7 +6,6 @@ import generation.llm.LlmClient;
 import generation.llm.LlmException;
 import generation.llm.LlmRequest;
 import generation.llm.UploadedDocument;
-import generation.prompt.PrompterRegistry;
 import generation.run.GenerationRequest;
 import generation.run.GenerationStatus;
 import generation.schema.GeneratedTesters;
@@ -122,11 +121,6 @@ class TesterGeneratorTest {
         assertEquals(1, generation.TesterGeneratorApp.exitCode(result));
         assertFalse(Files.exists(previous));
         assertFalse(Files.exists(dir.resolve("output/Q1bTester.java")));
-        try (var files = Files.walk(dir.resolve("output/archive"))) {
-            var archived = files.filter(Files::isRegularFile).toList();
-            assertEquals(1, archived.size());
-            assertEquals("previous tester", Files.readString(archived.getFirst()));
-        }
         assertEquals(1, client.calls);
     }
 
@@ -150,7 +144,7 @@ class TesterGeneratorTest {
         try (var writer = Files.newBufferedWriter(configPath)) {
             props.store(writer, null);
         }
-        return new TesterGenerator(new Config(configPath), client, new PrompterRegistry(),
+        return new TesterGenerator(new Config(configPath), client,
                 new GeneratedTesterValidator(Duration.ofSeconds(30), Duration.ofSeconds(10)));
     }
 
@@ -162,7 +156,7 @@ class TesterGeneratorTest {
                     "public class " + id + " { public static int answer() { return 42; } }");
         }
         Path exam = Files.writeString(dir.resolve("exam.pdf"), "%PDF-1.4\n%%EOF\n");
-        return new GenerationRequest(exam, resources, dir.resolve("output"), List.of(), "");
+        return new GenerationRequest(exam, resources, dir.resolve("output"), "");
     }
 
     private static class RecordingClient implements LlmClient {

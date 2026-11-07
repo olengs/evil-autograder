@@ -73,11 +73,7 @@ public final class OpenAiClient implements LlmClient { //talks to the openai pla
     // structured outputs through the responses api > text(Class) makes the sdk send the strict json schema for the class
     @Override
     public <T> T completeStructured(LlmRequest request, Class<T> type) {
-        // system message first > then the prompt as the user message
-        ResponseInputItem system = ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
-                .role(EasyInputMessage.Role.SYSTEM)
-                .content(STRUCTURED_NOTE)
-                .build());
+        // the prompt is the only message > all instructions come from tester-prompt.json
         ResponseInputItem user = request.hasDocument()
                 // the uploaded exam pdf rides along as a file part > easy messages only carry text
                 ? ResponseInputItem.ofMessage(ResponseInputItem.Message.builder()
@@ -92,10 +88,8 @@ public final class OpenAiClient implements LlmClient { //talks to the openai pla
 
         ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
                 .model(request.getModel())
-                .inputOfResponse(List.of(system, user));
-        if ("gpt-6.1-sol".equals(request.getModel()) || "gpt-6.1-terra".equals(request.getModel())) {
-            builder.reasoning(Reasoning.builder().effort(ReasoningEffort.HIGH).build());
-        }
+                .inputOfResponse(List.of(user))
+                .reasoning(Reasoning.builder().effort(ReasoningEffort.HIGH).build());
         StructuredResponseCreateParams<T> params = builder.text(type).build();
 
         StructuredResponse<T> response;
