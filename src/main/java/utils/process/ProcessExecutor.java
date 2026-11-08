@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
 import org.apache.commons.io.IOUtils;
 
 public final class ProcessExecutor { //runs timed processes, captures output & terminates process trees
@@ -33,11 +34,14 @@ public final class ProcessExecutor { //runs timed processes, captures output & t
             throw new ProcessExecutionException(startErrorMessage, error);
         }
         
+
+        Future<String> standardOutputTask = null;
+        Future<String> errorOutputTask = null;
         try {
             process.getOutputStream().close();
             //drain both streams while process runs so a full pipe cannot block it
-            Future<String> standardOutputTask = outputReaderThreads.submit(() -> readStream(process.getInputStream()));
-            Future<String> errorOutputTask = outputReaderThreads.submit(() -> readStream(process.getErrorStream()));
+            standardOutputTask = outputReaderThreads.submit(() -> readStream(process.getInputStream()));
+            errorOutputTask = outputReaderThreads.submit(() -> readStream(process.getErrorStream()));
 
             boolean finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
             if (!finished) {
@@ -61,7 +65,8 @@ public final class ProcessExecutor { //runs timed processes, captures output & t
                 IOUtils.closeQuietly(process.getInputStream());
                 IOUtils.closeQuietly(process.getErrorStream());
                 IOUtils.closeQuietly(process.getOutputStream());
-                outputReaders.shutdownNow();
+                if (standardOutputTask != null) standardOutputTask.cancel(true);
+                if (standardOutputTask != null) errorOutputTask.cancel(true);
             }
         }
     }
