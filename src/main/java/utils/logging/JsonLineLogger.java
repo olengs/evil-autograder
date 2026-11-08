@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +16,13 @@ import com.google.gson.Gson;
 // appends structured log entries as JSON lines
 // done as singleton, should only run on main thread.
 public final class JsonLineLogger { 
+
+    public enum Status {
+        LOG,
+        WARNING,
+        ERROR,
+    }
+
     private final Gson gson = new Gson();
     private static JsonLineLogger instance;
     private Path logfilePath;
@@ -24,6 +32,8 @@ public final class JsonLineLogger {
     // TODO: MOVE STATIC FINAL VARS TO CONFIG
     private static final int MAX_CAPACITY = 15;
     private static final int CAPACITY_THRESHOLD = 12;
+
+    private EnumSet<Status> flags = EnumSet.allOf(Status.class);
 
     private JsonLineLogger() {
         hasInit = false;
@@ -47,9 +57,17 @@ public final class JsonLineLogger {
         hasInit = true;
     }
 
-    public void append(Map<String, ?> fields) throws IOException {
+    /// param flags to enable which log status to be enabled, by default all types of logs are enabled.
+    public void Init(Path logFile, EnumSet<Status> flags) throws IOException {
+        this.flags = flags;
+        Init(logFile);
+    }
+
+    public void append(Status status, String feature, String message) throws IOException {
         if (!hasInit) throw new RuntimeException("using Json Logger without initialization");
-        logs.add(gson.toJson(fields));
+        if (!flags.contains(status)) return;
+
+        logs.add(gson.toJson(Map.of("status", status.toString(), "message", String.format("[%s]: %s", feature, message))));
         if (logs.size() >= CAPACITY_THRESHOLD) flush();
     }
 

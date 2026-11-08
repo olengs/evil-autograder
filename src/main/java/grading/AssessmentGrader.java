@@ -14,6 +14,8 @@ import assessment.TesterDefinition;
 import grading.progress.ProgressListener;
 import submission.QuestionAttempt;
 import submission.StudentSubmission;
+import utils.logging.JsonLineLogger;
+import utils.logging.JsonLineLogger.Status;
 import utils.process.Interruptions;
 import utils.process.ProcessResult;
 import validation.SubmissionIssue;
@@ -56,15 +58,21 @@ public class AssessmentGrader { //grades each submission in question order & rec
             TesterDefinition tester, ProgressListener progress) throws IOException {
         
         QuestionAttempt attempt = submission.findAttempt(question.getId()).orElse(null);
-        if (attempt == null) 
-            return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), new ProcessResult(1, "", "", false),
-                    "question not attempted");
+        if (attempt == null) {
+            JsonLineLogger.getInstance().append(Status.WARNING, "AssessmentGrader", 
+                String.format("Skipped grading for [%s] because attempt not found for question [%s]", submission.getStudent().getUsername(), question.getId()));
+
+            return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), 
+                new ProcessResult(1, "", "", false), "question not attempted");
+        }
         String skipReason = findBlockingIssue(submission, question.getId());
 
         //keep first reason > reported errors & missing attempt & invalid attempt > then missing tester
         if (skipReason == null && !attempt.isValid()) { skipReason = "attempt has validation errors"; }
         if (skipReason == null && tester == null) { skipReason = "missing tester"; }
-        if (skipReason != null) return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), null, skipReason);
+        if (skipReason != null) {
+            return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), null, skipReason);
+        }
         try {
             return questionGrader.grade(question, attempt, tester, progress);
         } catch (IOException error) {
