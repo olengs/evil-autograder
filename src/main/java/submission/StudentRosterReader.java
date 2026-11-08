@@ -1,34 +1,36 @@
 package submission;
 
-import com.opencsv.CSVReader;
-import com.opencsv.exceptions.CsvValidationException;
-import utils.logging.JsonLineLogger;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
+
 import report.ScoreSheetColumns;
+import utils.logging.JsonLineLogger;
 
 public class StudentRosterReader { //reads student identities from CSV & logs invalid or corrected rows
-    public List<StudentDetails> read(Path scoresheet, Path logFile) throws IOException {
+    public List<StudentDetails> read(Path scoresheet) throws IOException {
         List<StudentDetails> roster = new ArrayList<>();
 
         try (CSVReader csvReader = new CSVReader(Files.newBufferedReader(scoresheet))) {
-            boolean hasSkippedHeader = false;
+            String[] header = null;
             String[] row;
 
             while ((row = csvReader.readNext()) != null) {
                 if (ScoreSheetColumns.isBlankRow(row)) continue;
 
-                if (!hasSkippedHeader) {
+                if (header == null) {
                     ScoreSheetColumns.validateHeader(row);
-                    hasSkippedHeader = true;
+                    header = row;
                     continue;
                 }
 
-                StudentDetails student = parseStudent(row, csvReader.getRecordsRead(), logFile);
+                StudentDetails student = parseStudent(row, header, csvReader.getRecordsRead());
                 if (student != null) roster.add(student);
             }
         } catch (CsvValidationException error) {
@@ -38,30 +40,28 @@ public class StudentRosterReader { //reads student identities from CSV & logs in
         return roster;
     }
 
-    private StudentDetails parseStudent(String[] row, long recordNumber, Path logFile) throws IOException {
-        if (row.length <= ScoreSheetColumns.email) {
-            JsonLineLogger.append(logFile, Map.of("status", "skipped", "row", recordNumber, "issue", "invalid record", "details", "fewer than 5 columns"));
+    private StudentDetails parseStudent(String[] row, String[] header, long recordNumber) throws IOException {
+        if (row.length <= ScoreSheetColumns.username) {
+            JsonLineLogger.getInstance().append(Map.of("status", "skipped", "row", recordNumber, "issue", "invalid record", "details", "fewer than 2 columns"));
             return null;
         }
 
-        String name = row[ScoreSheetColumns.firstName].strip();
-        String studentId = row[ScoreSheetColumns.orgDefinedId].strip();
-        String listedUsername = row[ScoreSheetColumns.username].strip().replaceAll("[^\\p{Alnum}.]", "").replaceAll("^\\.+|\\.+$", "");
-        String email = row[ScoreSheetColumns.email].strip();
-        var emailUsername = StudentDetails.usernameFromEmail(email);
+        String username = ScoreSheetColumns.normalizeUsername(row[ScoreSheetColumns.username]);
 
-        if (emailUsername.isEmpty()) {
-            JsonLineLogger.append(logFile, Map.of("status", "skipped", "row", recordNumber,
-                    "issue", "invalid email; > student skipped", "studentid", studentId,
-                    "name", name, "email", email));
+        if (username.isBlank()) {
+            JsonLineLogger.getInstance().append(Map.of("status", "skipped", "row", recordNumber,
+                    "issue", "missing username > student skipped"));
             return null;
         }
 
-        //email is identity source when listed username contains decorations or disagrees
-        String username = emailUsername.orElseThrow();
-        if (!listedUsername.equals(username)) {
-            JsonLineLogger.append(logFile, Map.of("status", "fixed", "row", recordNumber, "issue", "username mismatch > email username used", "studentid", studentId, "name", name, "listedusername", listedUsername, "emailusername", username));
+        return new StudentDetails(optionalField(header, row, "First Name"), username,
+                optionalField(header, row, "Email"));
+    }
+
+    private String optionalField(String[] header, String[] row, String label) {
+        for (int index = 0; index < Math.min(header.length, row.length); index++) {
+            if (header[index].strip().equalsIgnoreCase(label)) return row[index].strip();
         }
-        return new StudentDetails(name, username, email);
+        return "";
     }
 }

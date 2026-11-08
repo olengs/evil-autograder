@@ -1,9 +1,10 @@
 package grading.progress;
 
-import grading.GradeStatus;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+
+import grading.GradeStatus;
 
 public class GradingProgress implements ProgressListener { //synchronizes grading progress, student outcomes & run timing
     private final ProgressState state = new ProgressState();

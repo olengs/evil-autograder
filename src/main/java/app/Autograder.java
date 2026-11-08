@@ -1,5 +1,10 @@
 package app;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+
 import assessment.AssessmentDefinition;
 import assessment.AssessmentLoader;
 import assessment.TesterDefinition;
@@ -8,19 +13,15 @@ import config.Config;
 import grading.AssessmentGrader;
 import grading.QuestionGrade;
 import grading.QuestionGrader;
-import utils.files.TemporaryDirectory;
-import utils.process.Interruptions;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-import report.ScoreSheetCreator;
 import grading.progress.ProgressListener;
+import report.ScoreSheetCreator;
 import submission.StudentDetails;
 import submission.StudentRosterReader;
 import submission.StudentSubmission;
 import submission.SubmissionLoader;
 import submission.files.SubmissionFileFinder;
+import utils.files.TemporaryDirectory;
+import utils.process.Interruptions;
 import validation.SubmissionValidator;
 import validation.rules.AnswerFileRule;
 import validation.rules.StudentHeaderRule;
@@ -80,7 +81,7 @@ public final class Autograder { //coordinates assessment loading, submission val
             if (progress == ProgressListener.NONE) System.out.println(message);
         }
        
-        List<StudentDetails> roster = new StudentRosterReader().read(config.getScoresheetFile(), workspace.resolve("csv.log.jsonl"));
+        List<StudentDetails> roster = new StudentRosterReader().read(config.getScoresheetFile());
         if (roster.isEmpty()) throw new IOException("no valid students found in scoresheet");
         return roster;
     }
