@@ -1,28 +1,28 @@
 package report;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.io.InputStreamReader;
+import java.io.InterruptedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
 import submission.SubmissionArchives;
 import submission.SubmissionFileNames;
 import submission.files.StudentHeaderReader;
 import utils.files.CsvWriter;
+import utils.logging.JsonLineLogger;
 import utils.process.Interruptions;
 
 public final class ScoreSheetCreator { //creates a missing student scoresheet from ZIP names & source headers
-    private static final String defaultEmailDomain = "computing.smu.edu.sg";
-
     private ScoreSheetCreator() {}
 
     public static boolean createIfMissing(Path scoresheet, Path submissionsFolder) throws IOException {
@@ -36,7 +36,14 @@ public final class ScoreSheetCreator { //creates a missing student scoresheet fr
         for (Path zip : SubmissionArchives.listZipFiles(submissionsFolder)) {
             Interruptions.check("scoresheet creation interrupted");
             String username = SubmissionFileNames.username(zip);
-            if (usernames.add(username)) rows.add(studentRow(zip, username));
+            if (usernames.add(username)) {
+                try {
+                    rows.add(studentRow(zip, username));
+                } catch (Exception e) {
+                    JsonLineLogger.getInstance().append(Map.of("status", "skipped", "message", e.getMessage()));
+                }
+
+            }
         }
 
         CsvWriter.write(scoresheet, rows);
@@ -46,14 +53,18 @@ public final class ScoreSheetCreator { //creates a missing student scoresheet fr
     private static String[] studentRow(Path zip, String username) throws InterruptedIOException {
         StudentHeaderReader.Header header = StudentHeaderReader.readFields(readJavaSources(zip));
         String email = header.email();
-        if (!email.toLowerCase(Locale.ROOT).startsWith(username.toLowerCase(Locale.ROOT) + "@")) {
-            email = username + "@" + defaultEmailDomain;
+        if (email.isBlank()) email = username;
+        else {
+            if (email.contains("@")) {
+                email = email.substring(0, email.indexOf("@")).strip();
+            }
+            //TODO: HANDLE THIS ISSUE GRACEFULLY BUT STILL GRADE THE STUDENT
+            if (!email.equalsIgnoreCase(username)) throw new RuntimeException("email disagrees with the username from file");
         }
-        
+
         String[] row = new String[ScoreSheetColumns.header().length];
         Arrays.fill(row, "");
         row[ScoreSheetColumns.username] = username;
-        row[ScoreSheetColumns.firstName] = header.name();
         row[ScoreSheetColumns.email] = email;
         return row;
     }

@@ -1,8 +1,5 @@
 package report;
 
-import com.opencsv.CSVReader;
-import com.opencsv.exceptions.CsvException;
-import grading.QuestionGrade;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -13,6 +10,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
+
+import grading.QuestionGrade;
 import submission.StudentDetails;
 import submission.StudentSubmission;
 import utils.files.CsvWriter;
@@ -92,14 +94,12 @@ public final class ScoreSheetWriter { //writes totals & question marks from each
             if (row.size() <= ScoreSheetColumns.email) continue;
             while (row.size() < rows.getFirst().size()) row.add("");
             row.set(ScoreSheetColumns.orgDefinedId, row.get(ScoreSheetColumns.orgDefinedId).replaceFirst("^#+", ""));
-            row.set(ScoreSheetColumns.username, row.get(ScoreSheetColumns.username).replaceFirst("^#+", ""));
-            if (row.get(ScoreSheetColumns.lastName).equals("_")) row.set(ScoreSheetColumns.lastName, "");
-            if (row.get(ScoreSheetColumns.firstName).equals("_")) row.set(ScoreSheetColumns.firstName, "");
+            row.set(ScoreSheetColumns.username, ScoreSheetColumns.normalizeUsername(row.get(ScoreSheetColumns.username)));
 
-            var username = StudentDetails.usernameFromEmail(row.get(ScoreSheetColumns.email));
+            var username = row.get(ScoreSheetColumns.username);
             if (username.isEmpty()) continue;
 
-            List<QuestionGrade> grades = selected.get(username.orElseThrow());
+            List<QuestionGrade> grades = selected.get(username);
             if (grades == null) continue;
 
             row.set(ScoreSheetColumns.gradeNumerator, formatMarks(QuestionGrade.totalMarks(grades)));

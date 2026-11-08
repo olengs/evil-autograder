@@ -1,8 +1,5 @@
 package grading;
 
-import assessment.AssessmentDefinition;
-import assessment.QuestionDefinition;
-import assessment.TesterDefinition;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
@@ -10,11 +7,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import assessment.AssessmentDefinition;
+import assessment.QuestionDefinition;
+import assessment.TesterDefinition;
+import grading.progress.ProgressListener;
 import submission.QuestionAttempt;
 import submission.StudentSubmission;
-import validation.SubmissionIssue;
-import grading.progress.ProgressListener;
 import utils.process.Interruptions;
+import utils.process.ProcessResult;
+import validation.SubmissionIssue;
 
 public class AssessmentGrader { //grades each submission in question order & records skipped questions
     private final QuestionGrading questionGrader;
@@ -52,11 +54,14 @@ public class AssessmentGrader { //grades each submission in question order & rec
 
     private QuestionGrade gradeOrSkipQuestion(StudentSubmission submission, QuestionDefinition question,
             TesterDefinition tester, ProgressListener progress) throws IOException {
+        
         QuestionAttempt attempt = submission.findAttempt(question.getId()).orElse(null);
+        if (attempt == null) 
+            return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), new ProcessResult(1, "", "", false),
+                    "question not attempted");
         String skipReason = findBlockingIssue(submission, question.getId());
 
         //keep first reason > reported errors & missing attempt & invalid attempt > then missing tester
-        if (skipReason == null && attempt == null) { skipReason = "no validated attempt"; }
         if (skipReason == null && !attempt.isValid()) { skipReason = "attempt has validation errors"; }
         if (skipReason == null && tester == null) { skipReason = "missing tester"; }
         if (skipReason != null) return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), null, skipReason);
@@ -64,7 +69,7 @@ public class AssessmentGrader { //grades each submission in question order & rec
             return questionGrader.grade(question, attempt, tester, progress);
         } catch (IOException error) {
             if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
-            return new QuestionGrade(question.getId(), GradeStatus.runtimeError, 0, List.of(), null,
+            return new QuestionGrade(question.getId(), GradeStatus.runtimeError, 0, List.of(), new ProcessResult(1, "", "", false),
                     "question grading failed > " + error.getMessage());
         }
     }
