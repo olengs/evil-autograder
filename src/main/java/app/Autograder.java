@@ -11,7 +11,6 @@ import assessment.TesterLoader;
 import config.Config;
 import grading.AssessmentGrader;
 import grading.QuestionGrade;
-import grading.QuestionGrader;
 import grading.progress.ProgressListener;
 import submission.StudentDetails;
 import submission.StudentRosterBuilder;
@@ -64,8 +63,8 @@ public final class Autograder { //coordinates assessment loading, submission val
                     validator.validate(submission, assessment);
                 }
 
-                var questionGrader = new QuestionGrader(config.getCompilationTimeout(), config.getExecutionTimeout());
-                return new AssessmentGrader(questionGrader).grade(submissions, assessment, testers, progress);
+                var assessmentGrader = new AssessmentGrader(config.getNumGradingWorkers(), config.getCompilationTimeout(), config.getExecutionTimeout());
+                return assessmentGrader.grade(submissions, assessment, testers, progress);
             } finally {
                 progress.preparing("cleaning up temporary files");
             }

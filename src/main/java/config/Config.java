@@ -5,8 +5,8 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Properties;
 import java.util.Map;
+import java.util.Properties;
 
 public class Config { //loads grading paths & process time limits from configuration
     private final Path inputDirectory;
@@ -17,6 +17,7 @@ public class Config { //loads grading paths & process time limits from configura
     private final Path scoresheetFile;
     private final Duration compilationTimeout;
     private final Duration executionTimeout;
+    private final int gradingWorkers;
 
     public Config() throws IOException {
         this(Path.of("config.properties"));
@@ -42,6 +43,8 @@ public class Config { //loads grading paths & process time limits from configura
         scoresheetFile = inputDirectory.resolve(getRequired(properties, "scoresheet.file"));
         compilationTimeout = getTimeout(properties, "compilation.timeout.seconds");
         executionTimeout = getTimeout(properties, "execution.timeout.seconds");
+        int gradingWorkersValue = Integer.parseInt(getRequired(properties, "grading.workers"));
+        gradingWorkers = gradingWorkersValue < 1 ? 1 : gradingWorkersValue;
     }
 
     public Path getInputDirectory() {
@@ -75,6 +78,10 @@ public class Config { //loads grading paths & process time limits from configura
     public Duration getExecutionTimeout() {
         return executionTimeout;
     }
+
+    public int getNumGradingWorkers() {
+    return gradingWorkers;
+}
 
     private static String getRequired(Properties properties, String key) {
         String value = properties.getProperty(key);

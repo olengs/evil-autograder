@@ -2,11 +2,16 @@ package grading;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import assessment.AssessmentDefinition;
 import assessment.QuestionDefinition;
@@ -21,10 +26,13 @@ import utils.process.ProcessResult;
 import validation.SubmissionIssue;
 
 public class AssessmentGrader { //grades each submission in question order & records skipped questions
-    private final QuestionGrading questionGrader;
+    private final int workerCount;
+    private final ThreadLocal<QuestionGrader> questionGrader;
 
-    public AssessmentGrader(QuestionGrading questionGrader) {
-        this.questionGrader = questionGrader;
+    public AssessmentGrader(int count, Duration compilationTimeout, Duration executionTimeout) {
+
+        this.workerCount = count;
+        questionGrader = ThreadLocal.withInitial(() -> new QuestionGrader(compilationTimeout, executionTimeout));
     }
 
     public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, AssessmentDefinition assessment, Map<String, TesterDefinition> testers, ProgressListener progress) throws IOException {
@@ -32,11 +40,46 @@ public class AssessmentGrader { //grades each submission in question order & rec
         Map<StudentSubmission, List<QuestionGrade>> results = new LinkedHashMap<>();
         List<String> questionIds = assessment.getQuestions().stream().map(QuestionDefinition::getId).toList();
         progress.batchStarted(submissions.size(), questionIds);
-        for (StudentSubmission submission : submissions) {
-            Interruptions.check("grading interrupted");
-            progress.submissionStarted(submission.getDisplayName());
-            results.put(submission, gradeSubmission(submission, assessment, testers, progress));
-            progress.submissionFinished();
+
+        try (ExecutorService workers = Executors.newFixedThreadPool(workerCount)) {
+            List<Future<List<QuestionGrade>>> futures = new ArrayList<>();
+            // submit each student for grading
+            try {
+                for (StudentSubmission submission : submissions) {
+                    futures.add(workers.submit(() -> gradeSubmission(submission, assessment, testers, ProgressListener.NONE)));
+                    progress.submissionStarted(submission.getDisplayName());
+                }
+
+                //collect in order for predictable output
+                for (int i = 0; i < submissions.size(); i++) {
+                    StudentSubmission submission = submissions.get(i);
+                    List<QuestionGrade> grades = futures.get(i).get();
+                    results.put(submission, grades);
+
+                    for (QuestionGrade grade : grades) {
+                        progress.questionFinished(grade.getQuestionId(), grade.getStatus());
+                    }
+
+                    progress.submissionFinished();
+                }
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+
+                var interrupted = new InterruptedIOException("grading interrupted");
+                interrupted.initCause(e);
+                throw interrupted;
+            } catch (ExecutionException e) {
+                throw new IOException("grading worker failed", e.getCause());
+            } finally {
+                for (var future : futures) {
+                    if (!future.isDone()) {
+                        future.cancel(true);
+                    }
+                }
+                workers.shutdownNow();
+            }
+            
         }
         return results;
     }
@@ -74,7 +117,7 @@ public class AssessmentGrader { //grades each submission in question order & rec
             return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), null, skipReason);
         }
         try {
-            return questionGrader.grade(question, attempt, tester, progress);
+            return questionGrader.get().grade(question, attempt, tester, progress);
         } catch (IOException error) {
             if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
             return new QuestionGrade(question.getId(), GradeStatus.runtimeError, 0, List.of(), new ProcessResult(1, "", "", false),

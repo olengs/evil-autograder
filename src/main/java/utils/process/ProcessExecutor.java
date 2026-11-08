@@ -16,11 +16,8 @@ import org.apache.commons.io.IOUtils;
 public final class ProcessExecutor { //runs timed processes, captures output & terminates process trees
     private ProcessExecutor() {}
 
-    private static String outputReaderPrefix(long workerId) {
-        return "autograder-process-output-" + workerId + "-";
-    }
-
-    public static ExecutorService outputReaderThreads = Executors.newFixedThreadPool(10, Thread.ofPlatform().daemon().name(outputReaderPrefix(Thread.currentThread().threadId()), 0).factory());
+    // using virtual thread instead of fixed thread pool because the threads spend most of their time waiting for output.
+    public static ExecutorService outputReaderThreads = Executors.newVirtualThreadPerTaskExecutor();
 
     public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorMessage) {
         if (timeout.isZero() || timeout.isNegative()) {
@@ -71,13 +68,15 @@ public final class ProcessExecutor { //runs timed processes, captures output & t
         }
     }
 
+    public static void cleanup() {
+        outputReaderThreads.shutdownNow();
+    }
 
     private static String readStream(InputStream input) throws IOException {
         try (input) {
             return new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
-
 
     private static String collectStream(Future<String> future) throws InterruptedException {
         try {
