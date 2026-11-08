@@ -75,7 +75,7 @@ public final class JsonLineLogger {
         if (!hasInit) throw new RuntimeException("using Json Logger without initialization");
         synchronized (logs) {
             Files.write(logfilePath, logs, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            logs.clear();
         }
-        logs.clear();
     }
 }
