@@ -1,17 +1,14 @@
-package generation.prompt;
-
-import java.util.List;
+package prompt;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
+import java.util.List;
+import utils.files.TemplateUtils;
 
-import utils.TemplateUtils;
+public final class PromptCatalog { //loads and checks the prompt JSON
+    private static final String defaultResource = "/generation/prompt/tester-generation-prompt.json";
 
-public final class PromptCatalog { //all prompt text loaded from tester-prompt.json > base & section layout
-    //bundled on the classpath from src/main/resources
-    private static final String DEFAULT_RESOURCE = "/generation/prompt/tester-prompt.json";
-
-    //json shape > field names must match the keys in tester-prompt.json
+    //json shape > field names must match the keys in tester-generation-prompt.json
     public record Base(List<String> instructions) {}
 
     public record Section(String name, String requires, List<String> lines) {}
@@ -30,10 +27,9 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
         validate();
     }
 
-    //the bundled catalog > loaded on first use & cached
     public static synchronized PromptCatalog loadDefault() {
         if (defaultCatalog == null) {
-            defaultCatalog = parse(TemplateUtils.readResource(DEFAULT_RESOURCE), DEFAULT_RESOURCE);
+            defaultCatalog = parse(TemplateUtils.readResource(defaultResource), defaultResource);
         }
         return defaultCatalog;
     }
@@ -51,7 +47,7 @@ public final class PromptCatalog { //all prompt text loaded from tester-prompt.j
         }
     }
 
-    //fail at load time rather than mid-generation > missing blocks or duplicate ids
+    // Reject missing sections before generation starts.
     private void validate() {
         if (definition.base() == null || isEmpty(definition.base().instructions())) {
             throw new IllegalStateException("prompt catalog needs base.instructions");

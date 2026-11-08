@@ -1,7 +1,7 @@
-package generation.run;
+package generation;
 
+import generation.QuestionGenerationOutcome.GenerationStatus;
 import java.util.List;
-import generation.run.QuestionGenerationOutcome.GenerationStatus;
 
 public final class GenerationResult { //summary of one generation run > every question's outcome & counts
     private final List<QuestionGenerationOutcome> outcomes;

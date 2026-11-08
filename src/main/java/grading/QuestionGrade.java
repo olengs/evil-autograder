@@ -52,9 +52,4 @@ public final class QuestionGrade { //stores a question's marks, status, test cas
     public String getMessage() {
         return message;
     }
-
-    @Override
-    public String toString() {
-        return "QuestionGrade{questionId='" + questionId + '\'' + ", status=" + status + ", earnedMarks=" + earnedMarks + ", testCases=" + testCaseResults.size() + ", hasProcessResult=" + processResult.isPresent() + ", hasMessage=" + message + '}';
-    }
 }

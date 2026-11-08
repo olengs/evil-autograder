@@ -38,11 +38,14 @@ public class GradingWorkspace implements AutoCloseable { //copies answer, suppor
         Map<String, Path> answerFiles = new LinkedHashMap<>();
         for (String requiredAnswer : question.getRequiredAnswerFiles()) {
             List<Path> matches = attempt.getSubmittedFiles().stream().filter(path -> finder.matchesRequiredPath(path, requiredAnswer)).distinct().toList();
-           
+
             if (matches.size() > 1) throw new IOException("ambiguous answer file > " + requiredAnswer);
             Path answerFile;
 
-            if (matches.isEmpty()) answerFile = finder.findFileIgnoringCase(attempt.getQuestionDirectory(), requiredAnswer) .orElseThrow(() -> new IOException("missing required answer > " + requiredAnswer)); else {
+            if (matches.isEmpty()) {
+                answerFile = finder.findFileIgnoringCase(attempt.getQuestionDirectory(), requiredAnswer)
+                        .orElseThrow(() -> new IOException("missing required answer > " + requiredAnswer));
+            } else {
                 answerFile = matches.getFirst();
             }
 

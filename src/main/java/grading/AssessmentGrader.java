@@ -17,9 +17,9 @@ import grading.progress.ProgressListener;
 import utils.process.Interruptions;
 
 public class AssessmentGrader { //grades each submission in question order & records skipped questions
-    private final QuestionGrading questionGrader;
+    private final QuestionGrader questionGrader;
 
-    public AssessmentGrader(QuestionGrading questionGrader) {
+    public AssessmentGrader(QuestionGrader questionGrader) {
         this.questionGrader = questionGrader;
     }
 

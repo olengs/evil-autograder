@@ -1,6 +1,6 @@
-package generation.prompt;
+package utils.files;
 
-import generation.questionSpec.QuestionSpec;
+import generation.QuestionSpec;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.file.Files;
@@ -14,17 +14,19 @@ import java.util.TreeSet;
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.parser.ParserDelegator;
-import utils.JavaProcessUtils;
-import utils.ProcessExecutor;
+import utils.process.JavaTools;
+import utils.process.ProcessExecutor;
 
 /** Reads only declared support files and matching class documentation from one question folder. */
 public final class SupportContextCollector {
     public record TextFile(String name, String type, String content) {}
     public record FolderContext(List<TextFile> files, List<String> issues) {}
-    private static final Set<String> TEXT_TYPES = Set.of("java", "txt", "csv", "json", "xml", "properties", "dat", "md");
-    private static final long MAX_TEXT_BYTES = 256 * 1024;
+    private static final Set<String> textTypes = Set.of("java", "txt", "csv", "json", "xml", "properties", "dat", "md");
+    private static final long maxTextBytes = 256 * 1024;
 
-    public FolderContext collect(List<QuestionSpec> specs) {
+    private SupportContextCollector() {}
+
+    public static FolderContext collect(List<QuestionSpec> specs) {
         List<TextFile> files = new ArrayList<>();
         List<String> issues = new ArrayList<>();
         Path root = specs.getFirst().getResourceDirectory();
@@ -38,23 +40,10 @@ public final class SupportContextCollector {
             if (lower.contains("groundtruth") || lower.contains("ground-truth") || lower.contains("ground_truth")
                     || lower.endsWith("tester.java") || lower.endsWith("tester.class")) continue;
             try {
-                Path source = contained(root, name);
+                files.add(readSupportFile(root, name));
                 String type = extension(name);
-                if (type.equals("class")) {
-                    String className = name.substring(0, name.length() - 6).replace('/', '.').replace('\\', '.');
-                    var result = ProcessExecutor.run(new ProcessBuilder(
-                            JavaProcessUtils.getDisassemblerPath().toString(), "-public", "-classpath",
-                            root.toAbsolutePath().toString(), className), Duration.ofSeconds(30),
-                            "context-javap", "could not inspect dependency " + name);
-                    if (!result.isSuccessful()) throw new IOException("javap failed or timed out: " + result.getErrorOutput().strip());
-                    files.add(new TextFile(name + " (public API)", "java", result.getStandardOutput().strip()));
-                    classes.add(name.substring(0, name.length() - 6).replace('$', '.'));
-                } else if (TEXT_TYPES.contains(type)) {
-                    files.add(new TextFile(name, type, readText(source)));
-                    if (type.equals("java")) classes.add(name.substring(0, name.length() - 5));
-                } else {
-                    files.add(new TextFile(name, "", "Binary resource available at runtime; contents not included."));
-                }
+                if (type.equals("class")) classes.add(name.substring(0, name.length() - 6).replace('$', '.'));
+                if (type.equals("java")) classes.add(name.substring(0, name.length() - 5));
             } catch (IOException | RuntimeException error) {
                 issues.add(name + ": " + error.getMessage());
             }
@@ -71,6 +60,22 @@ public final class SupportContextCollector {
         return new FolderContext(List.copyOf(files), List.copyOf(issues));
     }
 
+    private static TextFile readSupportFile(Path root, String name) throws IOException {
+        Path source = contained(root, name);
+        String type = extension(name);
+        if (type.equals("class")) {
+            String className = name.substring(0, name.length() - 6).replace('/', '.').replace('\\', '.');
+            var result = ProcessExecutor.run(new ProcessBuilder(
+                    JavaTools.getDisassemblerPath().toString(), "-public", "-classpath",
+                    root.toAbsolutePath().toString(), className), Duration.ofSeconds(30),
+                    "could not inspect dependency " + name);
+            if (!result.isSuccessful()) throw new IOException("javap failed or timed out: " + result.getErrorOutput().strip());
+            return new TextFile(name + " (public API)", "java", result.getStandardOutput().strip());
+        }
+        if (textTypes.contains(type)) return new TextFile(name, type, readText(source));
+        return new TextFile(name, "", "Binary resource available at runtime; contents not included.");
+    }
+
     private static Path contained(Path root, String name) throws IOException {
         Path realRoot = root.toRealPath();
         Path source = realRoot.resolve(name).normalize().toRealPath();
@@ -81,7 +86,7 @@ public final class SupportContextCollector {
     }
 
     private static String readText(Path file) throws IOException {
-        if (Files.size(file) > MAX_TEXT_BYTES) throw new IOException("context file exceeds 256 KiB; supply a smaller reference");
+        if (Files.size(file) > maxTextBytes) throw new IOException("context file exceeds 256 KiB; supply a smaller reference");
         return Files.readString(file).strip();
     }
 

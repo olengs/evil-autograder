@@ -1,20 +1,18 @@
-package generation.run;
+package generation;
 
 import java.nio.file.Path;
 import java.util.Optional;
 
-public final class QuestionGenerationOutcome { //result of generating one tester > status & where it went & why it failed
-    public enum GenerationStatus { WRITTEN, VALIDATION_FAILED, GENERATION_FAILED }
+public final class QuestionGenerationOutcome { //status, saved file & message for one question
+    public enum GenerationStatus { written, validationFailed, generationFailed }
 
-    private final String questionId; //question this outcome belongs to > e.g. Q1a
+    private final String questionId;
     private final GenerationStatus status;
-    private final Optional<Path> writtenFile; //present whenever a tester file was written > also for a flagged VALIDATION_FAILED one
-    private final String message; //human-readable detail > failure reason or completion note
+    private final Optional<Path> writtenFile;
+    private final String message;
 
     public QuestionGenerationOutcome(String questionId, GenerationStatus status, Path writtenFile, String message) {
-        if (status == null) {
-            throw new IllegalArgumentException("status is required");
-        }
+        if (status == null) throw new IllegalArgumentException("status is required");
         this.questionId = questionId == null ? "" : questionId;
         this.status = status;
         this.writtenFile = Optional.ofNullable(writtenFile);

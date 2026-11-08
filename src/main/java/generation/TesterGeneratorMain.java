@@ -1,22 +1,17 @@
 package generation;
 
+import config.Config;
 import java.io.IOException;
 import java.nio.file.Path;
 
-import config.Config;
-import generation.run.GenerationRequest;
-import generation.run.GenerationResult;
-import generation.run.QuestionGenerationOutcome;
-
-public class TesterGeneratorApp { //thin standalone entry point > the console ui should calls TesterGenerator directly instead
+public class TesterGeneratorMain { //thin standalone entry point
     public static void main(String[] args) {
         try {
-            //optional first arg overrides the config file path > like app.Main
+            //optional first arg overrides config file path > like app.Main
             Config config = args.length == 0 ? new Config() : new Config(Path.of(args[0]));
 
             //defaults come from config
-            GenerationRequest request = new GenerationRequest(config.getExamPdfFile(), config.getResourcesDirectory(),
-                    config.getGenerationOutputDirectory(), "");
+            GenerationRequest request = new GenerationRequest(config.getExamPdfFile(), config.getResourcesDirectory(), config.getGenerationOutputDirectory(), "");
 
             GenerationResult result = new TesterGenerator(config).generate(request);
             printSummary(result);
