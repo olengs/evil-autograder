@@ -3,6 +3,7 @@ package prompt;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import generation.QuestionSpec;
+import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,7 +41,7 @@ public final class PromptBuilder {
         return String.join("\n\n", sections) + "\n";
     }
 
-    public FileBundle collectFiles(List<QuestionSpec> specs) {
+    public FileBundle collectFiles(List<QuestionSpec> specs) throws InterruptedIOException {
         Map<String, List<QuestionSpec>> folders = new LinkedHashMap<>();
         for (QuestionSpec spec : specs) {
             folders.computeIfAbsent(spec.folderName(), name -> new ArrayList<>()).add(spec);

@@ -3,6 +3,7 @@ package validation;
 import generation.QuestionSpec;
 import grading.TesterOutputParser;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -11,6 +12,7 @@ import utils.files.FileUtils;
 import utils.files.TemporaryDirectory;
 import utils.process.JavaTools;
 import utils.process.ProcessResult;
+import utils.process.Interruptions;
 import validation.ValidationResult.Stage;
 
 public class GeneratedTesterValidator {
@@ -23,7 +25,8 @@ public class GeneratedTesterValidator {
         this.executionTimeout = executionTimeout;
     }
 
-    public ValidationResult validate(QuestionSpec spec, String source, int expectedCases) {
+    public ValidationResult validate(QuestionSpec spec, String source, int expectedCases) throws InterruptedIOException {
+        Interruptions.check("tester validation interrupted");
         if (expectedCases <= 0) return ValidationResult.failed(Stage.parse, "positive marks are required");
 
         ValidationResult result = null;
@@ -31,6 +34,7 @@ public class GeneratedTesterValidator {
                 var classes = new TemporaryDirectory("autograder-gen-classes-")) {
             result = validateInWorkspace(spec, source, expectedCases, workspace.path(), classes.path());
         } catch (IOException | RuntimeException error) {
+            Interruptions.check(error, "tester validation interrupted");
             return workspaceFailure(result, error);
         }
         return result;
@@ -44,7 +48,7 @@ public class GeneratedTesterValidator {
     }
 
     private ValidationResult validateInWorkspace(QuestionSpec spec, String source, int expectedCases,
-            Path workspace, Path classes) {
+            Path workspace, Path classes) throws InterruptedIOException {
         Stage stage = Stage.compile;
         try {
             prepareWorkspace(spec, source, workspace);
@@ -54,13 +58,16 @@ public class GeneratedTesterValidator {
             if (!compile.isSuccessful()) return ValidationResult.failed(stage, truncate(compile.getErrorOutput()));
 
             stage = Stage.run;
+            Interruptions.check("tester validation interrupted");
             ProcessResult run = JavaTools.run(workspace, classes, spec.testerMainClass(), executionTimeout);
             if (run.isTimedOut()) return ValidationResult.failed(stage, "tester execution timed out");
             if (!run.isSuccessful()) return ValidationResult.failed(stage, truncate(run.getErrorOutput()));
 
             stage = Stage.parse;
+            Interruptions.check("tester validation interrupted");
             return validateOutput(run.getStandardOutput(), expectedCases);
         } catch (IOException | RuntimeException error) {
+            Interruptions.check(error, "tester validation interrupted");
             return ValidationResult.failed(stage, error.getMessage());
         }
     }
@@ -72,6 +79,7 @@ public class GeneratedTesterValidator {
 
         if (spec.resourceDirectory() == null) return;
         for (String name : spec.supportFiles()) {
+            Interruptions.check("tester validation interrupted");
             if (name.equals(templateName)) continue;
             Path support = spec.resourceDirectory().resolve(name);
             if (!Files.isRegularFile(support)) throw new IOException("missing support file > " + name);

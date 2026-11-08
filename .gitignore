@@ -28,12 +28,12 @@ replay_pid*
 .vscode
 .DS_Store
 
-.env
-.env.local
-
 #juny
 rawr/
 target/
 project/
 log/
 /output/
+
+.env
+.env.local
