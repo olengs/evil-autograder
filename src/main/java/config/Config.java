@@ -83,11 +83,16 @@ public class Config { //loads grading paths & process time limits from configura
     }
 
     public Path getGenerationOutputDirectory() {
-        return inputDirectory.resolve(getRequired(properties, "generation.output.dir"));
+        String key = properties.containsKey("generation.files.dir") ? "generation.files.dir" : "generation.output.dir";
+        return inputDirectory.resolve(getRequired(properties, key));
     }
 
     public String getLlmModel() {
         return getRequired(properties, "llm.model");
+    }
+
+    public String getLlmReasoningEffort() {
+        return getRequired(properties, "llm.reasoning.effort");
     }
 
     public String getLlmApiKeyEnv() {
@@ -110,6 +115,7 @@ public class Config { //loads grading paths & process time limits from configura
         getExamPdfFile();
         getGenerationOutputDirectory();
         getLlmModel();
+        getLlmReasoningEffort();
         getLlmApiKeyEnv();
         getLlmRequestTimeout();
         isLlmSendPdf();
@@ -117,7 +123,6 @@ public class Config { //loads grading paths & process time limits from configura
 
     private static String getRequired(Properties properties, String key) {
         String value = properties.getProperty(key);
-
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("config > missing setting >" + key);
         }
@@ -127,17 +132,13 @@ public class Config { //loads grading paths & process time limits from configura
 
     private static Duration getTimeout(Properties properties, String key) {
         long seconds;
-
         try {
             seconds = Long.parseLong(getRequired(properties, key));
         } catch (NumberFormatException error) {
             throw new IllegalArgumentException(key + " must be a positive whole number", error);
         }
 
-        if (seconds <= 0) {
-            throw new IllegalArgumentException(key + " must be greater than zero");
-        }
-
+        if (seconds <= 0) throw new IllegalArgumentException(key + " must be greater than zero");
         return Duration.ofSeconds(seconds);
     }
 }

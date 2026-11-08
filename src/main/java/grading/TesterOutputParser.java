@@ -10,6 +10,15 @@ import java.util.regex.Pattern;
 public class TesterOutputParser { //parses tester cases & keeps completed outcomes after a timeout
     private static final Pattern testHeader = Pattern.compile("^Test ([^:]+):.*$");
 
+    public static boolean isTestHeader(String line) {
+        return testHeader.matcher(line.strip()).matches();
+    }
+
+    public static boolean isOutcome(String line) {
+        String trimmed = line.strip();
+        return trimmed.equalsIgnoreCase("Passed") || trimmed.equalsIgnoreCase("Failed") || trimmed.startsWith("Failed -> ");
+    }
+
     public List<TestCaseResult> parse(String output) {
         return parse(output, false);
     }
@@ -34,7 +43,7 @@ public class TesterOutputParser { //parses tester cases & keeps completed outcom
 
                 if (!seenIds.add(caseId)) throw new IllegalArgumentException("duplicate test id " + caseId);
                 passed = null;
-            } else if (caseId != null && (trimmedLine.equalsIgnoreCase("Passed") || trimmedLine.equalsIgnoreCase("Failed") || trimmedLine.startsWith("Failed -> "))) {
+            } else if (caseId != null && isOutcome(trimmedLine)) {
                 if (passed != null) throw new IllegalArgumentException("repeated outcome for test " + caseId);
                 passed = trimmedLine.equalsIgnoreCase("Passed");
             }
@@ -50,6 +59,6 @@ public class TesterOutputParser { //parses tester cases & keeps completed outcom
             throw new IllegalArgumentException("missing outcome for test " + caseId);
         }
         //each passed case earns one mark > a failed case earns zero
-        return new TestCaseResult(caseId, passed, passed ? 1 : 0);
+        return new TestCaseResult(passed ? 1 : 0);
     }
 }

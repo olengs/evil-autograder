@@ -36,4 +36,4 @@ rawr/
 target/
 project/
 log/
-output/
+/output/

@@ -1,12 +1,8 @@
 package generation;
 
+import config.Config;
 import java.io.IOException;
 import java.nio.file.Path;
-
-import config.Config;
-import generation.run.GenerationRequest;
-import generation.run.GenerationResult;
-import generation.run.QuestionGenerationOutcome;
 
 public class TesterGeneratorMain { //thin standalone entry point
     public static void main(String[] args) {

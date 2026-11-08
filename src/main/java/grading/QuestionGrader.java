@@ -12,7 +12,7 @@ import java.util.List;
 import submission.QuestionAttempt;
 import grading.progress.ProgressListener;
 
-public class QuestionGrader implements QuestionGrading { //compiles answers, runs tester & totals completed test-case marks
+public class QuestionGrader { //compiles answers, runs tester & totals completed test-case marks
     private final Duration compilationTimeout;
     private final Duration executionTimeout;
 
@@ -21,7 +21,6 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
         this.executionTimeout = executionTimeout;
     }
 
-    @Override
     public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester, ProgressListener progress) throws IOException {
         try (GradingWorkspace workspace = new GradingWorkspace()) {
             workspace.prepare(question, attempt, tester);
@@ -53,16 +52,16 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
         String message;
 
         try {
-        if (executionResult.isTimedOut()) {
-            //keep marks for completed cases > unfinished case has no trustworthy outcome
-            testResults = parser.parseCompleted(executionResult.getStandardOutput());
-            status = GradeStatus.timeout;
-            message = "execution timed out > completed-test marks retained";
-        } else {
-            testResults = parser.parse(executionResult.getStandardOutput());
-            status = GradeStatus.completed;
-            message = "grading completed";
-        }
+            if (executionResult.isTimedOut()) {
+                //keep marks for completed cases > unfinished case has no trustworthy outcome
+                testResults = parser.parseCompleted(executionResult.getStandardOutput());
+                status = GradeStatus.timeout;
+                message = "execution timed out > completed-test marks retained";
+            } else {
+                testResults = parser.parse(executionResult.getStandardOutput());
+                status = GradeStatus.completed;
+                message = "grading completed";
+            }
         } catch (IllegalArgumentException error) {
             return failedGrade(questionId, GradeStatus.runtimeError, executionResult,
                     "invalid tester output > " + error.getMessage());
