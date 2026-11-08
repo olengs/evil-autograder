@@ -19,8 +19,6 @@ public final class ProcessExecutor { //runs timed processes, captures output & t
         return "autograder-process-output-" + workerId + "-";
     }
 
-public class ProcessExecutor {
-
     public static ExecutorService outputReaderThreads = Executors.newFixedThreadPool(10, Thread.ofPlatform().daemon().name(outputReaderPrefix(Thread.currentThread().threadId()), 0).factory());
 
     public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorMessage) {
