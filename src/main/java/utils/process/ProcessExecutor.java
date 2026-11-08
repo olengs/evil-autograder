@@ -66,7 +66,7 @@ public final class ProcessExecutor { //runs timed processes, captures output & t
                 IOUtils.closeQuietly(process.getErrorStream());
                 IOUtils.closeQuietly(process.getOutputStream());
                 if (standardOutputTask != null) standardOutputTask.cancel(true);
-                if (standardOutputTask != null) errorOutputTask.cancel(true);
+                if (errorOutputTask != null) errorOutputTask.cancel(true);
             }
         }
     }
