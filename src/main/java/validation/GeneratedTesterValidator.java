@@ -54,7 +54,7 @@ public class GeneratedTesterValidator {
             if (!compile.isSuccessful()) return ValidationResult.failed(stage, truncate(compile.getErrorOutput()));
 
             stage = Stage.run;
-            ProcessResult run = JavaTools.run(workspace, classes, spec.getTesterMainClass(), executionTimeout);
+            ProcessResult run = JavaTools.run(workspace, classes, spec.testerMainClass(), executionTimeout);
             if (run.isTimedOut()) return ValidationResult.failed(stage, "tester execution timed out");
             if (!run.isSuccessful()) return ValidationResult.failed(stage, truncate(run.getErrorOutput()));
 
@@ -66,14 +66,14 @@ public class GeneratedTesterValidator {
     }
 
     private void prepareWorkspace(QuestionSpec spec, String source, Path workspace) throws IOException {
-        String templateName = spec.getId() + ".java";
-        Files.writeString(workspace.resolve(templateName), spec.getAnswerTemplateSource());
-        Files.writeString(workspace.resolve(spec.getTesterFileName()), source);
+        String templateName = spec.id() + ".java";
+        Files.writeString(workspace.resolve(templateName), spec.answerTemplateSource());
+        Files.writeString(workspace.resolve(spec.testerFileName()), source);
 
-        if (spec.getResourceDirectory() == null) return;
-        for (String name : spec.getSupportFiles()) {
+        if (spec.resourceDirectory() == null) return;
+        for (String name : spec.supportFiles()) {
             if (name.equals(templateName)) continue;
-            Path support = spec.getResourceDirectory().resolve(name);
+            Path support = spec.resourceDirectory().resolve(name);
             if (!Files.isRegularFile(support)) throw new IOException("missing support file > " + name);
             Path destination = workspace.resolve(name);
             Files.createDirectories(destination.getParent());

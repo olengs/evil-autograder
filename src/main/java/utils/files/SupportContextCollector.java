@@ -29,16 +29,13 @@ public final class SupportContextCollector {
     public static FolderContext collect(List<QuestionSpec> specs) {
         List<TextFile> files = new ArrayList<>();
         List<String> issues = new ArrayList<>();
-        Path root = specs.getFirst().getResourceDirectory();
+        Path root = specs.getFirst().resourceDirectory();
         if (root == null) return new FolderContext(files, issues);
         Set<String> support = new TreeSet<>();
         Set<String> classes = new TreeSet<>();
-        for (QuestionSpec spec : specs) support.addAll(spec.getSupportFiles());
+        for (QuestionSpec spec : specs) support.addAll(spec.supportFiles());
         for (String name : support) {
-            String lower = name.toLowerCase(Locale.ROOT);
-            //Keep reference answers, grader programs and grades out even if placed among resources.
-            if (lower.contains("groundtruth") || lower.contains("ground-truth") || lower.contains("ground_truth")
-                    || lower.endsWith("tester.java") || lower.endsWith("tester.class")) continue;
+            if (isExcluded(name)) continue;
             try {
                 files.add(readSupportFile(root, name));
                 String type = extension(name);
@@ -48,6 +45,17 @@ public final class SupportContextCollector {
                 issues.add(name + ": " + error.getMessage());
             }
         }
+        collectDocumentation(root, classes, files, issues);
+        return new FolderContext(List.copyOf(files), List.copyOf(issues));
+    }
+
+    private static boolean isExcluded(String name) {
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.contains("groundtruth") || lower.contains("ground-truth") || lower.contains("ground_truth")
+                || lower.endsWith("tester.java") || lower.endsWith("tester.class");
+    }
+
+    private static void collectDocumentation(Path root, Set<String> classes, List<TextFile> files, List<String> issues) {
         for (String className : classes) {
             String name = "api/" + className + ".html";
             if (!Files.exists(root.resolve(name))) continue;
@@ -57,23 +65,24 @@ public final class SupportContextCollector {
                 issues.add(name + ": " + error.getMessage());
             }
         }
-        return new FolderContext(List.copyOf(files), List.copyOf(issues));
     }
 
     private static TextFile readSupportFile(Path root, String name) throws IOException {
         Path source = contained(root, name);
         String type = extension(name);
-        if (type.equals("class")) {
-            String className = name.substring(0, name.length() - 6).replace('/', '.').replace('\\', '.');
-            var result = ProcessExecutor.run(new ProcessBuilder(
-                    JavaTools.getDisassemblerPath().toString(), "-public", "-classpath",
-                    root.toAbsolutePath().toString(), className), Duration.ofSeconds(30),
-                    "could not inspect dependency " + name);
-            if (!result.isSuccessful()) throw new IOException("javap failed or timed out: " + result.getErrorOutput().strip());
-            return new TextFile(name + " (public API)", "java", result.getStandardOutput().strip());
-        }
+        if (type.equals("class")) return readClassApi(root, name);
         if (textTypes.contains(type)) return new TextFile(name, type, readText(source));
         return new TextFile(name, "", "Binary resource available at runtime; contents not included.");
+    }
+
+    private static TextFile readClassApi(Path root, String name) throws IOException {
+        String className = name.substring(0, name.length() - 6).replace('/', '.').replace('\\', '.');
+        var result = ProcessExecutor.run(new ProcessBuilder(
+                JavaTools.getDisassemblerPath().toString(), "-public", "-classpath",
+                root.toAbsolutePath().toString(), className), Duration.ofSeconds(30),
+                "could not inspect dependency " + name);
+        if (!result.isSuccessful()) throw new IOException("javap failed or timed out: " + result.getErrorOutput().strip());
+        return new TextFile(name + " (public API)", "java", result.getStandardOutput().strip());
     }
 
     private static Path contained(Path root, String name) throws IOException {

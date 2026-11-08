@@ -30,43 +30,38 @@ public class TesterGenerator {
         this.validator = new GeneratedTesterValidator(config.getCompilationTimeout(), config.getExecutionTimeout());
     }
 
-    public GenerationResult generate(GenerationRequest request) throws IOException {
+    public List<QuestionGenerationOutcome> generate(String userPrompt) throws IOException {
         // Discover questions in grading order.
-        List<QuestionSpec> specs = QuestionSpec.collect(request.getResourcesDirectory());
+        List<QuestionSpec> specs = QuestionSpec.collect(config.getResourcesDirectory());
 
         // Build and save the shared context; retire previous active testers.
         var bundle = promptBuilder.collectFiles(specs);
-        Path outputDirectory = request.getOutputDirectory();
+        Path outputDirectory = config.getGenerationOutputDirectory();
         TesterWriter.deletePrevious(specs, outputDirectory);
         TesterWriter.writeFilesBundle(bundle.text(), outputDirectory);
 
-        // Attach the optional exam for one combined request.
-        String documentId;
+        GeneratedTesters reply;
         try {
-            documentId = config.isLlmSendPdf() ? openAiClient.uploadPdf(PdfFileUtils.requirePdf(request.getExamPdf())) : null;
+            reply = requestTesters(specs, bundle.text(), userPrompt);
         } catch (IOException | RuntimeException error) {
-            return new GenerationResult(failedBatch(specs, "generation failed > " + error.getMessage()));
+            return failedBatch(specs, "generation failed > " + error.getMessage());
         }
+        return processReply(specs, bundle, reply, outputDirectory);
+    }
 
+    private GeneratedTesters requestTesters(List<QuestionSpec> specs, String files, String userPrompt) throws IOException {
+        String documentId = null;
         try {
-            return new GenerationResult(generateTesters(specs, bundle, request, documentId));
+            if (config.isLlmSendPdf()) documentId = openAiClient.uploadPdf(PdfFileUtils.requirePdf(config.getExamPdfFile()));
+            String prompt = promptBuilder.build(specs, files, userPrompt, documentId != null);
+            return openAiClient.generate(config.getLlmModel(), prompt, documentId);
         } finally {
-            // Always clean up the uploaded exam, including after a failed request.
             if (documentId != null) openAiClient.deleteUpload(documentId);
         }
     }
 
-    private List<QuestionGenerationOutcome> generateTesters(List<QuestionSpec> specs, PromptBuilder.FileBundle bundle,
-            GenerationRequest request, String documentId) throws IOException {
-        Path outputDirectory = request.getOutputDirectory();
-        GeneratedTesters reply;
-        try {
-            String prompt = promptBuilder.build(specs, bundle.text(), request.getUserPrompt(), documentId != null);
-            reply = openAiClient.generate(config.getLlmModel(), prompt, documentId);
-        } catch (RuntimeException error) {
-            return failedBatch(specs, "generation failed > " + error.getMessage());
-        }
-
+    private List<QuestionGenerationOutcome> processReply(List<QuestionSpec> specs, PromptBuilder.FileBundle bundle,
+            GeneratedTesters reply, Path outputDirectory) throws IOException {
         // Save the reply before checking IDs so invalid responses can be reviewed.
         TesterWriter.writeReply(reply, outputDirectory);
         Map<String, GeneratedTesters.Tester> generated;
@@ -78,17 +73,17 @@ public class TesterGenerator {
 
         List<QuestionGenerationOutcome> outcomes = new ArrayList<>();
         for (QuestionSpec spec : specs) {
-            outcomes.add(validateAndSave(spec, generated.get(spec.getId()),
-                    bundle.issuesByQuestion().get(spec.getId()), outputDirectory));
+            outcomes.add(validateAndSave(spec, generated.get(spec.id()),
+                    bundle.issuesByQuestion().get(spec.id()), outputDirectory));
         }
-        return outcomes;
+        return List.copyOf(outcomes);
     }
 
     private QuestionGenerationOutcome validateAndSave(QuestionSpec spec, GeneratedTesters.Tester entry,
             String issue, Path outputDirectory) {
         if (issue == null) issue = generationIssue(entry);
         if (issue != null) {
-            return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.generationFailed, null, issue);
+            return new QuestionGenerationOutcome(spec.id(), GenerationStatus.generationFailed, null, issue);
         }
 
         String source = entry.testCode.strip();
@@ -100,9 +95,9 @@ public class TesterGenerator {
         try {
             Path file = validation.isValid() ? TesterWriter.write(spec, source, outputDirectory)
                     : TesterWriter.writeForReview(spec, source, outputDirectory);
-            return new QuestionGenerationOutcome(spec.getId(), status, file, message);
+            return new QuestionGenerationOutcome(spec.id(), status, file, message);
         } catch (IOException error) {
-            return new QuestionGenerationOutcome(spec.getId(), GenerationStatus.validationFailed, null,
+            return new QuestionGenerationOutcome(spec.id(), GenerationStatus.validationFailed, null,
                     message + " > could not write source > " + error.getMessage());
         }
     }
@@ -118,12 +113,12 @@ public class TesterGenerator {
 
     private static List<QuestionGenerationOutcome> failedBatch(List<QuestionSpec> specs, String message) {
         return specs.stream().map(spec -> new QuestionGenerationOutcome(
-                spec.getId(), GenerationStatus.generationFailed, null, message)).toList();
+                spec.id(), GenerationStatus.generationFailed, null, message)).toList();
     }
 
     private static Map<String, GeneratedTesters.Tester> byQuestionId(GeneratedTesters reply, List<QuestionSpec> specs) {
         if (reply == null || reply.tests == null) throw new IllegalArgumentException("missing tests array");
-        var expected = specs.stream().map(QuestionSpec::getId).collect(Collectors.toSet());
+        var expected = specs.stream().map(QuestionSpec::id).collect(Collectors.toSet());
         Map<String, GeneratedTesters.Tester> entries = new LinkedHashMap<>();
         for (var entry : reply.tests) {
             if (entry == null || !expected.contains(entry.id)) {
