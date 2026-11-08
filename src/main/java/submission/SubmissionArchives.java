@@ -1,10 +1,11 @@
 package submission;
 
-import utils.files.FileUtils;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
+
+import utils.files.FileUtils;
 
 public final class SubmissionArchives { //lists submission ZIP files in sorted order
     private SubmissionArchives() {}

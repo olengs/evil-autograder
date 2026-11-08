@@ -1,12 +1,14 @@
 package utils.files;
 
-import com.opencsv.CSVWriter;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+
+import com.opencsv.CSVWriter;
+
 import utils.process.Interruptions;
 
 public final class CsvWriter { //writes escaped CSV rows before replacing destination file

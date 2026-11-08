@@ -1,8 +1,5 @@
 package grading.verification;
 
-import config.Config;
-import grading.QuestionGrade;
-import grading.progress.GradingProgress;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -10,10 +7,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
+
+import config.Config;
+import grading.QuestionGrade;
+import grading.progress.GradingProgress;
 import submission.StudentSubmission;
 
 public final class GradingSession implements ParameterResolver { //shares configuration, progress & results across JUnit checks

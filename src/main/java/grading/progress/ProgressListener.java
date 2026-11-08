@@ -1,8 +1,9 @@
 package grading.progress;
 
-import grading.GradeStatus;
 import java.time.Duration;
 import java.util.List;
+
+import grading.GradeStatus;
 
 public interface ProgressListener { //defines optional callbacks for grading stages & outcomes
     ProgressListener NONE = new ProgressListener() {};

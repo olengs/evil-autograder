@@ -1,13 +1,5 @@
 package grading.verification;
 
-import app.Autograder;
-import assessment.AssessmentDefinition;
-import assessment.AssessmentLoader;
-import assessment.QuestionDefinition;
-import assessment.TesterDefinition;
-import assessment.TesterLoader;
-import config.Config;
-import grading.QuestionGrade;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -15,6 +7,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
@@ -23,7 +18,15 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import static org.junit.jupiter.api.Assertions.*;
+
+import app.Autograder;
+import assessment.AssessmentDefinition;
+import assessment.AssessmentLoader;
+import assessment.QuestionDefinition;
+import assessment.TesterDefinition;
+import assessment.TesterLoader;
+import config.Config;
+import grading.QuestionGrade;
 import report.ConsoleReportPrinter;
 import submission.StudentSubmission;
 import submission.SubmissionArchives;

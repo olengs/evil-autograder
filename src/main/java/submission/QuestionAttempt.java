@@ -1,8 +1,9 @@
 package submission;
 
-import assessment.QuestionDefinition;
 import java.nio.file.Path;
 import java.util.List;
+
+import assessment.QuestionDefinition;
 import validation.IssueSeverity;
 import validation.SubmissionIssue;
 

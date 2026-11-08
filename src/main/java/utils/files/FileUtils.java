@@ -1,16 +1,16 @@
 package utils.files;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.stream.Stream;
 import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.nio.file.SecureDirectoryStream;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 public final class FileUtils { //lists files, copies replacement files & deletes directories
     private FileUtils() {}

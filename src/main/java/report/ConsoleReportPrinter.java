@@ -1,9 +1,10 @@
 package report;
 
-import grading.GradeStatus;
-import grading.QuestionGrade;
 import java.util.List;
 import java.util.Map;
+
+import grading.GradeStatus;
+import grading.QuestionGrade;
 import submission.StudentSubmission;
 import validation.SubmissionIssue;
 

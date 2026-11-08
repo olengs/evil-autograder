@@ -1,10 +1,14 @@
 package grading.verification;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import grading.GradeStatus;
 import grading.QuestionGrade;
-import grading.TesterOutputParser;
 import grading.TestCaseResult;
-import static org.junit.jupiter.api.Assertions.*;
+import grading.TesterOutputParser;
 import submission.QuestionAttempt;
 import submission.StudentSubmission;
 

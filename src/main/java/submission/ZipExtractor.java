@@ -1,14 +1,14 @@
 package submission;
 
-import utils.process.Interruptions;
-
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import utils.process.Interruptions;
 
 public final class ZipExtractor { //extracts ZIP entries while rejecting paths outside destination
     private ZipExtractor() {

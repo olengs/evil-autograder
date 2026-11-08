@@ -1,11 +1,12 @@
 package grading.progress;
 
-import grading.GradeStatus;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import grading.GradeStatus;
 
 final class ProgressState { //stores mutable progress state & caches UI snapshots
     ProgressStage stage = ProgressStage.loading;
