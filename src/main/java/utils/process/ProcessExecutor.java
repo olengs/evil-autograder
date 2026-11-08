@@ -19,6 +19,10 @@ public final class ProcessExecutor { //runs timed processes, captures output & t
         return "autograder-process-output-" + workerId + "-";
     }
 
+public class ProcessExecutor {
+
+    public static ExecutorService outputReaderThreads = Executors.newFixedThreadPool(10, Thread.ofPlatform().daemon().name(outputReaderPrefix(Thread.currentThread().threadId()), 0).factory());
+
     public static ProcessResult run(ProcessBuilder processBuilder, Duration timeout, String startErrorMessage) {
         if (timeout.isZero() || timeout.isNegative()) {
             throw new IllegalArgumentException("Process timeout must be positive");
@@ -30,13 +34,12 @@ public final class ProcessExecutor { //runs timed processes, captures output & t
         } catch (IOException error) {
             throw new ProcessExecutionException(startErrorMessage, error);
         }
-
-        ExecutorService outputReaders = Executors.newFixedThreadPool(2, Thread.ofPlatform().daemon().name(outputReaderPrefix(Thread.currentThread().threadId()), 0).factory());
+        
         try {
             process.getOutputStream().close();
             //drain both streams while process runs so a full pipe cannot block it
-            Future<String> standardOutputTask = outputReaders.submit(() -> readStream(process.getInputStream()));
-            Future<String> errorOutputTask = outputReaders.submit(() -> readStream(process.getErrorStream()));
+            Future<String> standardOutputTask = outputReaderThreads.submit(() -> readStream(process.getInputStream()));
+            Future<String> errorOutputTask = outputReaderThreads.submit(() -> readStream(process.getErrorStream()));
 
             boolean finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
             if (!finished) {
