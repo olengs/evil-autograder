@@ -17,7 +17,7 @@ public final class TesterWriter {
     // A failed generation must not leave old testers or a reply that looks current.
     public static void deletePrevious(List<QuestionSpec> specs, Path outputDirectory) throws IOException {
         Files.deleteIfExists(outputDirectory.resolve("response/all.json"));
-        for (QuestionSpec spec : specs) Files.deleteIfExists(outputDirectory.resolve(spec.getTesterFileName()));
+        for (QuestionSpec spec : specs) Files.deleteIfExists(outputDirectory.resolve(spec.testerFileName()));
     }
 
     public static Path writeFilesBundle(String files, Path outputDirectory) throws IOException {
@@ -34,8 +34,8 @@ public final class TesterWriter {
     }
 
     public static Path write(QuestionSpec spec, String source, Path outputDirectory) throws IOException {
-        if (source == null || source.isBlank()) throw new IOException("refusing to write empty tester for " + spec.getId());
-        return writeFile(outputDirectory, spec.getTesterFileName(), source);
+        if (source == null || source.isBlank()) throw new IOException("refusing to write empty tester for " + spec.id());
+        return writeFile(outputDirectory, spec.testerFileName(), source);
     }
 
     private static Path writeFile(Path directory, String name, String text) throws IOException {

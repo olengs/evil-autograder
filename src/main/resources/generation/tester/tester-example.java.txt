@@ -1,3 +1,16 @@
+import java.util.*;
+{{imports}}
+
+public class {{questionId}}Tester extends {{questionId}} {
+    private static double score;
+
+    public static void main(String[] args) {
+        grade();
+        System.out.println(score);
+    }
+
+    public static void grade() {
+        int tcNum = 1;
         {
             System.out.printf("Test %d: {{methodName}}%n", tcNum++);
             boolean passed = false;
@@ -19,3 +32,6 @@
                 System.out.println(failure);
             }
         }
+    }
+{{helperCode}}
+}
