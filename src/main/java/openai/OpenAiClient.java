@@ -41,10 +41,10 @@ public final class OpenAiClient {
     }
 
     // Environment variables take precedence over the git-ignored .env file.
-    private static String readApiKey(String envVarName) {
+    public static String readApiKey(String envVarName) {
         String key = Dotenv.configure().ignoreIfMissing().ignoreIfMalformed().load().get(envVarName);
         if (key == null || key.isBlank()) {
-            throw new IllegalStateException("missing api key > set " + envVarName + " as an environment variable or in a .env file");
+            throw new IllegalArgumentException("OpenAI API key missing > add " + envVarName + "=your-api-key to .env in the project folder, then press Enter to retry");
         }
         return key;
     }

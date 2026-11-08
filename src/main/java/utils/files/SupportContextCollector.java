@@ -2,6 +2,7 @@ package utils.files;
 
 import generation.QuestionSpec;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,6 +17,7 @@ import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.parser.ParserDelegator;
 import utils.process.JavaTools;
 import utils.process.ProcessExecutor;
+import utils.process.Interruptions;
 
 /** Reads only declared support files and matching class documentation from one question folder. */
 public final class SupportContextCollector {
@@ -26,7 +28,8 @@ public final class SupportContextCollector {
 
     private SupportContextCollector() {}
 
-    public static FolderContext collect(List<QuestionSpec> specs) {
+    public static FolderContext collect(List<QuestionSpec> specs) throws InterruptedIOException {
+        Interruptions.check("context collection interrupted");
         List<TextFile> files = new ArrayList<>();
         List<String> issues = new ArrayList<>();
         Path root = specs.getFirst().resourceDirectory();
@@ -35,6 +38,7 @@ public final class SupportContextCollector {
         Set<String> classes = new TreeSet<>();
         for (QuestionSpec spec : specs) support.addAll(spec.supportFiles());
         for (String name : support) {
+            Interruptions.check("context collection interrupted");
             if (isExcluded(name)) continue;
             try {
                 files.add(readSupportFile(root, name));
@@ -42,6 +46,7 @@ public final class SupportContextCollector {
                 if (type.equals("class")) classes.add(name.substring(0, name.length() - 6).replace('$', '.'));
                 if (type.equals("java")) classes.add(name.substring(0, name.length() - 5));
             } catch (IOException | RuntimeException error) {
+                Interruptions.check(error, "context collection interrupted");
                 issues.add(name + ": " + error.getMessage());
             }
         }
@@ -55,13 +60,15 @@ public final class SupportContextCollector {
                 || lower.endsWith("tester.java") || lower.endsWith("tester.class");
     }
 
-    private static void collectDocumentation(Path root, Set<String> classes, List<TextFile> files, List<String> issues) {
+    private static void collectDocumentation(Path root, Set<String> classes, List<TextFile> files, List<String> issues) throws InterruptedIOException {
         for (String className : classes) {
+            Interruptions.check("context collection interrupted");
             String name = "api/" + className + ".html";
             if (!Files.exists(root.resolve(name))) continue;
             try {
                 files.add(new TextFile(name + " (documentation)", "text", htmlText(readText(contained(root, name)))));
             } catch (IOException | RuntimeException error) {
+                Interruptions.check(error, "context collection interrupted");
                 issues.add(name + ": " + error.getMessage());
             }
         }

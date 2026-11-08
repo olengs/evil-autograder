@@ -3,6 +3,7 @@ package generation;
 import config.Config;
 import generation.QuestionGenerationOutcome.GenerationStatus;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -14,6 +15,7 @@ import openai.OpenAiClient;
 import prompt.PromptBuilder;
 import utils.files.PdfFileUtils;
 import utils.files.TesterWriter;
+import utils.process.Interruptions;
 import validation.GeneratedTesterValidator;
 import validation.ValidationResult;
 
@@ -31,56 +33,85 @@ public class TesterGenerator {
     }
 
     public List<QuestionGenerationOutcome> generate(String userPrompt) throws IOException {
-        // Discover questions in grading order.
-        List<QuestionSpec> specs = QuestionSpec.collect(config.getResourcesDirectory());
+        return generate(userPrompt, GenerationListener.NONE);
+    }
 
-        // Build and save the shared context; retire previous active testers.
+    public List<QuestionGenerationOutcome> generate(String userPrompt, GenerationListener listener) throws IOException {
+        Interruptions.check("tester generation interrupted");
+        listener.stageChanged("discovering questions");
+        List<QuestionSpec> specs = QuestionSpec.collect(config.getResourcesDirectory());
+        listener.started(specs.stream().map(QuestionSpec::id).toList());
+
+        listener.stageChanged("reading reference files");
         var bundle = promptBuilder.collectFiles(specs);
+        Interruptions.check("tester generation interrupted");
         Path outputDirectory = config.getGenerationOutputDirectory();
         TesterWriter.deletePrevious(specs, outputDirectory);
         TesterWriter.writeFilesBundle(bundle.text(), outputDirectory);
 
         GeneratedTesters reply;
         try {
-            reply = requestTesters(specs, bundle.text(), userPrompt);
+            reply = requestTesters(specs, bundle.text(), userPrompt, listener);
         } catch (IOException | RuntimeException error) {
-            return failedBatch(specs, "generation failed > " + error.getMessage());
+            Interruptions.check(error, "tester generation interrupted");
+            return failedBatch(specs, "generation failed > " + error.getMessage(), listener);
         }
-        return processReply(specs, bundle, reply, outputDirectory);
+        return processReply(specs, bundle, reply, outputDirectory, listener);
     }
 
-    private GeneratedTesters requestTesters(List<QuestionSpec> specs, String files, String userPrompt) throws IOException {
+    private GeneratedTesters requestTesters(List<QuestionSpec> specs, String files, String userPrompt,
+            GenerationListener listener) throws IOException {
         String documentId = null;
         try {
-            if (config.isLlmSendPdf()) documentId = openAiClient.uploadPdf(PdfFileUtils.requirePdf(config.getExamPdfFile()));
+            Interruptions.check("tester generation interrupted");
+            if (config.isLlmSendPdf()) {
+                listener.stageChanged("uploading exam PDF");
+                documentId = openAiClient.uploadPdf(PdfFileUtils.requirePdf(config.getExamPdfFile()));
+            }
+            Interruptions.check("tester generation interrupted");
             String prompt = promptBuilder.build(specs, files, userPrompt, documentId != null);
-            return openAiClient.generate(config.getLlmModel(), prompt, documentId);
+            listener.stageChanged("waiting for OpenAI");
+            Interruptions.check("tester generation interrupted");
+            var reply = openAiClient.generate(config.getLlmModel(), prompt, documentId);
+            Interruptions.check("tester generation interrupted");
+            return reply;
         } finally {
-            if (documentId != null) openAiClient.deleteUpload(documentId);
+            if (documentId != null) {
+                // Give best-effort deletion a chance to run after cancellation.
+                boolean interrupted = Thread.interrupted();
+                try { openAiClient.deleteUpload(documentId); }
+                finally { if (interrupted) Thread.currentThread().interrupt(); }
+            }
         }
     }
 
     private List<QuestionGenerationOutcome> processReply(List<QuestionSpec> specs, PromptBuilder.FileBundle bundle,
-            GeneratedTesters reply, Path outputDirectory) throws IOException {
+            GeneratedTesters reply, Path outputDirectory, GenerationListener listener) throws IOException {
+        Interruptions.check("tester generation interrupted");
+        listener.stageChanged("checking returned testers");
         // Save the reply before checking IDs so invalid responses can be reviewed.
         TesterWriter.writeReply(reply, outputDirectory);
         Map<String, GeneratedTesters.Tester> generated;
         try {
             generated = byQuestionId(reply, specs);
         } catch (IllegalArgumentException error) {
-            return failedBatch(specs, "invalid response > " + error.getMessage());
+            return failedBatch(specs, "invalid response > " + error.getMessage(), listener);
         }
 
         List<QuestionGenerationOutcome> outcomes = new ArrayList<>();
         for (QuestionSpec spec : specs) {
-            outcomes.add(validateAndSave(spec, generated.get(spec.id()),
-                    bundle.issuesByQuestion().get(spec.id()), outputDirectory));
+            Interruptions.check("tester generation interrupted");
+            listener.questionStarted(spec.id());
+            var outcome = validateAndSave(spec, generated.get(spec.id()),
+                    bundle.issuesByQuestion().get(spec.id()), outputDirectory);
+            outcomes.add(outcome);
+            listener.questionFinished(outcome);
         }
         return List.copyOf(outcomes);
     }
 
     private QuestionGenerationOutcome validateAndSave(QuestionSpec spec, GeneratedTesters.Tester entry,
-            String issue, Path outputDirectory) {
+            String issue, Path outputDirectory) throws InterruptedIOException {
         if (issue == null) issue = generationIssue(entry);
         if (issue != null) {
             return new QuestionGenerationOutcome(spec.id(), GenerationStatus.generationFailed, null, issue);
@@ -88,6 +119,7 @@ public class TesterGenerator {
 
         String source = entry.testCode.strip();
         ValidationResult validation = validator.validate(spec, source, entry.marks);
+        Interruptions.check("tester generation interrupted");
         GenerationStatus status = validation.isValid() ? GenerationStatus.written : GenerationStatus.validationFailed;
         String message = validation.isValid()
                 ? "validated " + validation.testCaseCount() + " cases & final score"
@@ -97,6 +129,7 @@ public class TesterGenerator {
                     : TesterWriter.writeForReview(spec, source, outputDirectory);
             return new QuestionGenerationOutcome(spec.id(), status, file, message);
         } catch (IOException error) {
+            Interruptions.check(error, "tester generation interrupted");
             return new QuestionGenerationOutcome(spec.id(), GenerationStatus.validationFailed, null,
                     message + " > could not write source > " + error.getMessage());
         }
@@ -111,9 +144,11 @@ public class TesterGenerator {
         return null;
     }
 
-    private static List<QuestionGenerationOutcome> failedBatch(List<QuestionSpec> specs, String message) {
-        return specs.stream().map(spec -> new QuestionGenerationOutcome(
+    private static List<QuestionGenerationOutcome> failedBatch(List<QuestionSpec> specs, String message, GenerationListener listener) {
+        var outcomes = specs.stream().map(spec -> new QuestionGenerationOutcome(
                 spec.id(), GenerationStatus.generationFailed, null, message)).toList();
+        outcomes.forEach(listener::questionFinished);
+        return outcomes;
     }
 
     private static Map<String, GeneratedTesters.Tester> byQuestionId(GeneratedTesters reply, List<QuestionSpec> specs) {

@@ -22,11 +22,11 @@ public class TerminalMain { //starts terminal UI & logs failures or cancellation
         try {
             new TerminalUi().run(Path.of(args.length == 0 ? "config.properties" : args[0]));
         } catch (CancellationException error) {
-            log(logFile, "cancelled", "grading cancelled > process & workspace cleanup finished");
+            log(logFile, "cancelled", "run cancelled > request process & workspace cleanup finished");
             System.exit(130);
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
-            log(logFile, "interrupted", "grading interrupted");
+            log(logFile, "interrupted", "run interrupted");
             System.exit(130);
         } catch (Exception error) {
             System.err.println("error > " + error.getMessage());

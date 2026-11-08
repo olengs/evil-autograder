@@ -48,7 +48,7 @@ final class FramedLayout { //draws bordered grading, summary, resource & command
         if (metrics.length > 1) drawLine(frame, resource, metricsRow + 1, metrics[1], muted);
         drawLine(frame, resource, metricsRow + 2, "threads > " + resources.threads(), muted);
         Rect commands = box(frame, new Rect(content.x(), commandY, content.width(), 3), "commands");
-        drawLine(frame, commands, 0, "[q] close", cyan);
+        drawLine(frame, commands, 0, "[ctrl+c] close", cyan);
     }
 
     private static Rect horizontalPadding(Rect area) {

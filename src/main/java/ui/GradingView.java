@@ -65,7 +65,7 @@ public class GradingView { //renders grading progress or a final summary for ter
         drawLine(frame, content, 0, "evil autograder", muted);
         String path = CharWidth.truncateWithEllipsis(safeText(project.toString()), width, CharWidth.TruncatePosition.START);
         drawLine(frame, content, 1, path, muted);
-        drawLine(frame, content, content.height() - 1, "[q] close", cyan);
+        drawLine(frame, content, content.height() - 1, "[ctrl+c] close", cyan);
 
         if (snapshot.isFinished()) {
             SummaryPanel.drawSummary(frame, new Rect(content.x(), content.y() + 3, content.width(), content.height() - (showResources ? 8 : 4)), snapshot);
