@@ -70,12 +70,6 @@ public final class SetupConfig { //checks setup paths & accepts replacement path
         if (issue == null) issue = input(config.getSubmissionsDirectory(), "submissions.folder", "submissions folder", false);
         if (issue == null) issue = input(config.getTestersDirectory(), "testers.folder", "testers folder", false);
         if (issue == null) issue = input(config.getResourcesDirectory(), "resources.folder", "resources folder", false);
-        if (issue == null) {
-            Path scoresheet = config.getScoresheetFile();
-            issue = Files.exists(scoresheet, LinkOption.NOFOLLOW_LINKS)
-                    ? input(scoresheet, "scoresheet.file", "student csv", true)
-                    : output(scoresheet, "scoresheet.file", "student csv");
-        }
         if (issue == null) issue = output(config.getOutputDirectory(), "output.directory", "output folder");
     }
 

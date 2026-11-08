@@ -1,9 +1,10 @@
 package app;
 
-import config.Config;
-import grading.verification.JUnitRunner;
 import java.io.IOException;
 import java.nio.file.Path;
+
+import config.Config;
+import grading.verification.JUnitRunner;
 import report.ConsoleReportPrinter;
 import report.ScoreSheetWriter;
 
@@ -19,7 +20,7 @@ public final class Main { //runs console grading, verifies results & saves score
             JUnitRunner.verify(config, results);
 
             Path outputScoresheet = config.getOutputDirectory().resolve(config.getScoresheetFile().getFileName());
-            ScoreSheetWriter.write(config.getScoresheetFile(), results, outputScoresheet);
+            ScoreSheetWriter.write(results, outputScoresheet);
             System.out.println("\nscoresheet saved > " + outputScoresheet);
         } catch (IOException | RuntimeException error) {
             System.err.println("error > " + error.getMessage());

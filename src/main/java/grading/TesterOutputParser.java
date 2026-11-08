@@ -7,7 +7,9 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class TesterOutputParser { //parses tester cases & keeps completed outcomes after a timeout
+public class TesterOutputParser { 
+    
+    //parses tester cases & keeps completed outcomes after a timeout
     private static final Pattern testHeader = Pattern.compile("^Test ([^:]+):.*$");
 
     public List<TestCaseResult> parse(String output) {

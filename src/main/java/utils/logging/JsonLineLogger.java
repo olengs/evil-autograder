@@ -40,7 +40,8 @@ public final class JsonLineLogger {
         this.logfilePath = logFile;
         Path parent = logFile.toAbsolutePath().getParent();
         if (parent != null) Files.createDirectories(parent);
-
+        //CLEAR the old logs
+        Files.writeString(logfilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         hasInit = true;
     }
 

@@ -7,8 +7,9 @@ public final class ScoreSheetColumns { //defines shared student CSV column posit
     public static final int orgDefinedId = 0;
     public static final int username = 1;
     public static final int email = 2;
-    public static final int gradeNumerator = 3;
-    public static final int gradeDenominator = 4;
+    public static final int name = 3;
+    public static final int gradeNumerator = 4;
+    public static final int gradeDenominator = 5;
 
     private ScoreSheetColumns() {
     }
@@ -36,7 +37,7 @@ public final class ScoreSheetColumns { //defines shared student CSV column posit
 
     public static String[] header() {
         return new String[] {
-                "OrgDefinedId", "Username", "Email", "Calculated Final Grade Numerator", "Calculated Final Grade Denominator"
+            "OrgDefinedId", "Username", "Email", "Name", "Calculated Final Grade Numerator", "Calculated Final Grade Denominator"
         };
     }
 }

@@ -1,9 +1,5 @@
 package grading.verification;
 
-import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
-
-import config.Config;
-import grading.QuestionGrade;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.PrintWriter;
@@ -11,7 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.junit.platform.engine.TestExecutionResult;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.core.LauncherConfig;
@@ -19,6 +17,9 @@ import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
+
+import config.Config;
+import grading.QuestionGrade;
 import grading.progress.GradingProgress;
 import grading.progress.JUnitSnapshot;
 import report.ScoreSheetWriter;
@@ -60,7 +61,7 @@ public final class JUnitRunner { //runs grading verification & coordinates progr
             var results = GradingSession.input(session).results();
             if (results == null) throw new IOException("JUnit setup did not produce grading results");
             progress.preparing("saving scoresheet");
-            ScoreSheetWriter.write(config.getScoresheetFile(), results,
+            ScoreSheetWriter.write(results,
                     config.getOutputDirectory().resolve(config.getScoresheetFile().getFileName()));
             progress.junitFinished();
             return summary;

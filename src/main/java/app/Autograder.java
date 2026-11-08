@@ -1,7 +1,6 @@
 package app;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -14,9 +13,8 @@ import grading.AssessmentGrader;
 import grading.QuestionGrade;
 import grading.QuestionGrader;
 import grading.progress.ProgressListener;
-import report.ScoreSheetCreator;
 import submission.StudentDetails;
-import submission.StudentRosterReader;
+import submission.StudentRosterBuilder;
 import submission.StudentSubmission;
 import submission.SubmissionLoader;
 import submission.files.SubmissionFileFinder;
@@ -54,7 +52,7 @@ public final class Autograder { //coordinates assessment loading, submission val
         try (var workspace = new TemporaryDirectory("autograder-submissions-")) {
             try {
                 progress.preparing("reading student scoresheet");
-                List<StudentDetails> roster = prepareRoster(config, workspace.path(), progress);
+                List<StudentDetails> roster = prepareRoster(config);
                 progress.preparing("extracting submission zip files");
                 List<StudentSubmission> submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace.path(), roster, assessment);
                 if (submissions.isEmpty()) throw new IOException("no submission ZIP files found");
@@ -74,14 +72,8 @@ public final class Autograder { //coordinates assessment loading, submission val
         }
     }
 
-    private static List<StudentDetails> prepareRoster(Config config, Path workspace, ProgressListener progress) throws IOException {
-        if (ScoreSheetCreator.createIfMissing(config.getScoresheetFile(), config.getSubmissionsDirectory())) {
-            String message = "scoresheet not found > created " + config.getScoresheetFile();
-            progress.preparing(message);
-            if (progress == ProgressListener.NONE) System.out.println(message);
-        }
-       
-        List<StudentDetails> roster = new StudentRosterReader().read(config.getScoresheetFile());
+    private static List<StudentDetails> prepareRoster(Config config) throws IOException {
+        List<StudentDetails> roster = StudentRosterBuilder.build(config.getSubmissionsDirectory());
         if (roster.isEmpty()) throw new IOException("no valid students found in scoresheet");
         return roster;
     }

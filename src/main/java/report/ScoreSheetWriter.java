@@ -2,113 +2,114 @@ package report;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.TreeMap;
-
-import com.opencsv.CSVReader;
-import com.opencsv.exceptions.CsvException;
+import java.util.Map.Entry;
 
 import grading.QuestionGrade;
-import submission.StudentDetails;
 import submission.StudentSubmission;
+import submission.SubmissionFileNames;
 import utils.files.CsvWriter;
 
 public final class ScoreSheetWriter { //writes totals & question marks from each student's highest-scoring submission
     private ScoreSheetWriter() {}
 
-    public static void write(Path scoresheet, Map<StudentSubmission, List<QuestionGrade>> results, Path output) throws IOException {
-        if (scoresheet.toAbsolutePath().normalize().equals(output.toAbsolutePath().normalize())
-                || (Files.exists(output) && Files.isSameFile(scoresheet, output))) {
-            throw new IOException("output scoresheet must differ from input scoresheet > " + output);
-        }
-        List<String> questions = results.values().stream().flatMap(List::stream)
-                .map(QuestionGrade::getQuestionId).distinct().toList();
-        List<List<String>> rows = readRows(scoresheet, questions);
-        if (!rows.isEmpty()) {
-            Map<String, Integer> columns = questionColumns(rows.getFirst(), questions);
-            fillGrades(rows, highestStudentGrades(results), columns);
-        }
-        CsvWriter.write(output, rows.stream().map(row -> row.toArray(String[]::new)).toList());
-    }
+    public static void write(Map<StudentSubmission, List<QuestionGrade>> results, Path output) throws IOException {
 
-    private static Map<String, List<QuestionGrade>> highestStudentGrades(Map<StudentSubmission, List<QuestionGrade>> results) {
-        Map<String, List<QuestionGrade>> selected = new HashMap<>();
-        for (var entry : results.entrySet()) {
-            StudentDetails student = entry.getKey().getStudent();
-            if (student == null) continue;
+        //Collect question IDs in their original grading order.
+        List<String> questionIds = results.values().stream()
+                .flatMap(List::stream)
+                .map(QuestionGrade::getQuestionId)
+                .distinct()
+                .toList();
 
-            //keep one whole submission > question scores must add up to chosen final total
-            selected.merge(student.getUsername(), entry.getValue(),
-                    (previous, current) -> QuestionGrade.totalMarks(current) > QuestionGrade.totalMarks(previous) ? current : previous);
-        }
-        return selected;
-    }
+        List<String[]> rows = new ArrayList<>();
 
-    private static Map<String, Integer> questionColumns(List<String> header, List<String> questions) {
-        Map<String, Integer> columns = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        //index existing columns once > reuse question headers regardless of casing
-        for (int index = ScoreSheetColumns.gradeDenominator + 1; index < header.size(); index++) {
-            columns.putIfAbsent(header.get(index).strip(), index);
+        //Build the fixed columns followed by the question columns.
+        List<String> header = new ArrayList<>(Arrays.asList(ScoreSheetColumns.header()));
+        header.addAll(questionIds);
+        rows.add(header.toArray(String[]::new));
+
+        //Record the position of each question column.
+        Map<String, Integer> questionColumns = new LinkedHashMap<>();
+        int firstQuestionColumn = ScoreSheetColumns.header().length;
+
+        for (int i = 0; i < questionIds.size(); i++) {
+            questionColumns.put(
+                    questionIds.get(i),
+                    firstQuestionColumn + i);
         }
-        for (String question : questions) {
-            if (!columns.containsKey(question)) {
-                columns.put(question, header.size());
-                header.add(question);
+
+        //Create a row for each selected submission.
+        for (var entry : selectSubmissions(results)) {
+            StudentSubmission submission = entry.getKey();
+            List<QuestionGrade> grades = entry.getValue();
+            var student = submission.getStudent();
+
+            String[] row = new String[header.size()];
+            Arrays.fill(row, "");
+
+            if (student != null) {
+                row[ScoreSheetColumns.username] = student.getUsername();
+                row[ScoreSheetColumns.email] = student.getEmail();
+            } else {
+                //Keep unidentified submissions visible in the output.
+                row[ScoreSheetColumns.username] = SubmissionFileNames.username(submission.getOriginalZip());
             }
-        }
-        return columns;
-    }
 
-    private static List<List<String>> readRows(Path scoresheet, List<String> questions) throws IOException {
-        try (CSVReader reader = new CSVReader(Files.newBufferedReader(scoresheet))) {
-            List<List<String>> rows = new ArrayList<>();
-            for (String[] row : reader.readAll()) {
-                if (ScoreSheetColumns.isBlankRow(row)) continue;
-                if (rows.isEmpty()) ScoreSheetColumns.validateHeader(row);
-                rows.add(new ArrayList<>(Arrays.asList(row)));
-            }
-            if (rows.isEmpty()) return rows;
-            List<String> header = rows.getFirst();
-            while (header.size() <= ScoreSheetColumns.gradeDenominator) header.add(ScoreSheetColumns.header()[header.size()]);
-            //omit legacy markers & questions from earlier assessments > keep unrelated columns
-            for (int column = header.size() - 1; column > ScoreSheetColumns.gradeDenominator; column--) {
-                String label = header.get(column).strip();
-                if (!label.equalsIgnoreCase("End-of-Line Indicator")
-                        && (!label.matches("(?i)Q\\d+[a-z]*") || questions.stream().anyMatch(label::equalsIgnoreCase))) continue;
-                for (List<String> row : rows) if (column < row.size()) row.remove(column);
-            }
-            return rows;
-        } catch (CsvException error) {
-            throw new IOException("cannot read scoresheet > " + scoresheet, error);
-        }
-    }
+            row[ScoreSheetColumns.gradeNumerator] = formatMarks(QuestionGrade.totalMarks(grades));
 
-    private static void fillGrades(List<List<String>> rows, Map<String, List<QuestionGrade>> selected, Map<String, Integer> questionColumns) {
-        for (List<String> row : rows.subList(1, rows.size())) { //preserve header row
-            if (row.size() <= ScoreSheetColumns.email) continue;
-            while (row.size() < rows.getFirst().size()) row.add("");
-            row.set(ScoreSheetColumns.orgDefinedId, row.get(ScoreSheetColumns.orgDefinedId).replaceFirst("^#+", ""));
-            row.set(ScoreSheetColumns.username, ScoreSheetColumns.normalizeUsername(row.get(ScoreSheetColumns.username)));
-
-            var username = row.get(ScoreSheetColumns.username);
-            if (username.isEmpty()) continue;
-
-            List<QuestionGrade> grades = selected.get(username);
-            if (grades == null) continue;
-
-            row.set(ScoreSheetColumns.gradeNumerator, formatMarks(QuestionGrade.totalMarks(grades)));
             for (QuestionGrade grade : grades) {
-                row.set(questionColumns.get(grade.getQuestionId()), formatMarks(grade.getEarnedMarks()));
+                int column = questionColumns.get(grade.getQuestionId());
+                row[column] = formatMarks(grade.getEarnedMarks());
             }
+
+            //OrgDefinedId and grade denominator remain blank:
+            //neither value is supplied by the current results model.
+            rows.add(row);
         }
+
+        //Create or replace the output CSV using the existing utility.
+        CsvWriter.write(output, rows);
     }
 
+    private static List<Entry<StudentSubmission, List<QuestionGrade>>> selectSubmissions(Map<StudentSubmission, List<QuestionGrade>> results) {
+        Map<String, Entry<StudentSubmission, List<QuestionGrade>>>
+                selected = new LinkedHashMap<>();
+
+        for (var entry : results.entrySet()) {
+            StudentSubmission submission = entry.getKey();
+            var student = submission.getStudent();
+
+            String key;
+            if (student == null) {
+                //Unknown students are kept separately by archive path.
+                key = "archive:" + submission.getOriginalZip()
+                        .toAbsolutePath().normalize();
+            } else {
+                key = "student:"
+                        + ScoreSheetColumns.normalizeUsername(
+                                student.getUsername())
+                        .toLowerCase(Locale.ROOT);
+            }
+
+            var previous = selected.get(key);
+
+            if (previous == null
+                    || QuestionGrade.totalMarks(entry.getValue())
+                    > QuestionGrade.totalMarks(previous.getValue())) {
+                selected.put(key, entry);
+            }
+        }
+
+        return new ArrayList<>(selected.values());
+    }
+    
     private static String formatMarks(double marks) {
         return BigDecimal.valueOf(marks).stripTrailingZeros().toPlainString();
     }
