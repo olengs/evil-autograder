@@ -29,11 +29,14 @@ public class Config { //loads grading paths & process time limits from configura
     }
 
     public Config(Path configFile, Map<String, String> overrides) throws IOException {
+        this(loadProperties(configFile), overrides);
+    }
+
+    // Copies settings for one operation without changing config.properties.
+    private Config(Properties source, Map<String, String> overrides) {
         properties = new Properties();
-        try (Reader reader = Files.newBufferedReader(configFile)) {
-            properties.load(reader);
-        }
-        properties.putAll(overrides); //replacement paths apply to this run only
+        properties.putAll(source);
+        properties.putAll(overrides);
 
         //fail before grading starts if any required setting is missing or invalid
         inputDirectory = Path.of(getRequired(properties, "input.directory")).toAbsolutePath().normalize();
@@ -46,6 +49,16 @@ public class Config { //loads grading paths & process time limits from configura
         executionTimeout = getTimeout(properties, "execution.timeout.seconds");
         int gradingWorkersValue = Integer.parseInt(getRequired(properties, "grading.workers"));
         gradingWorkers = gradingWorkersValue < 1 ? 1 : gradingWorkersValue;
+    }
+
+    private static Properties loadProperties(Path file) throws IOException {
+        Properties values = new Properties();
+        try (Reader reader = Files.newBufferedReader(file)) { values.load(reader); }
+        return values;
+    }
+
+    public Config withOverrides(Map<String, String> overrides) {
+        return new Config(properties, overrides);
     }
 
     public Path getInputDirectory() {
@@ -110,14 +123,6 @@ public class Config { //loads grading paths & process time limits from configura
         return getTimeout(properties, "llm.request.timeout.seconds");
     }
 
-    public boolean isLlmSendPdf() {
-        String value = getRequired(properties, "llm.send.pdf");
-        if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
-            throw new IllegalArgumentException("llm.send.pdf must be true or false");
-        }
-        return Boolean.parseBoolean(value);
-    }
-
     public void validateGenerationSettings() {
         getExamPdfFile();
         getGenerationOutputDirectory();
@@ -125,7 +130,6 @@ public class Config { //loads grading paths & process time limits from configura
         getLlmReasoningEffort();
         getLlmApiKeyEnv();
         getLlmRequestTimeout();
-        isLlmSendPdf();
     }
 
     private static String getRequired(Properties properties, String key) {

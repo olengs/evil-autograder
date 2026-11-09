@@ -19,10 +19,10 @@ public class GeneratedTesters {
                 + "The tester is written to <id>Tester.java.")
         public String id;
 
-        @JsonPropertyDescription("Positive number of test cases, a multiple of marks; prefer one or two cases per mark. Zero when unknown.")
+        @JsonPropertyDescription("Positive integer number of test cases, a multiple of marks. For 2.5 marks use 5 or 10 cases. Zero when unknown.")
         public int numTestCases;
 
-        @JsonPropertyDescription("Positive integer mark allocation from marks.txt; Zero when unknown.")
+        @JsonPropertyDescription("Positive whole or half mark allocation from marks.txt, e.g. 2 or 2.5; zero when unknown.")
         public float marks;
 
         @JsonPropertyDescription("Empty for a complete tester. Otherwise explain missing or conflicting requirements and leave testCode empty.")

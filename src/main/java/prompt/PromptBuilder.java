@@ -22,7 +22,7 @@ public final class PromptBuilder {
     private record Instructions(List<String> instructions) {}
     public record FileBundle(String text, Map<String, String> issuesByQuestion) {}
 
-    public String build(List<QuestionSpec> specs, String files, String userPrompt, boolean examAttached) {
+    public String build(List<QuestionSpec> specs, String files, String userPrompt) {
         if (specs == null || specs.isEmpty()) throw new IllegalArgumentException("at least one question spec is required");
         userPrompt = strip(userPrompt);
         List<String> sections = new ArrayList<>();
@@ -34,7 +34,7 @@ public final class PromptBuilder {
         sections.add("BEGIN REFERENCE MATERIAL\n"
                 + "Each folder contains its answer templates, declared support files, public dependency signatures and available class documentation. Context issues must be flagged for the affected questions.\n"
                 + strip(files) + "\nEND REFERENCE MATERIAL");
-        if (examAttached) sections.add("QUESTION DESCRIPTION FROM THE EXAM:\n"
+        sections.add("QUESTION DESCRIPTION FROM THE EXAM:\n"
                 + "The exam paper is attached as a PDF. Find the description of each question id in it (Question N, part (x)) and write tests that match its requirements and mark allocation.");
         sections.add("JAVA LAYOUT GUIDE (inside each successful testCode field):\n"
                 + "Replace all markers. Repeat and adapt the example case until numTestCases cases are present, adapting setup and comparisons to the method. Use nested try/catch for expected exceptions.\n"

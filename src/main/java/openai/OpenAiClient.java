@@ -7,7 +7,6 @@ import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
 import com.openai.models.files.FileCreateParams;
 import com.openai.models.files.FilePurpose;
-import com.openai.models.responses.EasyInputMessage;
 import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseInputFile;
 import com.openai.models.responses.ResponseInputItem;
@@ -64,9 +63,8 @@ public final class OpenAiClient {
     }
 
     private static ResponseInputItem userMessage(String prompt, String documentId) {
-        if (documentId == null) {
-            return ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
-                    .role(EasyInputMessage.Role.USER).content(prompt).build());
+        if (documentId == null || documentId.isBlank()) {
+            throw new IllegalArgumentException("uploaded exam PDF is required for tester generation");
         }
         return ResponseInputItem.ofMessage(ResponseInputItem.Message.builder()
                 .role(ResponseInputItem.Message.Role.USER)

@@ -48,8 +48,8 @@ public class TesterGenerator {
         var allocations = TesterMetadata.readMarks(config.getTestersDirectory());
         for (QuestionSpec spec : specs) {
             Double marks = allocations.get(spec.id().toLowerCase(Locale.ROOT));
-            if (marks == null || marks != Math.rint(marks) || marks > Integer.MAX_VALUE) {
-                throw new IOException("generation requires positive integer marks.txt allocation for " + spec.id());
+            if (marks == null || (!Double.isFinite(marks * 2) || marks <= 0 || marks * 2 != Math.floor(marks * 2))) {
+                throw new IOException("generation requires positive whole or half marks.txt allocation for " + spec.id());
             }
         }
         listener.started(specs.stream().map(QuestionSpec::id).toList());
@@ -79,12 +79,11 @@ public class TesterGenerator {
         String documentId = null;
         try {
             Interruptions.check("tester generation interrupted");
-            if (config.isLlmSendPdf()) {
-                listener.stageChanged("uploading exam PDF");
-                documentId = openAiClient.uploadPdf(PdfFileUtils.requirePdf(config.getExamPdfFile()));
-            }
+            // Every generation request includes the exam PDF.
+            listener.stageChanged("uploading exam PDF");
+            documentId = openAiClient.uploadPdf(PdfFileUtils.requirePdf(config.getExamPdfFile()));
             Interruptions.check("tester generation interrupted");
-            String prompt = promptBuilder.build(specs, files, userPrompt, documentId != null);
+            String prompt = promptBuilder.build(specs, files, userPrompt);
             listener.stageChanged("waiting for OpenAI");
             Interruptions.check("tester generation interrupted");
             var reply = openAiClient.generate(config.getLlmModel(), prompt, documentId);
@@ -134,7 +133,7 @@ public class TesterGenerator {
             Interruptions.check("tester generation interrupted");
             listener.questionStarted(spec.id());
             var outcome = validateAndSave(spec, generated.get(spec.id()),
-                    bundle.issuesByQuestion().get(spec.id()), outputDirectory, allocations.get(spec.id().toLowerCase(Locale.ROOT)).intValue());
+                    bundle.issuesByQuestion().get(spec.id()), outputDirectory, allocations.get(spec.id().toLowerCase(Locale.ROOT)));
             outcomes.add(outcome);
             listener.questionFinished(outcome);
         }
@@ -142,7 +141,7 @@ public class TesterGenerator {
     }
 
     private QuestionGenerationOutcome validateAndSave(QuestionSpec spec, GeneratedTesters.Tester entry,
-            String issue, Path outputDirectory, int allocatedMarks) throws InterruptedIOException {
+            String issue, Path outputDirectory, double allocatedMarks) throws InterruptedIOException {
         if (issue == null) issue = generationIssue(entry);
         if (issue == null && entry.marks != allocatedMarks) issue = "returned marks disagree with marks.txt > " + allocatedMarks;
         if (issue == null) {
@@ -182,7 +181,7 @@ public class TesterGenerator {
         if (entry == null) return "no tester entry returned";
         if (entry.issue == null) return "missing issue field";
         if (!entry.issue.isBlank()) return entry.issue;
-        if (entry.marks <= 0) return "positive marks were not established";
+        if ((!Double.isFinite(entry.marks * 2) || entry.marks <= 0 || entry.marks * 2 != Math.floor(entry.marks * 2))) return "marks must be positive whole or half marks";
         if (entry.numTestCases <= 0) return "positive numTestCases was not established";
         if (entry.numTestCases % entry.marks != 0) return "numTestCases must be a multiple of marks";
         if (entry.testCode == null || entry.testCode.isBlank()) return "no tester source returned";

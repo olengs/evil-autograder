@@ -52,7 +52,12 @@ public final class TesterMetadata {
     }
 
     public static Map<String, Double> readMarks(Path root) throws IOException {
-        return read(root.resolve("marks.txt"));
+        var marks = read(root.resolve("marks.txt"));
+        for (var entry : marks.entrySet()) {
+            if ((!Double.isFinite(entry.getValue() * 2) || entry.getValue() <= 0 || entry.getValue() * 2 != Math.floor(entry.getValue() * 2)))
+                throw new IOException("marks must be positive whole or half marks > " + entry.getKey());
+        }
+        return marks;
     }
 
     public static Map<String, Integer> readCaseCounts(Path root) throws IOException {
