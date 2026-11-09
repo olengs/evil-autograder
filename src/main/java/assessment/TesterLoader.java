@@ -1,7 +1,6 @@
 package assessment;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -15,9 +14,11 @@ public final class TesterLoader { //discovers testers & indexes them by question
         Path testerDirectoryPath = testerDirectory.toAbsolutePath().normalize();
         if (!Files.isDirectory(testerDirectoryPath)) throw new IOException("tester folder not found: " + testerDirectoryPath);
 
+        var marks = TesterMetadata.readMarks(testerDirectoryPath);
         Map<String, TesterDefinition> testers = new HashMap<>();
-        try (DirectoryStream<Path> files = Files.newDirectoryStream(testerDirectoryPath, "*Tester.java")) {
-            for (Path file : files) {
+        try (var files = Files.walk(testerDirectoryPath, 2)) {
+            for (Path file : files.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith("Tester.java")).sorted().toList()) {
                 if (!Files.isRegularFile(file))  continue;
 
                 if (!Files.isReadable(file)) throw new IOException("tester file is not readable > " + file);
@@ -28,7 +29,12 @@ public final class TesterLoader { //discovers testers & indexes them by question
 
                 if (questionId.isBlank() || testers.containsKey(questionId)) throw new IOException("invalid / duplicate tester id > " + name);
 
-                testers.put(questionId, new TesterDefinition(testerDirectoryPath, testerDirectoryPath.relativize(file), mainClassName));
+                Double allocation = marks.get(questionId);
+                if (allocation == null) throw new IOException("marks.txt has no allocation for " + questionId);
+                int caseCount = TesterMetadata.loadCaseCount(testerDirectoryPath,
+                        name.substring(0, name.length() - "Tester.java".length()), file);
+                testers.put(questionId, new TesterDefinition(testerDirectoryPath,
+                        testerDirectoryPath.relativize(file), mainClassName, allocation, caseCount));
             }
         }
         return testers;

@@ -11,6 +11,10 @@ public final class TestCaseResult { //stores one tester case's ID, outcome & ear
         this.earnedMarks = earnedMarks;
     }
 
+    public TestCaseResult scaled(double factor) {
+        return new TestCaseResult(caseId, passed, earnedMarks * factor);
+    }
+
     public double getEarnedMarks() {
         return earnedMarks;
     }

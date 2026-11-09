@@ -1,1 +1,1 @@
-mvn -q compile exec:java
+mvn -e -q compile exec:java
