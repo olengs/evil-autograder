@@ -8,6 +8,8 @@ import grading.GradeStatus;
 public interface ProgressListener { //defines optional callbacks for grading stages & outcomes
     ProgressListener NONE = new ProgressListener() {};
 
+    default ProgressListener forSubmission(String id, String student) { return this; }
+
     default void preparing(String message) {}
     default void validationStarted(String student) {}
     default void batchStarted(int students, List<String> questions) {}
@@ -17,6 +19,7 @@ public interface ProgressListener { //defines optional callbacks for grading sta
     default void executionStarted(String question, Duration timeout) {}
     default void questionFinished(String question, GradeStatus status) {}
     default void submissionFinished() {}
+    default void submissionAborted() {}
     default void batchFinished() {}
     default void failed(String message) {}
 }

@@ -15,6 +15,7 @@ final class ProgressState { //stores mutable progress state & caches UI snapshot
     String question = "";
     List<String> questions = List.of();
     final Map<String, GradeStatus> results = new LinkedHashMap<>();
+    final Map<String, StudentProgressSnapshot> activeStudents = new LinkedHashMap<>();
     int totalStudents;
     int processedStudents;
     int processedQuestions;
@@ -38,7 +39,7 @@ final class ProgressState { //stores mutable progress state & caches UI snapshot
         //refreshes live time every tick & reuses snapshots while paused or finished
         Duration elapsed = totalElapsed();
         if (cachedSnapshot == null || cachedSnapshot.revision() != revision || cachedSnapshot.totalElapsed().toMillis() / 250 != elapsed.toMillis() / 250) {
-            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, junit, elapsed, estimatedTotal);
+            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, junit, elapsed, estimatedTotal, List.copyOf(activeStudents.values()));
         }
         return cachedSnapshot;
     }

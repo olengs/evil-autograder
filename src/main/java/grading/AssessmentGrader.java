@@ -46,8 +46,20 @@ public class AssessmentGrader { //grades each submission in question order & rec
             // submit each student for grading
             try {
                 for (StudentSubmission submission : submissions) {
-                    futures.add(workers.submit(() -> gradeSubmission(submission, assessment, testers, ProgressListener.NONE)));
-                    progress.submissionStarted(submission.getDisplayName());
+                    futures.add(workers.submit(() -> {
+                        ProgressListener studentProgress = progress.forSubmission(
+                                submission.getOriginalZip().toAbsolutePath().normalize().toString(),
+                                submission.getDisplayName());
+                        studentProgress.submissionStarted(submission.getDisplayName());
+                        try {
+                            var grades = gradeSubmission(submission, assessment, testers, studentProgress);
+                            studentProgress.submissionFinished();
+                            return grades;
+                        } catch (IOException | RuntimeException | Error failure) {
+                            studentProgress.submissionAborted();
+                            throw failure;
+                        }
+                    }));
                 }
 
                 //collect in order for predictable output
@@ -56,11 +68,6 @@ public class AssessmentGrader { //grades each submission in question order & rec
                     List<QuestionGrade> grades = futures.get(i).get();
                     results.put(submission, grades);
 
-                    for (QuestionGrade grade : grades) {
-                        progress.questionFinished(grade.getQuestionId(), grade.getStatus());
-                    }
-
-                    progress.submissionFinished();
                 }
 
             } catch (InterruptedException e) {

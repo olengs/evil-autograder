@@ -35,7 +35,7 @@ final class FramedLayout { //draws bordered grading, summary, resource & command
         } else {
             int leftWidth = Math.max(29, (body.width() - 1) * 2 / 5);
             Rect batch = box(frame, new Rect(body.x(), body.y(), leftWidth, body.height()), "batch progress");
-            Rect student = box(frame, new Rect(body.x() + leftWidth + 1, body.y(), body.width() - leftWidth - 1, body.height()), "student");
+            Rect student = box(frame, new Rect(body.x() + leftWidth + 1, body.y(), body.width() - leftWidth - 1, body.height()), "active students");
             BatchPanel.drawBatch(frame, horizontalPadding(batch), false, snapshot);
             StudentPanel.drawStudent(frame, horizontalPadding(student), snapshot, displayedSecond);
         }

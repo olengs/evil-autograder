@@ -5,6 +5,7 @@ import dev.tamboui.layout.Rect;
 import dev.tamboui.style.Style;
 import dev.tamboui.terminal.Frame;
 import dev.tamboui.text.CharWidth;
+import dev.tamboui.widgets.gauge.Gauge;
 import grading.GradeStatus;
 import grading.progress.ProgressSnapshot;
 
@@ -17,6 +18,10 @@ public final class StudentPanel { //draws current student, question outcomes & v
             drawLine(frame, area, 0, "running JUnit checks", cyan);
             drawLine(frame, area, 1, snapshot.junit().currentTest(), base);
             drawLine(frame, area, 2, snapshot.junit().summary(), muted);
+            return;
+        }
+        if (snapshot.totalsKnown()) {
+            drawActiveStudents(frame, area, snapshot);
             return;
         }
         //show current student and grading stage
@@ -43,6 +48,33 @@ public final class StudentPanel { //draws current student, question outcomes & v
         int end = Math.min(snapshot.questions().size(), start + visibleRows);
         for (int index = start; index < end; index++) {
             drawQuestion(frame, area, index - start + questionRow, snapshot.questions().get(index), snapshot);
+        }
+    }
+
+    private static void drawActiveStudents(Frame frame, Rect area, ProgressSnapshot snapshot) {
+        if (area.width() < 1 || area.height() < 1) return;
+        var students = snapshot.activeStudents();
+        if (students.isEmpty()) {
+            drawLine(frame, area, 0, snapshot.message(), cyan);
+            return;
+        }
+        int visible = Math.min(students.size(), area.height());
+        if (students.size() > visible) visible = Math.max(0, visible - 1);
+        for (int index = 0; index < visible; index++) {
+            var student = students.get(index);
+            int nameWidth = Math.min(24, Math.max(1, area.width() / 2));
+            String name = CharWidth.truncateWithEllipsis(safeText(student.student()),
+                    nameWidth, CharWidth.TruncatePosition.END);
+            drawLine(frame, new Rect(area.x(), area.y() + index, nameWidth, 1), 0, name, base);
+            int barWidth = area.width() - nameWidth - 1;
+            if (barWidth > 0) {
+                frame.renderWidget(Gauge.builder().ratio(student.ratio()).label("")
+                        .style(base).gaugeStyle(cyan).build(),
+                        new Rect(area.x() + nameWidth + 1, area.y() + index, barWidth, 1));
+            }
+        }
+        if (visible < students.size()) {
+            drawLine(frame, area, visible, "+" + (students.size() - visible) + " more active", muted);
         }
     }
 
