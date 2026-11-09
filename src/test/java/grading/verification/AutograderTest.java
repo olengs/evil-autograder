@@ -15,7 +15,7 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
@@ -27,12 +27,14 @@ import assessment.TesterDefinition;
 import assessment.TesterLoader;
 import config.Config;
 import grading.QuestionGrade;
-import report.ConsoleReportPrinter;
+import grading.progress.GradingProgress;
+import support.GradingFixture;
+import utils.logging.JsonLineLogger;
+import org.junit.jupiter.api.AfterAll;
 import submission.StudentSubmission;
 import submission.SubmissionArchives;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ExtendWith(GradingSession.class)
 @Execution(ExecutionMode.CONCURRENT)
 class AutograderTest { //grades once & checks result coverage & consistency independently of student scores
     private Map<StudentSubmission, List<QuestionGrade>> results;
@@ -40,20 +42,25 @@ class AutograderTest { //grades once & checks result coverage & consistency inde
     private Map<String, TesterDefinition> testers;
     private Set<Path> archives;
 
+    @TempDir
+    static Path directory;
+
     @BeforeAll
-    void gradeProject(GradingSession.Input run) throws Exception {
-        Config config = run.config();
+    void gradeProject() throws Exception {
+        Config config = GradingFixture.create(directory);
+        JsonLineLogger.getInstance().Init(directory.resolve("test.log"));
         assessment = AssessmentLoader.load(config.getResourcesDirectory());
         testers = TesterLoader.load(config.getTestersDirectory());
         
         archives = new HashSet<>();
         List<Path> zipFiles = SubmissionArchives.listZipFiles(config.getSubmissionsDirectory());
         for (Path zip : zipFiles) archives.add(zip.toAbsolutePath().normalize());
-        if (run.results() == null) {
-            results = Autograder.run(config, run.progress());
-            run.complete(results);
-            if (run.printResults()) ConsoleReportPrinter.print(results);
-        } else results = run.results();
+        results = Autograder.run(config, new GradingProgress());
+    }
+
+    @AfterAll
+    void flushLogs() throws Exception {
+        JsonLineLogger.getInstance().flush();
     }
 
     @Test

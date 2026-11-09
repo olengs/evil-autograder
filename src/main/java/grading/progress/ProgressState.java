@@ -33,13 +33,12 @@ final class ProgressState { //stores mutable progress state & caches UI snapshot
     ProgressSnapshot cachedSnapshot; //copy of progress information for ui
     boolean totalsKnown;
     boolean submissionActive;
-    JUnitSnapshot junit = JUnitSnapshot.DISABLED;
 
     ProgressSnapshot snapshot() {
         //refreshes live time every tick & reuses snapshots while paused or finished
         Duration elapsed = totalElapsed();
         if (cachedSnapshot == null || cachedSnapshot.revision() != revision || cachedSnapshot.totalElapsed().toMillis() / 250 != elapsed.toMillis() / 250) {
-            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, junit, elapsed, estimatedTotal, List.copyOf(activeStudents.values()));
+            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, elapsed, estimatedTotal, List.copyOf(activeStudents.values()));
         }
         return cachedSnapshot;
     }

@@ -14,12 +14,6 @@ public final class StudentPanel { //draws current student, question outcomes & v
     }
 
     public static void drawStudent(Frame frame, Rect area, ProgressSnapshot snapshot, long displayedSecond) {
-        if (snapshot.stage() == grading.progress.ProgressStage.verifying) {
-            drawLine(frame, area, 0, "running JUnit checks", cyan);
-            drawLine(frame, area, 1, snapshot.junit().currentTest(), base);
-            drawLine(frame, area, 2, snapshot.junit().summary(), muted);
-            return;
-        }
         if (snapshot.totalsKnown()) {
             drawActiveStudents(frame, area, snapshot);
             return;

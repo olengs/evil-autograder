@@ -7,7 +7,7 @@ import java.util.Optional;
 
 import grading.GradeStatus;
 
-public record ProgressSnapshot(ProgressStage stage, String message, String student, String question, List<String> questions, Map<String, GradeStatus> results, int totalStudents, int processedStudents, int processedQuestions, long stageStarted, Duration timeout, long revision, boolean totalsKnown, JUnitSnapshot junit, Duration totalElapsed, Optional<Duration> estimatedTotal, List<StudentProgressSnapshot> activeStudents) { //stores an immutable view of grading progress for UI
+public record ProgressSnapshot(ProgressStage stage, String message, String student, String question, List<String> questions, Map<String, GradeStatus> results, int totalStudents, int processedStudents, int processedQuestions, long stageStarted, Duration timeout, long revision, boolean totalsKnown, Duration totalElapsed, Optional<Duration> estimatedTotal, List<StudentProgressSnapshot> activeStudents) { //stores an immutable view of grading progress for UI
 
     public ProgressSnapshot {
         questions = List.copyOf(questions);

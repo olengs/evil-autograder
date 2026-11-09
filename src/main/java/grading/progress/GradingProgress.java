@@ -196,17 +196,11 @@ public class GradingProgress implements ProgressListener { //synchronizes gradin
         if (!state.activeStudents.isEmpty() || state.processedStudents != state.totalStudents || state.processedQuestions != state.totalStudents * state.questions.size()) {
             throw new IllegalStateException("batch finished before all submissions were processed");
         }
-        state.setStage(state.junit.enabled() ? ProgressStage.verifying : ProgressStage.completed,
-                state.junit.enabled() ? "running junit checks" : "grading finished", Duration.ZERO);
+        state.setStage(ProgressStage.preparing, "grading finished", Duration.ZERO);
     }
 
-    public synchronized void junitUpdated(JUnitSnapshot snapshot) {
-        state.junit = snapshot;
-        state.revision++;
-    }
-
-    public synchronized void junitFinished() {
-        state.setStage(ProgressStage.completed, "grading & JUnit checks finished", Duration.ZERO);
+    public synchronized void completed() {
+        state.setStage(ProgressStage.completed, "grading finished & scoresheet saved", Duration.ZERO);
     }
 
     @Override
