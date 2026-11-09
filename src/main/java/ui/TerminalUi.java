@@ -7,7 +7,7 @@ import dev.tamboui.tui.event.KeyCode;
 import dev.tamboui.tui.event.KeyEvent;
 import dev.tamboui.tui.event.PasteEvent;
 import dev.tamboui.tui.event.TickEvent;
-import grading.verification.JUnitRunner;
+import app.GradingWorkflow;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -28,7 +28,7 @@ public class TerminalUi { //runs terminal setup & grading with background work &
         StringBuilder input = new StringBuilder();
         view = null;
         setupFailure = null;
-        var task = new FutureTask<>(() -> JUnitRunner.run(setup.config(), progress));
+        var task = new FutureTask<>(() -> GradingWorkflow.run(setup.config(), progress));
         Thread worker = new Thread(task, "worker"); //lambda > execute > store grades > task object
         ResourceUsage resources = new ResourceUsage();
 

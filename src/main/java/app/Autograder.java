@@ -1,5 +1,9 @@
 package app;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
 import assessment.AssessmentDefinition;
 import assessment.AssessmentLoader;
 import assessment.TesterDefinition;
@@ -7,20 +11,14 @@ import assessment.TesterLoader;
 import config.Config;
 import grading.AssessmentGrader;
 import grading.QuestionGrade;
-import grading.QuestionGrader;
-import utils.files.TemporaryDirectory;
-import utils.process.Interruptions;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-import report.ScoreSheetCreator;
 import grading.progress.ProgressListener;
 import submission.StudentDetails;
-import submission.StudentRosterReader;
+import submission.StudentRosterBuilder;
 import submission.StudentSubmission;
 import submission.SubmissionLoader;
 import submission.files.SubmissionFileFinder;
+import utils.files.TemporaryDirectory;
+import utils.process.Interruptions;
 import validation.SubmissionValidator;
 import validation.rules.AnswerFileRule;
 import validation.rules.StudentHeaderRule;
@@ -53,7 +51,7 @@ public final class Autograder { //coordinates assessment loading, submission val
         try (var workspace = new TemporaryDirectory("autograder-submissions-")) {
             try {
                 progress.preparing("reading student scoresheet");
-                List<StudentDetails> roster = prepareRoster(config, workspace.path(), progress);
+                List<StudentDetails> roster = prepareRoster(config);
                 progress.preparing("extracting submission zip files");
                 List<StudentSubmission> submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace.path(), roster, assessment);
                 if (submissions.isEmpty()) throw new IOException("no submission ZIP files found");
@@ -65,22 +63,16 @@ public final class Autograder { //coordinates assessment loading, submission val
                     validator.validate(submission, assessment);
                 }
 
-                var questionGrader = new QuestionGrader(config.getCompilationTimeout(), config.getExecutionTimeout());
-                return new AssessmentGrader(questionGrader).grade(submissions, assessment, testers, progress);
+                var assessmentGrader = new AssessmentGrader(config.getNumGradingWorkers(), config.getCompilationTimeout(), config.getExecutionTimeout());
+                return assessmentGrader.grade(submissions, assessment, testers, progress);
             } finally {
                 progress.preparing("cleaning up temporary files");
             }
         }
     }
 
-    private static List<StudentDetails> prepareRoster(Config config, Path workspace, ProgressListener progress) throws IOException {
-        if (ScoreSheetCreator.createIfMissing(config.getScoresheetFile(), config.getSubmissionsDirectory())) {
-            String message = "scoresheet not found > created " + config.getScoresheetFile();
-            progress.preparing(message);
-            if (progress == ProgressListener.NONE) System.out.println(message);
-        }
-       
-        List<StudentDetails> roster = new StudentRosterReader().read(config.getScoresheetFile(), workspace.resolve("csv.log.jsonl"));
+    private static List<StudentDetails> prepareRoster(Config config) throws IOException {
+        List<StudentDetails> roster = StudentRosterBuilder.build(config.getSubmissionsDirectory());
         if (roster.isEmpty()) throw new IOException("no valid students found in scoresheet");
         return roster;
     }

@@ -43,6 +43,8 @@ public class StudentHeaderRule implements QuestionValidationRule { //compares an
 
     private void checkField(String found, String field, String expected, String questionId, Path file, List<SubmissionIssue> issues) {
         boolean missing = found == null || found.isEmpty();
+        //Reduced rosters provide no name/email to compare, but missing headers still matter.
+        if (!missing && (expected == null || expected.isBlank())) return;
         if (missing || expected == null || !found.equalsIgnoreCase(expected.strip())) {
             String value = found == null ? "(missing)" : found.isEmpty() ? "(blank)" : found;
             issues.add(SubmissionIssue.warning(missing ? "missing student header" : "mismatched student header", file.getFileName() + " > " + field + ": expected [" + expected + "] but found [" + value + "]", questionId));

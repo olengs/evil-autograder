@@ -2,8 +2,8 @@ package utils.files;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
 public final class TemporaryDirectory implements AutoCloseable { //owns a temporary directory & deletes it when closed

@@ -1,12 +1,11 @@
 package grading.progress;
 
-public enum ProgressStage { //defines preparation, grading, verification & final run stages
+public enum ProgressStage { //defines preparation, grading & final run stages
     loading,
     validating,
     preparing,
     compiling,
     running,
-    verifying,
     completed,
     failed
 }

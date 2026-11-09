@@ -1,6 +1,5 @@
 package assessment;
 
-import utils.files.FileUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +9,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import utils.files.FileUtils;
 
 public final class AssessmentLoader { //discovers question templates & their support files
     private AssessmentLoader() {}

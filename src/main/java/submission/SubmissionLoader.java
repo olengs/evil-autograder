@@ -1,14 +1,15 @@
 package submission;
 
-import assessment.AssessmentDefinition;
-import utils.files.FileUtils;
-import utils.process.Interruptions;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
+import assessment.AssessmentDefinition;
+import utils.files.FileUtils;
+import utils.process.Interruptions;
 import validation.SubmissionIssue;
 
 public final class SubmissionLoader { //extracts submissions, matches students & records preparation failures
@@ -27,9 +28,34 @@ public final class SubmissionLoader { //extracts submissions, matches students &
 
             try {
                 ZipExtractor.extract(zipFile, extractionDirectory);
-                submission = new StudentSubmission(student, zipFile, findAnswerRoot(extractionDirectory, assessment));
+                Path answerRoot = findAnswerRoot(extractionDirectory, assessment);
+                boolean identifiedFromFolder = false;
+                if (student == null && !answerRoot.equals(extractionDirectory)) {
+                    student = studentIdentifier.identifyFolder(answerRoot, roster);
+                    identifiedFromFolder = student != null;
+                }
+                List<SubmissionIssue> headerIssues = new ArrayList<>();
                 if (student == null) {
-                    submission.addIssues(List.of(SubmissionIssue.error("unknown student", "no match for " + zipFile.getFileName(), null)));
+                    try {
+                        student = studentIdentifier.identifyHeaders(answerRoot, roster, headerIssues);
+                    } catch (IOException error) {
+                        if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
+                        headerIssues.add(SubmissionIssue.warning("header read error", "unable to inspect headers > " + error.getMessage(), null));
+                    }
+                }
+                submission = new StudentSubmission(student, zipFile, answerRoot);
+                submission.addIssues(headerIssues);
+                if (identifiedFromFolder) {
+                    submission.addIssues(List.of(SubmissionIssue.warning("archive name", "identified " + student.getUsername()
+                            + " from extracted folder > archive named " + zipFile.getFileName(), null)));
+                }
+                if (student == null) {
+                    boolean hasStudentNumber = SubmissionFileNames.username(zipFile).strip().matches("[0-9]{8}")
+                            || (!answerRoot.equals(extractionDirectory) && answerRoot.getFileName().toString().strip().matches("[0-9]{8}"));
+                    String message = "no match for " + zipFile.getFileName();
+                    submission.addIssues(List.of(hasStudentNumber
+                            ? SubmissionIssue.warning("unknown student", message + " > student number supplied > grading without username", null)
+                            : SubmissionIssue.error("unknown student", message, null)));
                 }
             } catch (IOException error) {
                 if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;

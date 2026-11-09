@@ -1,11 +1,12 @@
 package grading.progress;
 
-import grading.GradeStatus;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import grading.GradeStatus;
 
 final class ProgressState { //stores mutable progress state & caches UI snapshots
     ProgressStage stage = ProgressStage.loading;
@@ -14,6 +15,7 @@ final class ProgressState { //stores mutable progress state & caches UI snapshot
     String question = "";
     List<String> questions = List.of();
     final Map<String, GradeStatus> results = new LinkedHashMap<>();
+    final Map<String, StudentProgressSnapshot> activeStudents = new LinkedHashMap<>();
     int totalStudents;
     int processedStudents;
     int processedQuestions;
@@ -31,13 +33,12 @@ final class ProgressState { //stores mutable progress state & caches UI snapshot
     ProgressSnapshot cachedSnapshot; //copy of progress information for ui
     boolean totalsKnown;
     boolean submissionActive;
-    JUnitSnapshot junit = JUnitSnapshot.DISABLED;
 
     ProgressSnapshot snapshot() {
         //refreshes live time every tick & reuses snapshots while paused or finished
         Duration elapsed = totalElapsed();
         if (cachedSnapshot == null || cachedSnapshot.revision() != revision || cachedSnapshot.totalElapsed().toMillis() / 250 != elapsed.toMillis() / 250) {
-            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, junit, elapsed, estimatedTotal);
+            cachedSnapshot = new ProgressSnapshot(stage, message, student, question, questions, results, totalStudents, processedStudents, processedQuestions, stageStarted, timeout, revision, totalsKnown, elapsed, estimatedTotal, List.copyOf(activeStudents.values()));
         }
         return cachedSnapshot;
     }

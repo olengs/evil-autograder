@@ -1,9 +1,5 @@
 package grading;
 
-import assessment.QuestionDefinition;
-import assessment.TesterDefinition;
-import utils.files.FileUtils;
-import utils.files.TemporaryDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,8 +8,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import assessment.QuestionDefinition;
+import assessment.TesterDefinition;
 import submission.QuestionAttempt;
 import submission.files.SubmissionFileFinder;
+import utils.files.FileUtils;
+import utils.files.TemporaryDirectory;
 
 public class GradingWorkspace implements AutoCloseable { //copies answer, support & tester files into a temporary grading directory
     private final TemporaryDirectory temporaryDirectory;

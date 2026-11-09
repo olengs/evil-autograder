@@ -1,22 +1,22 @@
 package grading;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+
 import assessment.QuestionDefinition;
 import assessment.TesterDefinition;
+import grading.progress.ProgressListener;
+import submission.QuestionAttempt;
 import utils.files.FileUtils;
 import utils.files.TemporaryDirectory;
 import utils.process.JavaTools;
 import utils.process.ProcessExecutor;
 import utils.process.ProcessResult;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import submission.QuestionAttempt;
-import grading.progress.ProgressListener;
 
-public class QuestionGrader implements QuestionGrading { //compiles answers, runs tester & totals completed test-case marks
+public class QuestionGrader { //compiles answers, runs tester & totals completed test-case marks
     private final Duration compilationTimeout;
     private final Duration executionTimeout;
 
@@ -25,7 +25,6 @@ public class QuestionGrader implements QuestionGrading { //compiles answers, run
         this.executionTimeout = executionTimeout;
     }
 
-    @Override
     public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester, ProgressListener progress) throws IOException {
         try (GradingWorkspace workspace = new GradingWorkspace()) {
             workspace.prepare(question, attempt, tester);

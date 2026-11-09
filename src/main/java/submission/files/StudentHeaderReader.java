@@ -8,10 +8,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class StudentHeaderReader { //reads student name & email fields from source comments or text
-    private static final int maxHeaderLines = 15;
-    private static final Pattern leadingComments = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)");
-    private static final Pattern nameField = fieldPattern("Name");
-    private static final Pattern emailField = fieldPattern("Email(?:\\h+ID)?");
+    private static final int MAX_HEADER_LINES = 15;
+    private static final Pattern LEADING_COMMENTS = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)");
+    private static final Pattern NAME_FIELD = fieldPattern("Name");
+    private static final Pattern EMAIL_FIELD = fieldPattern("Email(?:\\h+ID)?");
 
     //a null field is missing > an empty field has a label but no value
     public record Header(String name, String email) {}
@@ -21,12 +21,12 @@ public final class StudentHeaderReader { //reads student name & email fields fro
     //reads leading comments within first 15 lines > preserve missing versus blank fields
     public static Header read(Path file) throws IOException {
         String header = readHeader(file);
-        return new Header(readField(header, nameField), readField(header, emailField));
+        return new Header(readField(header, NAME_FIELD), readField(header, EMAIL_FIELD));
     }
 
     //finds first nonblank name & email across source text when creating a student list when none is provided
     public static Header readFields(String source) {
-        return new Header(firstNonBlankField(source, nameField), firstNonBlankField(source, emailField));
+        return new Header(firstNonBlankField(source, NAME_FIELD), firstNonBlankField(source, EMAIL_FIELD));
     }
 
     private static String firstNonBlankField(String source, Pattern pattern) {
@@ -49,20 +49,22 @@ public final class StudentHeaderReader { //reads student name & email fields fro
         return match.find() ? match.group(1).strip() : null;
     }
 
-    private static Pattern fieldPattern(String label) {
-        return Pattern.compile("^\\h*(?://|/\\*|\\*)?\\h*" + label + "\\h*:\\h*(.*?)\\h*(?:\\*/)?\\h*$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE);
+    private static Pattern fieldPattern(String labelRegex) {
+        // Concatenates comment/whitespace prefix + the specific field regex + end of line
+        String fullRegex = "^\\h*(?://|/\\*|\\*)?\\h*" + labelRegex + "\\h*:\\h*([^\\r\\n]*)$";
+        return Pattern.compile(fullRegex, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE);
     }
 
     private static String readHeader(Path file) throws IOException {
         StringBuilder source = new StringBuilder();
         try (BufferedReader reader = Files.newBufferedReader(file)) {
-            for (int count = 0; count < maxHeaderLines; count++) {
+            for (int count = 0; count < MAX_HEADER_LINES; count++) {
                 String line = reader.readLine();
                 if (line == null) break;
                 source.append(line).append('\n');
             }
         }
-        Matcher comments = leadingComments.matcher(source);
+        Matcher comments = LEADING_COMMENTS.matcher(source);
         return comments.find() ? comments.group(1) : "";
     }
 }
