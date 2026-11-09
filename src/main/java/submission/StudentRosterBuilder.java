@@ -22,7 +22,7 @@ public class StudentRosterBuilder {
 
         for (Path zip : SubmissionArchives.listZipFiles(submissionsFolder)) {
             Interruptions.check("scoresheet creation interrupted");
-            String username = SubmissionFileNames.username(zip);
+            String username = SubmissionFileNames.username(zip).strip();
             if (!CommonPatternChecker.ofUsernamePattern(username)) {
                 username = "";
             }
@@ -44,7 +44,6 @@ public class StudentRosterBuilder {
         return studentDetails;
         
     }
-
     
     private static String readJavaSources(Path zip) throws InterruptedIOException {
         Interruptions.check("roster builder interrupted");
