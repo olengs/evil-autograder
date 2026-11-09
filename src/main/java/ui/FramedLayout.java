@@ -17,15 +17,16 @@ final class FramedLayout {
     static void draw(Frame frame, Rect area, Path project, ProgressSnapshot snapshot,
             long displayedSecond, ResourceUsage.Sample resources, String commandText) {
         int width = Math.min(area.width() - 2, 96);
-        boolean compact = area.height() < 32;
-        int height = Math.min(area.height() - (compact ? 0 : 2), Math.max(30, Math.min(36, snapshot.questions().size() + 25)));
+        boolean compact = snapshot.isFinished() || area.height() < 32;
+        int wantedHeight = snapshot.isFinished() ? SummaryPanel.preferredHeight(width - 6, snapshot) + 13 : Math.max(30, Math.min(36, snapshot.questions().size() + 25));
+        int height = Math.min(area.height() - (compact ? 0 : 2), wantedHeight);
         Rect outer = new Rect(area.x() + (area.width() - width) / 2, area.y() + (compact ? 0 : 1), width, height);
         Rect inner = box(frame, outer, "evil autograder");
         Rect content = new Rect(inner.x() + 1, inner.y(), inner.width() - 2, inner.height());
         drawLine(frame, content, 0, "project > " + safeText(project.toString()), muted);
 
         int commandY = content.y() + content.height() - 3;
-        boolean extraPadding = area.height() >= 34;
+        boolean extraPadding = !snapshot.isFinished() && area.height() >= 34;
         int resourceHeight = extraPadding ? 7 : 5;
         int resourceY = commandY - resourceHeight - (compact ? 0 : 1);
         int bodyY = content.y() + (compact ? 1 : 2);

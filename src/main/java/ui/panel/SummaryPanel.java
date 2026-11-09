@@ -4,6 +4,7 @@ import static utils.ui.UiDrawing.*;
 import dev.tamboui.layout.Rect;
 import dev.tamboui.style.Overflow;
 import dev.tamboui.terminal.Frame;
+import dev.tamboui.text.CharWidth;
 import dev.tamboui.widgets.paragraph.Paragraph;
 import java.util.Locale;
 import grading.progress.ProgressSnapshot;
@@ -13,6 +14,13 @@ import grading.progress.ProgressStage;
 // draws final counts, timing & failure details
 public final class SummaryPanel { 
     private SummaryPanel() {}
+
+    public static int preferredHeight(int width, ProgressSnapshot snapshot) {
+        if (snapshot.stage() != ProgressStage.failed) return 6;
+        int messageWidth = CharWidth.of(safeText(snapshot.message()));
+        int columns = Math.max(1, width);
+        return 6 + Math.max(1, (messageWidth + columns - 1) / columns);
+    }
 
     public static void drawSummary(Frame frame, Rect area, ProgressSnapshot snapshot) { //shared summary for both terminal layouts
         boolean failed = snapshot.stage() == ProgressStage.failed;

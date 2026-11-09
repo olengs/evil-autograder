@@ -60,8 +60,7 @@ public class GradingView {
 
         int width = Math.min(area.width() - 4, 96);
         boolean columns = width >= 68;
-        int wantedHeight = snapshot.isFinished() ? 10 + (snapshot.stage() == ProgressStage.failed ? 3 : 0)
-                : Math.max(14, Math.min(24, snapshot.questions().size() + (columns ? 9 : 13))) + (columns ? 0 : 3);
+        int wantedHeight = snapshot.isFinished() ? SummaryPanel.preferredHeight(width, snapshot) + 4 : Math.max(14, Math.min(24, snapshot.questions().size() + (columns ? 9 : 13))) + (columns ? 0 : 3);
         int resourceMinimum = snapshot.isFinished() ? (snapshot.stage() == ProgressStage.failed ? 23 : 20) : (columns ? 19 : 22);
         boolean showResources = area.height() >= resourceMinimum;
         int height = Math.min(area.height() - 2, wantedHeight + (showResources ? 4 : 0));
