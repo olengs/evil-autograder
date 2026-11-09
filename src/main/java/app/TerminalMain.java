@@ -1,6 +1,8 @@
 package app;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.concurrent.CancellationException;
 
@@ -13,6 +15,7 @@ public class TerminalMain { //starts terminal UI & logs failures or cancellation
     public static void main(String[] args) {
         Path logFile = Path.of("log", "tui.log.jsonl");
         int status = 0;
+        System.setOut(new PrintStream(OutputStream.nullOutputStream()));
         try {
             JsonLineLogger.getInstance().Init(logFile);
             new TerminalUi().run(Path.of(args.length == 0 ? "config.properties" : args[0]));

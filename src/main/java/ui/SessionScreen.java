@@ -4,7 +4,6 @@ import static utils.ui.UiDrawing.*;
 import dev.tamboui.buffer.Cell;
 import dev.tamboui.layout.Rect;
 import dev.tamboui.terminal.Frame;
-import dev.tamboui.widgets.gauge.Gauge;
 import dev.tamboui.widgets.paragraph.Paragraph;
 import dev.tamboui.style.Overflow;
 import generation.progress.GenerationSnapshot;
@@ -39,8 +38,8 @@ final class SessionScreen {
         
         // This bar measures validated outcomes, not the unknown duration of the AI request.
         if (body.height() > 2 && !snapshot.questions().isEmpty())
-            frame.renderWidget(Gauge.builder().ratio(snapshot.ratio()).label(snapshot.outcomes().size() + "/" + snapshot.questions().size() + " processed")
-                    .style(base).gaugeStyle(cyan).build(), new Rect(body.x(), body.y() + 2, body.width(), 1));
+            drawProgressBar(frame, new Rect(body.x(), body.y() + 2, body.width(), 1), snapshot.ratio(),
+                    snapshot.outcomes().size() + "/" + snapshot.questions().size() + " processed");
         if (snapshot.finished() && snapshot.outcomes().isEmpty() && body.height() > 3) {
             frame.renderWidget(Paragraph.builder().text(safeText(snapshot.message())).style(snapshot.failed() ? red : base)
                     .overflow(Overflow.WRAP_WORD).build(), new Rect(body.x(), body.y() + 3, body.width(), body.height() - 3));
