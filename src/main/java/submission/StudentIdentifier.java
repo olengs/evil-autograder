@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 
 import submission.files.StudentHeaderReader;
 import utils.process.Interruptions;
@@ -15,13 +14,13 @@ import validation.SubmissionIssue;
 
 public class StudentIdentifier { //matches ZIP filenames to roster usernames without regard to case
     public StudentDetails identify(Path zipFile, List<StudentDetails> roster) {
-        String username = normalizeUsername(SubmissionFileNames.username(zipFile));
+        String username = CommonPatternChecker.normalizeUsername(SubmissionFileNames.username(zipFile));
 
         return findStudent(username, roster);
     }
 
     public StudentDetails identifyFolder(Path answerRoot, List<StudentDetails> roster) {
-        String username = normalizeUsername(answerRoot.getFileName().toString());
+        String username = CommonPatternChecker.normalizeUsername(answerRoot.getFileName().toString());
         return resolveCandidate(username, "", username, roster);
     }
 
@@ -40,7 +39,7 @@ public class StudentIdentifier { //matches ZIP filenames to roster usernames wit
                     continue;
                 }
                 if (header.email() == null || header.email().isBlank()) continue;
-                String username = normalizeUsername(header.email().split("@", 2)[0]);
+                String username = CommonPatternChecker.normalizeUsername(header.email().split("@", 2)[0]);
                 StudentDetails student = resolveCandidate(username, header.name() == null ? "" : header.name(), header.email().strip(), roster);
                 if (student != null) candidates.putIfAbsent(username, student);
             }
@@ -52,7 +51,7 @@ public class StudentIdentifier { //matches ZIP filenames to roster usernames wit
     private StudentDetails findStudent(String username, List<StudentDetails> roster) {
         if (!CommonPatternChecker.ofUsernamePattern(username)) return null;
         for (StudentDetails student : roster) {
-            if (normalizeUsername(student.getUsername()).equals(username)) {
+            if (CommonPatternChecker.normalizeUsername(student.getUsername()).equals(username)) {
                 return student;
             }
         }
@@ -63,10 +62,6 @@ public class StudentIdentifier { //matches ZIP filenames to roster usernames wit
         if (!CommonPatternChecker.ofUsernamePattern(username)) return null;
         StudentDetails student = findStudent(username, roster);
         return student == null ? new StudentDetails(name, username, email) : student;
-    }
-
-    private String normalizeUsername(String username) {
-        return username.strip().toLowerCase(Locale.ROOT);
     }
 
 }

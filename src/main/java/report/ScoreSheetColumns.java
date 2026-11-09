@@ -14,11 +14,6 @@ public final class ScoreSheetColumns { //defines shared student CSV column posit
         return Arrays.stream(row).allMatch(String::isBlank);
     }
 
-    //Strip CSV decorations consistently while preserving characters inside usernames.
-    public static String normalizeUsername(String value) {
-        return value.strip().replaceFirst("^#+_?", "").strip();
-    }
-
     public static void validateHeader(String[] row) throws IOException {
         String[] expected = header();
         if (row.length < expected.length) throw new IOException("scoresheet header must contain username and grade columns");

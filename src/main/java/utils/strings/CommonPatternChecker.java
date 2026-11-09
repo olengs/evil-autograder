@@ -1,5 +1,6 @@
 package utils.strings;
 
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 public class CommonPatternChecker {
@@ -9,6 +10,11 @@ public class CommonPatternChecker {
 
     public static boolean ofUsernamePattern(String input) {
         return USERNAME_PATTERN.matcher(input).matches();
+    }
+
+    //Strip CSV decorations and normalize while preserving characters inside usernames.
+    public static String normalizeUsername(String value) {
+        return value.strip().replaceFirst("^#+_?", "").strip().toLowerCase(Locale.ROOT);
     }
 
 }
