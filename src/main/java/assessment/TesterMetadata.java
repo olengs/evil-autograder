@@ -58,7 +58,7 @@ public final class TesterMetadata {
     public static Map<String, Integer> readCaseCounts(Path root) throws IOException {
         Path file = root.resolve("numTestCases.txt");
         Map<String, Integer> counts = new LinkedHashMap<>();
-        if (!Files.exists(file)) return counts;
+        if (!Files.exists(file) || Files.readString(file).isBlank()) return counts;
         for (var entry : read(file).entrySet()) {
             double value = entry.getValue();
             if (value != Math.rint(value) || value > Integer.MAX_VALUE) {

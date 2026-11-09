@@ -3,6 +3,10 @@ package utils.process;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.List;
+import java.util.ArrayList;
+import utils.files.FileUtils;
 
 public final class JavaTools { //locates java & javac in JDK running autograder
     private JavaTools() {}
@@ -13,6 +17,42 @@ public final class JavaTools { //locates java & javac in JDK running autograder
 
     public static Path getRuntimePath() {
         return findTool("java");
+    }
+
+    public static ProcessResult compile(Path workspaceDirectory, Path classesDirectory, Duration timeout) throws IOException {
+        List<String> command = new ArrayList<>();
+        command.add(JavaTools.getCompilerPath().toString());
+        command.add("-d");
+        command.add(classesDirectory.toString());
+        command.add("-cp");
+        command.add(workspaceDirectory.toString());
+
+        List<Path> sources;
+        //workspace's direct java files are compilation unit > nested data stays as resources
+        try (var files = FileUtils.streamRegularFiles(workspaceDirectory)) {
+            sources = files.filter(path -> path.getFileName().toString().endsWith(".java")).sorted().toList();
+        }
+        if (sources.isEmpty()) {
+            throw new IOException("No Java sources in " + workspaceDirectory);
+        }
+        for (Path source : sources) {
+            command.add(source.toString());
+        }
+
+        ProcessBuilder builder = new ProcessBuilder(command).directory(workspaceDirectory.toFile());
+        return ProcessExecutor.run(builder, timeout, "javac could not be started");
+    }
+
+    public static ProcessResult run(Path workspaceDirectory, Path classesDirectory, String mainClassName, Duration timeout) {
+        //include compiled classes & workspace resources > use current os's classpath separator
+        String classpath = classesDirectory + java.io.File.pathSeparator + workspaceDirectory;
+        ProcessBuilder builder = new ProcessBuilder(JavaTools.getRuntimePath().toString(), "-cp", classpath, mainClassName);
+        builder.directory(workspaceDirectory.toFile());
+        return ProcessExecutor.run(builder, timeout, "java execution failed");
+    }
+
+    public static Path getDisassemblerPath() {
+        return findTool("javap");
     }
 
     private static Path findTool(String toolName) {
