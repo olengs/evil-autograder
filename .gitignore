@@ -32,6 +32,7 @@ replay_pid*
 #juny
 rawr/
 target/
-project/
 log/
+project/
+Input/
 output/
