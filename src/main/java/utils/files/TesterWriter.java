@@ -22,7 +22,7 @@ public final class TesterWriter {
         StringBuilder marks = new StringBuilder();
         for (QuestionSpec spec : specs) {
             Double allocation = allocations.get(spec.id().toLowerCase(Locale.ROOT));
-            if (allocation == null || !Double.isFinite(allocation) || allocation <= 0) {
+            if (allocation == null || (!Double.isFinite(allocation * 2) || allocation <= 0 || allocation * 2 != Math.floor(allocation * 2))) {
                 throw new IOException("missing or invalid marks.txt allocation > " + spec.id());
             }
             marks.append(spec.id()).append(':')

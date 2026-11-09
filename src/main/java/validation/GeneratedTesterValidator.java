@@ -30,14 +30,14 @@ public class GeneratedTesterValidator {
         this.executionTimeout = executionTimeout;
     }
 
-    public ValidationResult validate(QuestionSpec spec, String source, int expectedCases, int marks) throws InterruptedIOException {
+    public ValidationResult validate(QuestionSpec spec, String source, int expectedCases, double marks) throws InterruptedIOException {
         return validate(spec, source, expectedCases, marks, List.of());
     }
 
-    public ValidationResult validate(QuestionSpec spec, String source, int expectedCases, int marks,
+    public ValidationResult validate(QuestionSpec spec, String source, int expectedCases, double marks,
             List<ResourceFile> resources) throws InterruptedIOException {
         Interruptions.check("tester validation interrupted");
-        if (marks <= 0) return failed(Stage.parse, "positive marks are required");
+        if ((!Double.isFinite(marks * 2) || marks <= 0 || marks * 2 != Math.floor(marks * 2))) return failed(Stage.parse, "marks must be positive whole or half marks");
         if (expectedCases <= 0 || expectedCases % marks != 0) {
             return failed(Stage.parse, "numTestCases must be a positive multiple of marks");
         }
