@@ -7,7 +7,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.file.PathUtils;
-import org.apache.commons.io.file.StandardDeleteOption;
 
 public final class FileUtils { //lists files, copies replacement files & deletes directories
     private FileUtils() {}
@@ -27,7 +26,6 @@ public final class FileUtils { //lists files, copies replacement files & deletes
         Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
     }
 
-    // Use directory-relative operations that never follow links, including during concurrent swaps.
     public static void deleteDirectory(Path folder) throws IOException {
         if (folder == null) {
             throw new IOException("Path is null");
@@ -39,6 +37,6 @@ public final class FileUtils { //lists files, copies replacement files & deletes
             throw new IOException("Cannot delete a filesystem root > " + path);
         }
         
-        PathUtils.deleteDirectory(path, StandardDeleteOption.OVERRIDE_READ_ONLY);
+        PathUtils.deleteDirectory(path);
     }
 }
