@@ -29,12 +29,12 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
         try (GradingWorkspace workspace = new GradingWorkspace()) {
             workspace.prepare(question, attempt, tester);
             try (TemporaryDirectory classes = new TemporaryDirectory("autograder-classes-")) {
-                return gradeInWorkspace(question.getId(), tester.getMainClassName(), workspace.getDirectory(), classes.path(), progress);
+                return gradeInWorkspace(question.getId(), tester, workspace.getDirectory(), classes.path(), progress);
             }
         }
     }
 
-    private QuestionGrade gradeInWorkspace(String questionId, String mainClassName, Path workspaceDirectory, Path classesDirectory, ProgressListener progress) throws IOException {
+    private QuestionGrade gradeInWorkspace(String questionId, TesterDefinition tester, Path workspaceDirectory, Path classesDirectory, ProgressListener progress) throws IOException {
         progress.compilationStarted(questionId, compilationTimeout);
         ProcessResult compilationResult = compile(workspaceDirectory, classesDirectory);
         if (compilationResult.isTimedOut()) {
@@ -45,7 +45,7 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
         }
 
         progress.executionStarted(questionId, executionTimeout);
-        ProcessResult executionResult = executeTester(workspaceDirectory, classesDirectory, mainClassName);
+        ProcessResult executionResult = executeTester(workspaceDirectory, classesDirectory, tester.getMainClassName());
         if (!executionResult.isTimedOut() && !executionResult.isSuccessful()) {
             return failedGrade(questionId, GradeStatus.runtimeError, executionResult, "tester failed");
         }
@@ -71,10 +71,17 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
                     "invalid tester output > " + error.getMessage());
         }
 
-        double earnedMarks = 0;
-        for (TestCaseResult testCase : testResults) {
-            earnedMarks += testCase.getEarnedMarks();
+        int totalCases = tester.getNumTestCases();
+        if (totalCases > 0 && (testResults.size() > totalCases
+                || (status == GradeStatus.completed && testResults.size() != totalCases))) {
+            return failedGrade(questionId, GradeStatus.runtimeError, executionResult,
+                    "tester output does not match declared numTestCases > " + totalCases);
         }
+        if (totalCases == 0 && status == GradeStatus.completed) totalCases = testResults.size();
+        if (totalCases == 0) message = "execution timed out > no numTestCases metadata; partial marks unavailable";
+        double weight = totalCases == 0 ? 0 : tester.getMaximumMarks() / totalCases;
+        testResults = testResults.stream().map(result -> result.scaled(weight)).toList();
+        double earnedMarks = testResults.stream().mapToDouble(TestCaseResult::getEarnedMarks).sum();
         return new QuestionGrade(questionId, status, earnedMarks, testResults, executionResult, message);
     }
 

@@ -12,6 +12,15 @@ public class TesterOutputParser {
     //parses tester cases & keeps completed outcomes after a timeout
     private static final Pattern testHeader = Pattern.compile("^Test ([^:]+):.*$");
 
+    public static boolean isTestHeader(String line) {
+        return testHeader.matcher(line.strip()).matches();
+    }
+
+    public static boolean isOutcome(String line) {
+        String trimmed = line.strip();
+        return trimmed.equalsIgnoreCase("Passed") || trimmed.equalsIgnoreCase("Failed") || trimmed.startsWith("Failed -> ");
+    }
+
     public List<TestCaseResult> parse(String output) {
         return parse(output, false);
     }

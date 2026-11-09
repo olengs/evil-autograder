@@ -63,12 +63,18 @@ public final class JsonLineLogger {
         Init(logFile);
     }
 
-    public void append(Status status, String feature, String message) throws IOException {
+    public void append(Status status, String feature, String message) {
         if (!hasInit) throw new RuntimeException("using Json Logger without initialization");
         if (!flags.contains(status)) return;
 
         logs.add(gson.toJson(Map.of("status", status.toString(), "message", String.format("[%s]: %s", feature, message))));
-        if (logs.size() >= CAPACITY_THRESHOLD) flush();
+        if (logs.size() >= CAPACITY_THRESHOLD) {
+            try {
+                flush();
+            } catch (IOException e) {
+                System.err.println("Logging is disabled as writing to logfile is throwing: " + e.getMessage());
+            }
+        }
     }
 
     public void flush() throws IOException {
