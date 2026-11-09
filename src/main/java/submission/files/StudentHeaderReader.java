@@ -61,6 +61,9 @@ public final class StudentHeaderReader { //reads student name & email fields fro
             for (int count = 0; count < MAX_HEADER_LINES; count++) {
                 String line = reader.readLine();
                 if (line == null) break;
+                if (count == 0 && line.startsWith("\uFEFF")) {
+                    line = line.substring(1);
+                }
                 source.append(line).append('\n');
             }
         }
