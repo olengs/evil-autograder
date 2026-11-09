@@ -51,7 +51,7 @@ public final class StudentHeaderReader { //reads student name & email fields fro
 
     private static Pattern fieldPattern(String labelRegex) {
         // Concatenates comment/whitespace prefix + the specific field regex + end of line
-        String fullRegex = "^\\h*(?://|/\\*|\\*)?\\h*" + labelRegex + "\\s*$";
+        String fullRegex = "^\\h*(?://|/\\*|\\*)?\\h*" + labelRegex + "\\h*:\\h*([^\\r\\n]*)$";
         return Pattern.compile(fullRegex, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.MULTILINE);
     }
 

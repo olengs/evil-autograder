@@ -28,7 +28,17 @@ public final class SubmissionLoader { //extracts submissions, matches students &
 
             try {
                 ZipExtractor.extract(zipFile, extractionDirectory);
-                submission = new StudentSubmission(student, zipFile, findAnswerRoot(extractionDirectory, assessment));
+                Path answerRoot = findAnswerRoot(extractionDirectory, assessment);
+                boolean identifiedFromFolder = false;
+                if (student == null && !answerRoot.equals(extractionDirectory)) {
+                    student = studentIdentifier.identifyFolder(answerRoot, roster);
+                    identifiedFromFolder = student != null;
+                }
+                submission = new StudentSubmission(student, zipFile, answerRoot);
+                if (identifiedFromFolder) {
+                    submission.addIssues(List.of(SubmissionIssue.warning("archive name", "identified " + student.getUsername()
+                            + " from extracted folder > archive named " + zipFile.getFileName(), null)));
+                }
                 if (student == null) {
                     submission.addIssues(List.of(SubmissionIssue.error("unknown student", "no match for " + zipFile.getFileName(), null)));
                 }
