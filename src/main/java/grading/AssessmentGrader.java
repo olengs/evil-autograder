@@ -99,11 +99,16 @@ public class AssessmentGrader { //grades each submission in question order & rec
 
     private List<QuestionGrade> gradeSubmission(StudentSubmission submission, AssessmentDefinition assessment, Map<String, TesterDefinition> testers, ProgressListener progress) throws IOException {
         List<QuestionGrade> grades = new ArrayList<>();
+        String archive = submission.getOriginalZip().toAbsolutePath().normalize().toString();
+        String identity = submission.getStudent() == null ? "" : submission.getStudent().getUsername();
+        String studentLabel = "[student=" + (identity == null || identity.isBlank() ? archive : identity)
+                + "][archive=" + archive + "]";
         for (QuestionDefinition question : assessment.getQuestions()) {
             Interruptions.check("grading interrupted");
             progress.questionStarted(question.getId());
             TesterDefinition tester = testers.get(question.getId().toLowerCase(Locale.ROOT));
-            QuestionGrade grade = gradeOrSkipQuestion(submission, question, tester, progress);
+            QuestionGrade grade = gradeOrSkipQuestion(submission, question, tester, progress, studentLabel);
+            logQuestionSummary(studentLabel, grade, tester);
             grades.add(grade);
             progress.questionFinished(question.getId(), grade.getStatus());
         }
@@ -111,16 +116,10 @@ public class AssessmentGrader { //grades each submission in question order & rec
     }
 
     private QuestionGrade gradeOrSkipQuestion(StudentSubmission submission, QuestionDefinition question,
-            TesterDefinition tester, ProgressListener progress) throws IOException {
+            TesterDefinition tester, ProgressListener progress, String studentLabel) throws IOException {
         
         QuestionAttempt attempt = submission.findAttempt(question.getId()).orElse(null);
         if (attempt == null) {
-            JsonLineLogger.getInstance().append(Status.WARNING, "AssessmentGrader", 
-                String.format("Skipped grading for [%s] because attempt not found for question [%s]",
-                    submission.getStudent().getUsername(), question.getId()
-                )
-            );
-
             return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), 
                 "question not attempted");
         }
@@ -133,12 +132,33 @@ public class AssessmentGrader { //grades each submission in question order & rec
             return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), skipReason);
         }
         try {
-            return questionGrader.get().grade(question, attempt, tester, progress);
+            return questionGrader.get().grade(question, attempt, tester, progress, studentLabel);
         } catch (IOException error) {
             if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
             return new QuestionGrade(question.getId(), GradeStatus.runtimeError, 0, List.of(),
                     "question grading failed > " + error.getMessage());
         }
+    }
+
+    // One summary per question, including skipped questions and partial timeout results.
+    private void logQuestionSummary(String studentLabel, QuestionGrade grade, TesterDefinition tester) {
+        long passed = grade.getTestCaseResults().stream().filter(TestCaseResult::isPassed).count();
+        int completed = grade.getTestCaseResults().size();
+        int expected = tester == null ? 0 : tester.getNumTestCases();
+        if (expected == 0 && grade.getStatus() == GradeStatus.completed) expected = completed;
+        String cases = expected > 0 ? passed + "/" + expected + " test cases passed"
+                : passed + " test cases passed; expected total unknown";
+        String marks = Double.toString(grade.getEarnedMarks())
+                + (tester == null ? " (maximum unknown)" : "/" + tester.getMaximumMarks());
+        Status level = switch (grade.getStatus()) {
+            case completed -> Status.LOG;
+            case skipped, timeout -> Status.WARNING;
+            default -> Status.ERROR;
+        };
+        JsonLineLogger.getInstance().append(level, "AssessmentGrader",
+                studentLabel + " " + grade.getQuestionId() + " > " + grade.getStatus()
+                + " > " + cases + " > " + completed + " completed > marks " + marks
+                + " > " + grade.getMessage());
     }
 
     private String findBlockingIssue(StudentSubmission submission, String questionId) {
