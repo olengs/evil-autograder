@@ -125,7 +125,6 @@ public class GradingWorkspace implements AutoCloseable { //copies answer, suppor
     private void copyFile(Path source, String relativeName) throws IOException {
         Path destination = getDirectory().resolve(relativeName).normalize();
         if (!destination.startsWith(getDirectory()) || destination.equals(getDirectory())) throw new IOException("invalid workspace path > " + relativeName);
-        Files.createDirectories(destination.getParent());
         FileUtils.copyFileReplacing(source, destination);
     }
 

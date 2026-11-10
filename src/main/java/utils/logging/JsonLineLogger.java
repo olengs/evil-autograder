@@ -2,9 +2,8 @@ package utils.logging;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import org.apache.commons.io.FileUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -50,10 +49,8 @@ public final class JsonLineLogger {
 
     public void Init(Path logFile) throws IOException {
         this.logfilePath = logFile;
-        Path parent = logFile.toAbsolutePath().getParent();
-        if (parent != null) Files.createDirectories(parent);
-        //CLEAR the old logs
-        Files.writeString(logfilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        // Creates parent folders and truncates the previous log for this run.
+        FileUtils.writeStringToFile(logfilePath.toFile(), "", StandardCharsets.UTF_8);
         hasInit = true;
     }
 
@@ -80,7 +77,7 @@ public final class JsonLineLogger {
     public void flush() throws IOException {
         if (!hasInit) throw new RuntimeException("using Json Logger without initialization");
         synchronized (logs) {
-            Files.write(logfilePath, logs, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            FileUtils.writeLines(logfilePath.toFile(), StandardCharsets.UTF_8.name(), logs, true);
             logs.clear();
         }
     }

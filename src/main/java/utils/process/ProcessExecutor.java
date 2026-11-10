@@ -73,9 +73,7 @@ public final class ProcessExecutor { //runs timed processes, captures output & t
     }
 
     private static String readStream(InputStream input) throws IOException {
-        try (input) {
-            return new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        }
+        return IOUtils.toString(input, StandardCharsets.UTF_8);
     }
 
     private static String collectStream(Future<String> future) throws InterruptedException {
