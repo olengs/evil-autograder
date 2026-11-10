@@ -55,12 +55,8 @@ public final class SubmissionLoader { //extracts submissions, matches students &
                             + " from extracted folder > archive named " + zipFile.getFileName(), null)));
                 }
                 if (student == null) {
-                    boolean hasStudentNumber = SubmissionFileNames.username(zipFile).strip().matches("[0-9]{8}")
-                            || (!answerRoot.equals(extractionDirectory) && answerRoot.getFileName().toString().strip().matches("[0-9]{8}"));
-                    String message = submission.getIdentificationMessage();
-                    submission.addIssues(List.of(hasStudentNumber
-                            ? SubmissionIssue.warning("unknown student", message + " > student number supplied > grading without username", null)
-                            : SubmissionIssue.error("unknown student", message, null)));
+                    submission.addIssues(List.of(SubmissionIssue.warning("unknown student",
+                            submission.getIdentificationMessage() + " > grading without username", null)));
                 }
             } catch (IOException error) {
                 if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
