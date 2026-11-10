@@ -122,8 +122,8 @@ public class GradingProgress implements ProgressListener { //synchronizes gradin
         state.questions = List.copyOf(questions);
         state.totalsKnown = true;
         state.student = "";
-        // Rough fixed estimate: ten seconds per student, shared across grading workers.
-        state.estimatedTotal = Optional.of(Duration.ofSeconds(students * 10L).dividedBy(workerCount));
+        // Rough fixed estimate: ten seconds per question attempt, shared across grading workers.
+        state.estimatedTotal = Optional.of(Duration.ofSeconds(students * 5L * questions.size()).dividedBy(workerCount));
         state.setStage(ProgressStage.preparing, "starting batch grading", Duration.ZERO);
     }
 
