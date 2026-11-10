@@ -17,6 +17,7 @@ import java.time.Duration;
 public class TerminalUi { 
     private UiSession session;
     private GradingView gradingView;
+    private ResourceUsage.Sample lastRenderedResources;
     private int selected;
     private String setupMessage = "";
 
@@ -26,6 +27,7 @@ public class TerminalUi {
         ResourceUsage resources = new ResourceUsage();
         session = null;
         gradingView = null;
+        lastRenderedResources = null;
         selected = 0;
         setupMessage = "";
         if (setup.issue() == null) session = new UiSession(setup.config());
@@ -57,8 +59,10 @@ public class TerminalUi {
                     }
                     // Settle a task only after its thread exits, including process/workspace cleanup.
                     if (event instanceof TickEvent) {
+                        boolean wasSettled = session.settled();
                         session.poll();
-                        return true;
+                        // Active work needs animation; idle screens redraw only when displayed metrics change.
+                        return !session.settled() || !wasSettled || !resources.sample().equals(lastRenderedResources);
                     }
                     if (!(event instanceof KeyEvent key)) return false;
                     if (session.screen() == UiSession.Screen.menu) {
@@ -79,19 +83,21 @@ public class TerminalUi {
                     return true;
                 }, 
                 frame -> {
+                    ResourceUsage.Sample resourceSample = resources.sample();
+                    lastRenderedResources = resourceSample;
                     if (session == null) {
                         var issue = setup.issue();
                         if (!setupMessage.isEmpty()) issue = new SetupConfigChecker.Issue(issue.setting(), issue.label(), issue.path(), setupMessage);
                         SetupScreen.draw(frame, issue, input.toString());
                     } else if (session.screen() == UiSession.Screen.menu) {
-                        SessionScreen.menu(frame, session, selected, resources.sample());
+                        SessionScreen.menu(frame, session, selected, resourceSample);
                     } else {
                         String commands = session.settled() ? "[enter] menu" : session.cancelling() ? "cancelling > waiting for cleanup" : "[q] cancel  [ctrl+c] quit";
                         if (session.screen() == UiSession.Screen.generating)
-                            SessionScreen.generation(frame, session.generation().snapshot(), commands, resources.sample());
+                            SessionScreen.generation(frame, session.generation().snapshot(), commands, resourceSample);
                         else {
                             gradingView.update(session.grading().getSnapshot());
-                            gradingView.updateResources(resources.sample());
+                            gradingView.updateResources(resourceSample);
                             gradingView.render(frame, commands);
                         }
                     }
