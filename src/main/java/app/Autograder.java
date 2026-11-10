@@ -63,7 +63,7 @@ public final class Autograder { //coordinates assessment loading, submission val
                     validator.validate(submission, assessment);
                 }
 
-                var assessmentGrader = new AssessmentGrader(config.getNumGradingWorkers(), config.getCompilationTimeout(), config.getExecutionTimeout());
+                var assessmentGrader = new AssessmentGrader(config.getNumGradingWorkers(), config.getCompilationTimeout(), config.getExecutionTimeout(), config.getProcessOutputMaxBytes());
                 return assessmentGrader.grade(submissions, assessment, testers, progress);
             } finally {
                 progress.preparing("cleaning up temporary files");

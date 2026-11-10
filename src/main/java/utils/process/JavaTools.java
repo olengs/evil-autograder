@@ -20,6 +20,10 @@ public final class JavaTools { //locates java & javac in JDK running autograder
     }
 
     public static ProcessResult compile(Path workspaceDirectory, Path classesDirectory, Duration timeout) throws IOException {
+        return compile(workspaceDirectory, classesDirectory, timeout, ProcessExecutor.DEFAULT_OUTPUT_MAX_BYTES);
+    }
+
+    public static ProcessResult compile(Path workspaceDirectory, Path classesDirectory, Duration timeout, long outputMaxBytes) throws IOException {
         List<String> command = new ArrayList<>();
         command.add(JavaTools.getCompilerPath().toString());
         command.add("-d");
@@ -40,15 +44,15 @@ public final class JavaTools { //locates java & javac in JDK running autograder
         }
 
         ProcessBuilder builder = new ProcessBuilder(command).directory(workspaceDirectory.toFile());
-        return ProcessExecutor.run(builder, timeout, "javac could not be started");
+        return ProcessExecutor.run(builder, timeout, "javac could not be started", outputMaxBytes);
     }
 
-    public static ProcessResult run(Path workspaceDirectory, Path classesDirectory, String mainClassName, Duration timeout) {
+    public static ProcessResult run(Path workspaceDirectory, Path classesDirectory, String mainClassName, Duration timeout, long outputMaxBytes) {
         //include compiled classes & workspace resources > use current os's classpath separator
         String classpath = classesDirectory + java.io.File.pathSeparator + workspaceDirectory;
         ProcessBuilder builder = new ProcessBuilder(JavaTools.getRuntimePath().toString(), "-cp", classpath, mainClassName);
         builder.directory(workspaceDirectory.toFile());
-        return ProcessExecutor.run(builder, timeout, "java execution failed");
+        return ProcessExecutor.run(builder, timeout, "java execution failed", outputMaxBytes);
     }
 
     public static Path getDisassemblerPath() {
