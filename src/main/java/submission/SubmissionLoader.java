@@ -15,7 +15,7 @@ import validation.SubmissionIssue;
 public final class SubmissionLoader { //extracts submissions, matches students & records preparation failures
     private SubmissionLoader() {}
 
-    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> roster, AssessmentDefinition assessment) throws IOException {
+    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> roster, AssessmentDefinition assessment, int headerSearchDepth) throws IOException {
         Files.createDirectories(workspaceFolder);
         List<StudentSubmission> submissions = new ArrayList<>();
         StudentIdentifier studentIdentifier = new StudentIdentifier();
@@ -40,7 +40,7 @@ public final class SubmissionLoader { //extracts submissions, matches students &
                 boolean conflictingIdentifiers = false;
                 if (student == null) {
                     try {
-                        var headerIdentification = studentIdentifier.inspectHeaders(answerRoot, roster, headerIssues, identifiers);
+                        var headerIdentification = studentIdentifier.inspectHeaders(answerRoot, roster, headerIssues, identifiers, headerSearchDepth);
                         student = headerIdentification.student();
                         conflictingIdentifiers = headerIdentification.conflicting();
                     } catch (IOException error) {
@@ -81,7 +81,7 @@ public final class SubmissionLoader { //extracts submissions, matches students &
             }
 
             List<Path> children;
-            try (var entries = Files.list(candidate)) {
+            try (var entries = FileUtils.streamPaths(candidate, 1)) {
                 children = entries.filter(path -> !path.getFileName().toString().startsWith(".")).toList();
             }
             

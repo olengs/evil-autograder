@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import submission.files.StudentHeaderReader;
+import utils.files.FileUtils;
 import utils.process.Interruptions;
 import utils.strings.CommonPatternChecker;
 import validation.SubmissionIssue;
@@ -27,9 +28,9 @@ public class StudentIdentifier { //matches ZIP filenames to roster usernames wit
     public record HeaderIdentification(StudentDetails student, boolean conflicting) {}
 
     public HeaderIdentification inspectHeaders(Path answerRoot, List<StudentDetails> roster,
-            List<SubmissionIssue> issues, List<String> identifiers) throws IOException {
+            List<SubmissionIssue> issues, List<String> identifiers, int maxDepth) throws IOException {
         var candidates = new LinkedHashMap<String, StudentDetails>();
-        try (var files = Files.walk(answerRoot, 6)) {
+        try (var files = FileUtils.streamPaths(answerRoot, maxDepth)) {
             for (Path file : files.filter(Files::isRegularFile).filter(path -> path.toString().endsWith(".java")).sorted().toList()) {
                 Interruptions.check("header identification interrupted");
                 StudentHeaderReader.Header header;

@@ -10,9 +10,14 @@ import org.apache.commons.io.file.PathUtils;
 public final class FileUtils { //lists files, copies replacement files & deletes directories
     private FileUtils() {}
 
+    //lists files & folders beneath directory > depth 1 lists direct children > caller must close stream
+    public static Stream<Path> streamPaths(Path directory, int maxDepth) throws IOException {
+        return maxDepth == 1 ? Files.list(directory) : Files.walk(directory, maxDepth).skip(1);
+    }
+
     //lists direct regular files > caller must close returned stream
     public static Stream<Path> streamRegularFiles(Path directory) throws IOException {
-        return Files.list(directory).filter(Files::isRegularFile);
+        return streamPaths(directory, 1).filter(Files::isRegularFile);
     }
 
     // Commons IO validates file types, creates parents, and replaces the destination.

@@ -19,6 +19,8 @@ public class Config { //loads grading paths & process time limits from configura
     private final Duration compilationTimeout;
     private final Duration executionTimeout;
     private final int gradingWorkers;
+    private final int headerSearchDepth;
+    private final int answerSearchDepth;
 
     public Config() throws IOException {
         this(Path.of("config.properties"));
@@ -49,6 +51,8 @@ public class Config { //loads grading paths & process time limits from configura
         executionTimeout = getTimeout(properties, "execution.timeout.seconds");
         int gradingWorkersValue = Integer.parseInt(getRequired(properties, "grading.workers"));
         gradingWorkers = gradingWorkersValue < 1 ? 1 : gradingWorkersValue;
+        headerSearchDepth = getSearchDepth(properties, "submission.header.search.depth", 6);
+        answerSearchDepth = getSearchDepth(properties, "submission.answer.search.depth", 5);
     }
 
     private static Properties loadProperties(Path file) throws IOException {
@@ -91,6 +95,14 @@ public class Config { //loads grading paths & process time limits from configura
 
     public Duration getExecutionTimeout() {
         return executionTimeout;
+    }
+
+    public int getHeaderSearchDepth() {
+        return headerSearchDepth;
+    }
+
+    public int getAnswerSearchDepth() {
+        return answerSearchDepth;
     }
 
     public int getNumGradingWorkers() {
@@ -140,6 +152,16 @@ public class Config { //loads grading paths & process time limits from configura
         }
 
         return value.strip();
+    }
+
+    private static int getSearchDepth(Properties properties, String key, int defaultValue) {
+        try {
+            int depth = Integer.parseInt(properties.getProperty(key, Integer.toString(defaultValue)).strip());
+            if (depth > 0) return depth;
+        } catch (NumberFormatException ignored) {
+            // Report the setting name for malformed values as well as nonpositive depths.
+        }
+        throw new IllegalArgumentException(key + " must be a positive whole number");
     }
 
     private static Duration getTimeout(Properties properties, String key) {
