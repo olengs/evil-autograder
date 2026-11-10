@@ -90,7 +90,7 @@ public final class SupportContextCollector {
         var result = ProcessExecutor.run(new ProcessBuilder(
                 JavaTools.getDisassemblerPath().toString(), "-public", "-classpath",
                 root.toAbsolutePath().toString(), className), Duration.ofSeconds(30),
-                "could not inspect dependency " + name);
+                "could not inspect dependency " + name, maxTextBytes);
         if (!result.isSuccessful()) throw new IOException("javap failed or timed out: " + result.getErrorOutput().strip());
         return new TextFile(name + " (public API)", "java", result.getStandardOutput().strip());
     }

@@ -22,7 +22,6 @@ import submission.StudentSubmission;
 import utils.logging.JsonLineLogger;
 import utils.logging.JsonLineLogger.Status;
 import utils.process.Interruptions;
-import utils.process.ProcessResult;
 import validation.SubmissionIssue;
 
 public class AssessmentGrader { //grades each submission in question order & records skipped questions
@@ -31,11 +30,18 @@ public class AssessmentGrader { //grades each submission in question order & rec
 
     public AssessmentGrader(int count, Duration compilationTimeout, Duration executionTimeout) {
 
-        this.workerCount = count;
-        questionGrader = ThreadLocal.withInitial(() -> new QuestionGrader(compilationTimeout, executionTimeout));
+        this(count, compilationTimeout, executionTimeout, utils.process.ProcessExecutor.DEFAULT_OUTPUT_MAX_BYTES);
     }
 
-    public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, AssessmentDefinition assessment, Map<String, TesterDefinition> testers, ProgressListener progress) throws IOException {
+    public AssessmentGrader(int count, Duration compilationTimeout, Duration executionTimeout, long outputMaxBytes) {
+        this.workerCount = count;
+        questionGrader = ThreadLocal.withInitial(() -> new QuestionGrader(compilationTimeout, executionTimeout, outputMaxBytes));
+    }
+
+    public Map<StudentSubmission, List<QuestionGrade>> grade(List<StudentSubmission> submissions, 
+            AssessmentDefinition assessment, Map<String, TesterDefinition> testers, 
+            ProgressListener progress) throws IOException {
+        
         //keep submission order so console reports & verification are predictable
         Map<StudentSubmission, List<QuestionGrade>> results = new LinkedHashMap<>();
         List<String> questionIds = assessment.getQuestions().stream().map(QuestionDefinition::getId).toList();
@@ -110,10 +116,13 @@ public class AssessmentGrader { //grades each submission in question order & rec
         QuestionAttempt attempt = submission.findAttempt(question.getId()).orElse(null);
         if (attempt == null) {
             JsonLineLogger.getInstance().append(Status.WARNING, "AssessmentGrader", 
-                String.format("Skipped grading for [%s] because attempt not found for question [%s]", submission.getStudent().getUsername(), question.getId()));
+                String.format("Skipped grading for [%s] because attempt not found for question [%s]",
+                    submission.getStudent().getUsername(), question.getId()
+                )
+            );
 
             return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), 
-                new ProcessResult(1, "", "", false), "question not attempted");
+                "question not attempted");
         }
         String skipReason = findBlockingIssue(submission, question.getId());
 
@@ -121,13 +130,13 @@ public class AssessmentGrader { //grades each submission in question order & rec
         if (skipReason == null && !attempt.isValid()) { skipReason = "attempt has validation errors"; }
         if (skipReason == null && tester == null) { skipReason = "missing tester"; }
         if (skipReason != null) {
-            return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), null, skipReason);
+            return new QuestionGrade(question.getId(), GradeStatus.skipped, 0, List.of(), skipReason);
         }
         try {
             return questionGrader.get().grade(question, attempt, tester, progress);
         } catch (IOException error) {
             if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
-            return new QuestionGrade(question.getId(), GradeStatus.runtimeError, 0, List.of(), new ProcessResult(1, "", "", false),
+            return new QuestionGrade(question.getId(), GradeStatus.runtimeError, 0, List.of(),
                     "question grading failed > " + error.getMessage());
         }
     }

@@ -21,11 +21,16 @@ import utils.process.Interruptions;
 import validation.ValidationResult.Stage;
 
 public class GeneratedTesterValidator {
+    private final long outputMaxBytes;
     private final Duration compilationTimeout;
     private final Duration executionTimeout;
     private final TesterOutputParser parser = new TesterOutputParser();
 
     public GeneratedTesterValidator(Duration compilationTimeout, Duration executionTimeout) {
+        this(compilationTimeout, executionTimeout, utils.process.ProcessExecutor.DEFAULT_OUTPUT_MAX_BYTES);
+    }
+    public GeneratedTesterValidator(Duration compilationTimeout, Duration executionTimeout, long outputMaxBytes) {
+        this.outputMaxBytes = outputMaxBytes;
         this.compilationTimeout = compilationTimeout;
         this.executionTimeout = executionTimeout;
     }
@@ -79,19 +84,21 @@ public class GeneratedTesterValidator {
             prepareWorkspace(spec, source, workspace);
             TesterResources.write(spec, resources, workspace);
 
-            ProcessResult compile = JavaTools.compile(workspace, classes, compilationTimeout);
+            ProcessResult compile = JavaTools.compile(workspace, classes, compilationTimeout, outputMaxBytes);
+            if (compile.isOutputLimitExceeded()) return failed(stage, "compilation output limit exceeded");
             if (compile.isTimedOut()) return failed(stage, "compilation timed out");
             if (!compile.isSuccessful()) return failed(stage, truncate(compile.getErrorOutput()));
 
             stage = Stage.run;
             Interruptions.check("tester validation interrupted");
-            ProcessResult run = JavaTools.run(workspace, classes, spec.testerMainClass(), executionTimeout);
+            ProcessResult run = JavaTools.run(workspace, classes, spec.testerMainClass(), executionTimeout, outputMaxBytes);
+            if (run.isOutputLimitExceeded()) return failed(stage, "tester output limit exceeded");
             if (run.isTimedOut()) return failed(stage, "tester execution timed out");
             if (!run.isSuccessful()) return failed(stage, truncate(run.getErrorOutput()));
 
             stage = Stage.parse;
             Interruptions.check("tester validation interrupted");
-            return validateOutput(run.getStandardOutput(), expectedCases);
+            return validateOutput(run, expectedCases);
         } catch (IOException | RuntimeException error) {
             JsonLineLogger.getInstance().append(JsonLineLogger.Status.ERROR, "GeneratedTesterValidator", error.getMessage());
             Interruptions.check("tester validation interrupted");
@@ -115,24 +122,16 @@ public class GeneratedTesterValidator {
         }
     }
 
-    private ValidationResult validateOutput(String output, int expectedCases) {
-        List<String> lines = output.strip().lines().map(String::strip).toList();
-
-        //grading ignores outcomes before the first header > generated testers must not emit them
-        boolean headerSeen = false;
-        for (String line : lines) {
-            if (TesterOutputParser.isTestHeader(line)) headerSeen = true;
-            if (!headerSeen && TesterOutputParser.isOutcome(line)) {
-                return failed(Stage.parse, "outcome appeared before a test header");
-            }
-        }
-
-        var cases = parser.parse(output);
+    private ValidationResult validateOutput(ProcessResult output, int expectedCases) throws IOException {
+        var extracted = new grading.TesterOutputExtractor().extract(output.getStandardOutput());
+        if (extracted.hasOutcomeBeforeHeader()) return failed(Stage.parse, "outcome appeared before a test header");
+        var cases = parser.parse(extracted.getTestOutput());
+        String lastLine = extracted.getLastLine();
         if (cases.size() != expectedCases) {
             return failed(Stage.parse, "expected " + expectedCases + " cases but found " + cases.size());
         }
         long passed = cases.stream().filter(testCase -> testCase.getEarnedMarks() == 1).count();
-        double total = Double.parseDouble(lines.getLast());
+        double total = Double.parseDouble(lastLine);
         if (!Double.isFinite(total) || total != passed) {
             return failed(Stage.parse, "final score must equal passed-case count " + passed);
         }
