@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -17,13 +18,13 @@ import utils.strings.CommonPatternChecker;
 
 public class StudentRosterBuilder {
     
-    public static List<StudentDetails> build(Path submissionsFolder) throws IOException {
+    public static List<StudentDetails> build(Path submissionsFolder, Pattern usernamePattern) throws IOException {
         ArrayList<StudentDetails> studentDetails = new ArrayList<>();
 
         for (Path zip : SubmissionArchives.listZipFiles(submissionsFolder)) {
             Interruptions.check("scoresheet creation interrupted");
-            String username = SubmissionFileNames.username(zip).strip();
-            if (!CommonPatternChecker.ofUsernamePattern(username)) {
+            String username = CommonPatternChecker.normalizeUsername(SubmissionFileNames.username(zip));
+            if (!usernamePattern.matcher(username).matches()) {
                 username = "";
             }
 

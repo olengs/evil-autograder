@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import assessment.AssessmentDefinition;
 import utils.files.FileUtils;
@@ -15,10 +16,10 @@ import validation.SubmissionIssue;
 public final class SubmissionLoader { //extracts submissions, matches students & records preparation failures
     private SubmissionLoader() {}
 
-    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> roster, AssessmentDefinition assessment, int headerSearchDepth) throws IOException {
+    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> roster, AssessmentDefinition assessment, int headerSearchDepth, Pattern usernamePattern) throws IOException {
         Files.createDirectories(workspaceFolder);
         List<StudentSubmission> submissions = new ArrayList<>();
-        StudentIdentifier studentIdentifier = new StudentIdentifier();
+        StudentIdentifier studentIdentifier = new StudentIdentifier(usernamePattern);
 
         for (Path zipFile : SubmissionArchives.listZipFiles(submissionFolder)) {
             Interruptions.check("submission loading interrupted");

@@ -53,7 +53,7 @@ public final class Autograder { //coordinates assessment loading, submission val
                 progress.preparing("reading student scoresheet");
                 List<StudentDetails> roster = prepareRoster(config);
                 progress.preparing("extracting submission zip files");
-                List<StudentSubmission> submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace.path(), roster, assessment, config.getHeaderSearchDepth());
+                List<StudentSubmission> submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace.path(), roster, assessment, config.getHeaderSearchDepth(), config.getUsernamePattern());
                 if (submissions.isEmpty()) throw new IOException("no submission ZIP files found");
 
                 SubmissionValidator validator = createValidator(config.getAnswerSearchDepth());
@@ -72,7 +72,7 @@ public final class Autograder { //coordinates assessment loading, submission val
     }
 
     private static List<StudentDetails> prepareRoster(Config config) throws IOException {
-        List<StudentDetails> roster = StudentRosterBuilder.build(config.getSubmissionsDirectory());
+        List<StudentDetails> roster = StudentRosterBuilder.build(config.getSubmissionsDirectory(), config.getUsernamePattern());
         if (roster.isEmpty()) throw new IOException("no valid students found in scoresheet");
         return roster;
     }

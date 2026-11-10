@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public class Config { //loads grading paths & process time limits from configuration
     private final Properties properties;
@@ -21,6 +23,7 @@ public class Config { //loads grading paths & process time limits from configura
     private final int gradingWorkers;
     private final int headerSearchDepth;
     private final int answerSearchDepth;
+    private final Pattern usernamePattern;
     private final long processOutputMaxBytes;
 
     public Config() throws IOException {
@@ -54,6 +57,14 @@ public class Config { //loads grading paths & process time limits from configura
         gradingWorkers = gradingWorkersValue < 1 ? 1 : gradingWorkersValue;
         headerSearchDepth = getSearchDepth(properties, "submission.header.search.depth", 6);
         answerSearchDepth = getSearchDepth(properties, "submission.answer.search.depth", 5);
+        String patternKey = "submission.username.pattern";
+        String regex = properties.getProperty(patternKey, "^[a-zA-Z]{2,}(?:\\.[a-zA-Z]{2,})*\\.\\d{4}$");
+        if (regex.isBlank()) throw new IllegalArgumentException(patternKey + " must not be blank");
+        try {
+            usernamePattern = Pattern.compile(regex);
+        } catch (PatternSyntaxException error) {
+            throw new IllegalArgumentException(patternKey + " must be a valid regular expression", error);
+        }
         // Validate output limits before any worker starts.
         Long processOutMaxBytes= Long.parseLong(properties.getProperty("process.output.max.bytes", "1048576"));
         this.processOutputMaxBytes = processOutMaxBytes < 1024 ? 1024 : processOutMaxBytes;
@@ -108,6 +119,10 @@ public class Config { //loads grading paths & process time limits from configura
 
     public int getHeaderSearchDepth() {
         return headerSearchDepth;
+    }
+
+    public Pattern getUsernamePattern() {
+        return usernamePattern;
     }
 
     public int getAnswerSearchDepth() {
