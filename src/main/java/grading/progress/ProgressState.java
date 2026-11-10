@@ -26,7 +26,6 @@ final class ProgressState { //stores mutable progress state & caches UI snapshot
     long runFinished;
     boolean waitingForInput;
     boolean timerFinished;
-    Duration batchStartedElapsed = Duration.ZERO;
     Optional<Duration> estimatedTotal = Optional.empty();
     Duration timeout = Duration.ZERO;
     long revision;

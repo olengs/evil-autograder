@@ -8,6 +8,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import java.nio.file.StandardCopyOption;
+import java.nio.file.AtomicMoveNotSupportedException;
+
+import utils.logging.JsonLineLogger;
+import utils.logging.JsonLineLogger.Status;
+
 /** Reads question:value metadata from the tester root. */
 public final class TesterMetadata {
     private static final Pattern passedStatement = Pattern.compile(
@@ -40,10 +46,12 @@ public final class TesterMetadata {
         try {
             Files.writeString(temporary, existing + separator + questionId + ":" + count + "\n");
             try {
-                Files.move(temporary, file, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
-                Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                JsonLineLogger.getInstance().logException(Status.WARNING,
+                        "TesterMetadata", "atomic metadata replacement unavailable; using normal replacement", unsupported);
+                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
             }
         } finally {
             Files.deleteIfExists(temporary);

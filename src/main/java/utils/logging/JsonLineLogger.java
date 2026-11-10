@@ -5,15 +5,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import org.apache.commons.io.FileUtils;
 import java.util.ArrayList;
-import java.util.Collections;
+import config.Config;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 
 import com.google.gson.Gson;
 
 // appends structured log entries as JSON lines
-// done as singleton, should only run on main thread.
+// Shared by grading workers; buffer operations are synchronized.
 public final class JsonLineLogger { 
 
     public enum Status {
@@ -27,16 +26,15 @@ public final class JsonLineLogger {
     private Path logfilePath;
     private boolean hasInit;
 
-    private final List<String> logs;
-    // TODO: MOVE STATIC FINAL VARS TO CONFIG
-    private static final int MAX_CAPACITY = 15;
-    private static final int CAPACITY_THRESHOLD = 12;
+    private final ArrayList<String> logs;
+    // Startup defaults allow logging before the UI has a valid configuration.
+    private int bufferThreshold = Config.DEFAULT_LOG_BUFFER_THRESHOLD;
 
-    private EnumSet<Status> flags = EnumSet.allOf(Status.class);
+    private volatile EnumSet<Status> flags = EnumSet.allOf(Status.class);
 
     private JsonLineLogger() {
         hasInit = false;
-        logs = Collections.synchronizedList(new ArrayList<>(MAX_CAPACITY));
+        logs = new ArrayList<>();
     }
 
     public static JsonLineLogger getInstance() {
@@ -47,31 +45,56 @@ public final class JsonLineLogger {
         return instance;
     }
 
-    public void Init(Path logFile) throws IOException {
-        this.logfilePath = logFile;
+    public void Init(Path logFile, int threshold) throws IOException {
+        if (!hasInit) this.logfilePath = logFile;
+        if (threshold <= 0 || threshold > Integer.MAX_VALUE - 5) {
+            throw new IllegalArgumentException("log buffer threshold must be positive and allow threshold + 5 without overflow");
+        }
+        logs.ensureCapacity(threshold + 5);
+        bufferThreshold = threshold;
+        if (hasInit) return;
         // Creates parent folders and truncates the previous log for this run.
         FileUtils.writeStringToFile(logfilePath.toFile(), "", StandardCharsets.UTF_8);
         hasInit = true;
     }
 
     /// param flags to enable which log status to be enabled, by default all types of logs are enabled.
-    public void Init(Path logFile, EnumSet<Status> flags) throws IOException {
-        this.flags = flags;
-        Init(logFile);
+    public void Init(Path logFile, int threshold, EnumSet<Status> flags) throws IOException {
+        setLevels(flags);
+        Init(logFile, threshold);
+    }
+
+    public void setLevels(EnumSet<Status> levels) {
+        flags = levels.clone();
     }
 
     public void append(Status status, String feature, String message) {
         if (!hasInit) throw new RuntimeException("using Json Logger without initialization");
         if (!flags.contains(status)) return;
 
-        logs.add(gson.toJson(Map.of("status", status.toString(), "message", String.format("[%s]: %s", feature, message))));
-        if (logs.size() >= CAPACITY_THRESHOLD) {
-            try {
-                flush();
-            } catch (IOException e) {
-                System.err.println("Logging is disabled as writing to logfile is throwing: " + e.getMessage());
+        synchronized (logs) {
+            logs.add(gson.toJson(Map.of("status", status.toString(), "message", String.format("[%s]: %s", feature, message))));
+            if (logs.size() >= bufferThreshold) {
+                try {
+                    flush();
+                } catch (IOException e) {
+                    System.err.println("Log write failed; entries remain buffered: " + e.getMessage());
+                }
             }
         }
+    }
+
+    // Flush handled failures immediately so details are available while the UI stays open.
+    public void logException(Status status, String feature, String context, Throwable error) {
+        if (!flags.contains(status)) return;
+        var text = new java.io.StringWriter();
+        error.printStackTrace(new java.io.PrintWriter(text));
+        String detail = context + "\n" + text;
+        if (!hasInit) {
+            System.err.println("[" + feature + "] " + detail);
+            return;
+        }
+        append(status, feature, detail);
     }
 
     public void flush() throws IOException {

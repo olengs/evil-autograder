@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import utils.logging.JsonLineLogger;
+
 //checks setup config paths & accepts replacement paths for this run
 public final class SetupConfigChecker { 
     private Path configFile;
@@ -58,7 +60,11 @@ public final class SetupConfigChecker {
         try {
             config = new Config(configFile, overrides);
         } catch (IOException | IllegalArgumentException error) {
-            issue = new Issue("config.file", "config file", configFile, error.getMessage());
+            JsonLineLogger.getInstance().logException(JsonLineLogger.Status.WARNING,
+                    "SetupConfigChecker", "cannot load configuration > " + configFile, error);
+            String reason = error.getMessage();
+            if (reason == null || reason.isBlank() || reason.length() > 80) reason = "Invalid configuration; see log";
+            issue = new Issue("config.file", "config file", configFile, reason);
             return;
         }
         issue = input(config.getInputDirectory(), "input.directory", "input folder", false);
@@ -69,7 +75,9 @@ public final class SetupConfigChecker {
     private Issue input(Path path, String setting, String label, boolean file) {
         path = path.toAbsolutePath().normalize();
         String reason = !Files.exists(path) ? "not found" : (file ? !Files.isRegularFile(path) : !Files.isDirectory(path)) ? (file ? "not a regular file" : "not a directory") : !Files.isReadable(path) ? "not readable" : null;
+        if (reason != null) JsonLineLogger.getInstance().logException(
+                JsonLineLogger.Status.WARNING, "SetupConfigChecker", "invalid setting > " + setting,
+                new IOException(reason + " > " + path));
         return reason == null ? null : new Issue(setting, label, path, reason);
     }
-
 }

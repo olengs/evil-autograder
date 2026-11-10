@@ -1,6 +1,7 @@
 package ui;
 
 import config.SetupConfigChecker;
+import config.Config;
 import dev.tamboui.tui.TuiConfig;
 import dev.tamboui.tui.TuiRunner;
 import dev.tamboui.tui.event.KeyCode;
@@ -10,6 +11,8 @@ import dev.tamboui.tui.event.TickEvent;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
+
+import utils.logging.JsonLineLogger;
 
 // Code mostly from https://github.com/tamboui/tamboui
 // main TUI logic, control flow and keyboard input
@@ -21,7 +24,8 @@ public class TerminalUi {
     private int selected;
     private String setupMessage = "";
 
-    public void run(Path configFile) throws Exception {
+
+    public Config run(Path configFile) throws Exception {
         SetupConfigChecker setup = new SetupConfigChecker(configFile);
         StringBuilder input = new StringBuilder();
         ResourceUsage resources = new ResourceUsage();
@@ -51,7 +55,13 @@ public class TerminalUi {
                                 input.setLength(0);
                                 setupMessage = "";
                                 if (setup.issue() == null) session = new UiSession(setup.config());
-                            } catch (IOException error) { setupMessage = error.getMessage(); }
+                            } catch (IOException error) {
+                                JsonLineLogger.getInstance().logException(JsonLineLogger.Status.WARNING,
+                                        "TerminalUi", "setup replacement rejected", error);
+                                setupMessage = error.getMessage();
+                                if (setupMessage == null || setupMessage.isBlank() || setupMessage.length() > 80)
+                                    setupMessage = "Invalid replacement path; see log";
+                            }
                         } else if (key.code() == KeyCode.BACKSPACE && !input.isEmpty())
                             input.delete(input.offsetByCodePoints(input.length(), -1), input.length());
                         else if (key.code() == KeyCode.CHAR && !Character.isISOControl(key.codePoint())) input.append(key.string());
@@ -107,6 +117,8 @@ public class TerminalUi {
                 if (session != null) session.close();
             }
         }
+        
+        return setup.config();
     }
 
     private void start() {

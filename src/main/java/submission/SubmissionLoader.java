@@ -12,6 +12,8 @@ import utils.files.FileUtils;
 import utils.process.Interruptions;
 import validation.SubmissionIssue;
 
+import utils.logging.JsonLineLogger;
+
 public final class SubmissionLoader { //extracts submissions, matches students & records preparation failures
     private SubmissionLoader() {}
 
@@ -66,6 +68,8 @@ public final class SubmissionLoader { //extracts submissions, matches students &
                 } catch (IOException cleanupError) {
                     error.addSuppressed(cleanupError);
                 }
+                JsonLineLogger.getInstance().logException(JsonLineLogger.Status.ERROR,
+                        "SubmissionLoader", "submission preparation failed > " + zipFile, error);
                 submission.addIssues(List.of(SubmissionIssue.error("submission preparation error", error.toString(), null)));
             }
             submissions.add(submission);
