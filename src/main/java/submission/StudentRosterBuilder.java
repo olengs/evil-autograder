@@ -14,6 +14,7 @@ import java.util.zip.ZipFile;
 import submission.files.StudentHeaderReader;
 import utils.process.Interruptions;
 import utils.strings.CommonPatternChecker;
+import utils.logging.JsonLineLogger;
 
 public class StudentRosterBuilder {
     
@@ -69,6 +70,8 @@ public class StudentRosterBuilder {
             }
         } catch (IOException | RuntimeException error) {
             if (error instanceof InterruptedIOException interrupted) throw interrupted;
+            JsonLineLogger.getInstance().logException(JsonLineLogger.Status.WARNING,
+                    "StudentRosterBuilder", "unable to read student headers > " + zip, error);
             // a broken zip still tries to get student details, program should report extraction error later
         }
         Interruptions.check("roster builder interrupted");

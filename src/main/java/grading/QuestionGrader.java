@@ -15,6 +15,8 @@ import utils.files.TemporaryDirectory;
 import utils.process.JavaTools;
 import utils.process.ProcessExecutor;
 import utils.process.ProcessResult;
+import utils.logging.JsonLineLogger;
+import utils.logging.JsonLineLogger.Status;
 
 public class QuestionGrader { //compiles answers, runs tester & totals completed test-case marks
     private final long outputMaxBytes;
@@ -30,33 +32,35 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
         this.executionTimeout = executionTimeout;
     }
 
-    public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester, ProgressListener progress) throws IOException {
+    public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester, ProgressListener progress, String studentLabel) throws IOException {
         try (GradingWorkspace workspace = new GradingWorkspace()) {
             workspace.prepare(question, attempt, tester);
             try (TemporaryDirectory classes = new TemporaryDirectory("autograder-classes-")) {
-                return gradeInWorkspace(question.getId(), tester, workspace.getDirectory(), classes.path(), progress);
+                return gradeInWorkspace(question.getId(), tester, workspace.getDirectory(), classes.path(), progress, studentLabel);
             }
         }
     }
 
-    private QuestionGrade gradeInWorkspace(String questionId, TesterDefinition tester, Path workspaceDirectory, Path classesDirectory, ProgressListener progress) throws IOException {
+    private QuestionGrade gradeInWorkspace(String questionId, TesterDefinition tester, Path workspaceDirectory, Path classesDirectory, ProgressListener progress, String studentLabel) throws IOException {
         progress.compilationStarted(questionId, compilationTimeout);
         ProcessResult compilationResult = compile(workspaceDirectory, classesDirectory);
+        logDiagnostics(studentLabel, questionId, "compilation", compilationResult);
         if (compilationResult.isOutputLimitExceeded())
-            return failedGrade(questionId, GradeStatus.compileError, compilationResult, "compilation output limit exceeded");
+            return failedGrade(questionId, GradeStatus.compileError, outputLimitMessage("compilation", compilationResult));
         if (compilationResult.isTimedOut()) {
-            return failedGrade(questionId, GradeStatus.timeout, compilationResult, "compilation timed out");
+            return failedGrade(questionId, GradeStatus.timeout, "compilation timed out after " + compilationTimeout.toMillis() / 1000.0 + "s");
         }
         if (!compilationResult.isSuccessful()) {
-            return failedGrade(questionId, GradeStatus.compileError, compilationResult, "compilation failed");
+            return failedGrade(questionId, GradeStatus.compileError, "compilation failed");
         }
 
         progress.executionStarted(questionId, executionTimeout);
         ProcessResult executionResult = executeTester(workspaceDirectory, classesDirectory, tester.getMainClassName());
+        logDiagnostics(studentLabel, questionId, "execution", executionResult);
         if (executionResult.isOutputLimitExceeded())
-            return failedGrade(questionId, GradeStatus.runtimeError, executionResult, "tester output limit exceeded; no marks awarded");
+            return failedGrade(questionId, GradeStatus.runtimeError, outputLimitMessage("execution", executionResult));
         if (!executionResult.isTimedOut() && !executionResult.isSuccessful()) {
-            return failedGrade(questionId, GradeStatus.runtimeError, executionResult, "tester failed");
+            return failedGrade(questionId, GradeStatus.runtimeError, "tester execution failed; see diagnostic log");
         }
 
         List<TestCaseResult> testResults;
@@ -70,25 +74,25 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
                 //keep marks for completed cases > unfinished case has no trustworthy outcome
                 testResults = parser.parseCompleted(extracted.getTestOutput());
                 status = GradeStatus.timeout;
-                message = "execution timed out > completed-test marks retained";
+                message = "execution timed out after " + executionTimeout.toMillis() / 1000.0 + "s > completed-test marks retained";
             } else {
                 testResults = parser.parse(extracted.getTestOutput());
                 status = GradeStatus.completed;
                 message = "grading completed";
             }
         } catch (IllegalArgumentException error) {
-            return failedGrade(questionId, GradeStatus.runtimeError, executionResult,
+            return failedGrade(questionId, GradeStatus.runtimeError,
                     "invalid tester output > " + error.getMessage());
         }
 
         int totalCases = tester.getNumTestCases();
         if (totalCases > 0 && (testResults.size() > totalCases
                 || (status == GradeStatus.completed && testResults.size() != totalCases))) {
-            return failedGrade(questionId, GradeStatus.runtimeError, executionResult,
+            return failedGrade(questionId, GradeStatus.runtimeError,
                     "tester output does not match declared numTestCases > " + totalCases);
         }
         if (totalCases == 0 && status == GradeStatus.completed) totalCases = testResults.size();
-        if (totalCases == 0) message = "execution timed out > no numTestCases metadata; partial marks unavailable";
+        if (totalCases == 0) message = "execution timed out > expected total unknown; partial marks unavailable";
         double weight = totalCases == 0 ? 0 : tester.getMaximumMarks() / totalCases;
         testResults = testResults.stream().map(result -> result.scaled(weight)).toList();
         double earnedMarks = testResults.stream().mapToDouble(TestCaseResult::getEarnedMarks).sum();
@@ -127,12 +131,22 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
         return ProcessExecutor.run(builder, executionTimeout, "java execution failed", outputMaxBytes);
     }
 
-    private QuestionGrade failedGrade(String questionId, GradeStatus status, ProcessResult process, String message) {
-        String excerpt = process.getErrorOutput().strip();
-        if (!excerpt.isEmpty()) {
-            utils.logging.JsonLineLogger.getInstance().append(utils.logging.JsonLineLogger.Status.ERROR,
-                    "QuestionGrader", questionId + " > " + message + "\n" + excerpt);
-        }
+    private String outputLimitMessage(String stage, ProcessResult process) {
+        String stream = process.isStandardOutputLimitExceeded()
+                ? (process.isErrorOutputLimitExceeded() ? "stdout and stderr" : "stdout") : "stderr";
+        return stage + " " + stream + " exceeded " + outputMaxBytes + " bytes; no marks awarded";
+    }
+
+    // Write diagnostics while process output is local; grades retain no raw output.
+    private void logDiagnostics(String studentLabel, String questionId, String stage, ProcessResult process) {
+        String errorOutput = process.getErrorOutput().strip();
+        if (errorOutput.isEmpty()) return;
+        Status level = process.isTimedOut() ? Status.WARNING : process.isSuccessful() ? Status.LOG : Status.ERROR;
+        JsonLineLogger.getInstance().append(level, "QuestionGrader",
+                studentLabel + " " + questionId + " > " + stage + " diagnostics > " + process + "\n" + errorOutput);
+    }
+
+    private QuestionGrade failedGrade(String questionId, GradeStatus status, String message) {
         return new QuestionGrade(questionId, status, 0, List.of(), message);
     }
 }

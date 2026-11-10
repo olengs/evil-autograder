@@ -36,6 +36,6 @@ public class SubmissionIssue { //stores a validation finding & determines which 
 
     @Override
     public String toString() {
-        return severity + " [" + code + "] " + message;
+        return severity + " [" + code + "] " + (questionId == null ? "" : questionId + " > ") + message;
     }
 }

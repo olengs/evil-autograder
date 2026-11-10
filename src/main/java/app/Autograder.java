@@ -61,6 +61,16 @@ public final class Autograder { //coordinates assessment loading, submission val
                     Interruptions.check("validation interrupted");
                     progress.validationStarted(submission.getDisplayName());
                     validator.validate(submission, assessment);
+                    // Includes handled lookup/header errors and nonexception validation failures.
+                    
+                    for (var issue : submission.getSubmissionIssues()) {
+                        var level = issue.getSeverity() == validation.IssueSeverity.error
+                                ? utils.logging.JsonLineLogger.Status.ERROR : utils.logging.JsonLineLogger.Status.WARNING;
+                        
+                        utils.logging.JsonLineLogger.getInstance().append(level, "SubmissionValidator",
+                                "[student=" + submission.getDisplayName() + "][archive="
+                                + submission.getOriginalZip().toAbsolutePath().normalize() + "] " + issue);
+                    }
                 }
 
                 var assessmentGrader = new AssessmentGrader(config.getNumGradingWorkers(), config.getCompilationTimeout(), config.getExecutionTimeout(), config.getProcessOutputMaxBytes());

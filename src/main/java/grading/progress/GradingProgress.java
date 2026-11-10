@@ -112,7 +112,7 @@ public class GradingProgress implements ProgressListener { //synchronizes gradin
     }
 
     @Override
-    public synchronized void batchStarted(int students, List<String> questions) {
+    public synchronized void batchStarted(int students, List<String> questions, int workerCount) {
         state.activeStudents.clear();
         state.results.clear();
         state.processedStudents = 0;
@@ -122,8 +122,8 @@ public class GradingProgress implements ProgressListener { //synchronizes gradin
         state.questions = List.copyOf(questions);
         state.totalsKnown = true;
         state.student = "";
-        state.batchStartedElapsed = state.totalElapsed();
-        state.estimatedTotal = Optional.empty();
+        // Rough fixed estimate: ten seconds per question attempt, shared across grading workers.
+        state.estimatedTotal = Optional.of(Duration.ofSeconds(students * 5L * questions.size()).dividedBy(workerCount));
         state.setStage(ProgressStage.preparing, "starting batch grading", Duration.ZERO);
     }
 
@@ -167,17 +167,6 @@ public class GradingProgress implements ProgressListener { //synchronizes gradin
 
     private void recordCompletedQuestion() {
         state.processedQuestions++;
-        int totalQuestions = state.totalStudents * state.questions.size();
-        if (state.processedQuestions >= (totalQuestions < 3 ? 1 : 3)) {
-            //averages completed questions from batch start & excludes setup waiting
-            Duration elapsed = state.totalElapsed();
-            Duration average = elapsed.minus(state.batchStartedElapsed).dividedBy(state.processedQuestions);
-            Duration remaining = average.multipliedBy(totalQuestions - state.processedQuestions);
-            //keeps first prediction so progress & summary compare same estimate with actual time
-            if (state.estimatedTotal.isEmpty() && state.processedQuestions < totalQuestions) {
-                state.estimatedTotal = Optional.of(elapsed.plus(remaining));
-            }
-        }
     }
 
     @Override

@@ -15,6 +15,10 @@ public final class TestCaseResult { //stores one tester case's ID, outcome & ear
         return new TestCaseResult(caseId, passed, earnedMarks * factor);
     }
 
+    public boolean isPassed() {
+        return passed;
+    }
+
     public double getEarnedMarks() {
         return earnedMarks;
     }

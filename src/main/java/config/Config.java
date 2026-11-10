@@ -6,9 +6,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import java.util.EnumSet;
+import java.util.Locale;
+import utils.logging.JsonLineLogger.Status;
 import java.util.Properties;
 
 public class Config { //loads grading paths & process time limits from configuration
+    public static final int DEFAULT_LOG_BUFFER_THRESHOLD = 12;
+
+    private final int logBufferThreshold;
+    private final EnumSet<Status> logLevels;
     private final Properties properties;
     private final Path inputDirectory;
     private final Path outputDirectory;
@@ -54,15 +61,39 @@ public class Config { //loads grading paths & process time limits from configura
         gradingWorkers = gradingWorkersValue < 1 ? 1 : gradingWorkersValue;
         headerSearchDepth = getSearchDepth(properties, "submission.header.search.depth", 6);
         answerSearchDepth = getSearchDepth(properties, "submission.answer.search.depth", 5);
+        int logBufferThreshold = Integer.parseInt(properties.getProperty("log.buffer.threshold", "12").strip());
+        this.logBufferThreshold = logBufferThreshold < 12 ? 12 : logBufferThreshold;
+        logLevels = EnumSet.noneOf(Status.class);
+
+        String configuredLevels = properties.getProperty("log.levels", "LOG,WARNING,ERROR").strip();
+        if (!configuredLevels.isEmpty()) {
+            for (String level : configuredLevels.split(",", -1)) {
+                try {
+                    logLevels.add(Status.valueOf(level.strip().toUpperCase(Locale.ROOT)));
+                } catch (IllegalArgumentException error) {
+                    throw new IllegalArgumentException("log.levels accepts LOG, WARNING, ERROR; invalid value > " + level, error);
+                }
+            }
+        }
+        
         // Validate output limits before any worker starts.
-        Long processOutMaxBytes= Long.parseLong(properties.getProperty("process.output.max.bytes", "1048576"));
-        this.processOutputMaxBytes = processOutMaxBytes < 1024 ? 1024 : processOutMaxBytes;
+        Long processOutMaxBytes = Long.parseLong(properties.getProperty("process.output.max.MiB", "2"));
+        // << 20 to convert to MiB
+        this.processOutputMaxBytes = (processOutMaxBytes < 1 ? 1 : processOutMaxBytes) << 20;
     }
 
     private static Properties loadProperties(Path file) throws IOException {
         Properties values = new Properties();
         try (Reader reader = Files.newBufferedReader(file)) { values.load(reader); }
         return values;
+    }
+
+    public EnumSet<Status> getLogLevels() {
+        return logLevels.clone();
+    }
+
+    public int getLogBufferThreshold() {
+        return logBufferThreshold;
     }
 
     public long getProcessOutputMaxBytes() {
