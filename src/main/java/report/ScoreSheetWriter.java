@@ -30,6 +30,9 @@ public final class ScoreSheetWriter { //writes totals & question marks for every
         //Build the fixed columns followed by the question columns.
         List<String> header = new ArrayList<>(Arrays.asList(ScoreSheetColumns.header()));
         header.addAll(questionIds);
+        int flagColumn = header.size();
+        header.add("Identification Flag");
+        header.add("Identification Message");
         rows.add(header.toArray(String[]::new));
 
         //Record the position of each question column.
@@ -56,6 +59,8 @@ public final class ScoreSheetWriter { //writes totals & question marks for every
             }
 
             row[ScoreSheetColumns.gradeNumerator] = formatMarks(QuestionGrade.totalMarks(grades));
+            row[flagColumn] = submission.getIdentificationFlag();
+            row[flagColumn + 1] = submission.getIdentificationMessage();
 
             for (QuestionGrade grade : grades) {
                 int column = questionColumns.get(grade.getQuestionId());

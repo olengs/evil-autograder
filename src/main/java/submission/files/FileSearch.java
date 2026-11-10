@@ -10,14 +10,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import utils.files.FileUtils;
+
 final class FileSearch { //resolves case-insensitive paths & caches bounded submission file searches
-    private static final int maxSearchDepth = 4;
+    private final int maxSearchDepth;
     private final boolean reuseLookups;
     private final Map<Path, List<Path>> directoryEntries = new HashMap<>();
     private final Map<Path, List<Path>> fileIndexes = new HashMap<>();
 
-    FileSearch(boolean reuseLookups) {
+    FileSearch(boolean reuseLookups, int maxSearchDepth) {
         this.reuseLookups = reuseLookups;
+        this.maxSearchDepth = maxSearchDepth;
     }
 
     Optional<Path> findFile(Path directory, String name) throws IOException {
@@ -50,7 +53,7 @@ final class FileSearch { //resolves case-insensitive paths & caches bounded subm
 
         List<Path> entries = List.of();
         if (Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
-            try (var paths = Files.list(directory)) {
+            try (var paths = FileUtils.streamPaths(directory, 1)) {
                 entries = paths.toList();
             } catch (UncheckedIOException error) {
                 throw error.getCause();
@@ -69,7 +72,7 @@ final class FileSearch { //resolves case-insensitive paths & caches bounded subm
         
         List<Path> files = List.of();
         if (Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) {
-            try (var paths = Files.walk(root, maxSearchDepth + 1)) {
+            try (var paths = FileUtils.streamPaths(root, maxSearchDepth)) {
                 files = paths.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)).filter(path -> visiblePath(root.relativize(path))).toList();
             } catch (UncheckedIOException error) {
                 throw error.getCause();

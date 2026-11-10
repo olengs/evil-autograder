@@ -53,10 +53,10 @@ public final class Autograder { //coordinates assessment loading, submission val
                 progress.preparing("reading student scoresheet");
                 List<StudentDetails> roster = prepareRoster(config);
                 progress.preparing("extracting submission zip files");
-                List<StudentSubmission> submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace.path(), roster, assessment);
+                List<StudentSubmission> submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace.path(), roster, assessment, config.getHeaderSearchDepth());
                 if (submissions.isEmpty()) throw new IOException("no submission ZIP files found");
 
-                SubmissionValidator validator = createValidator();
+                SubmissionValidator validator = createValidator(config.getAnswerSearchDepth());
                 for (StudentSubmission submission : submissions) {
                     Interruptions.check("validation interrupted");
                     progress.validationStarted(submission.getDisplayName());
@@ -77,7 +77,7 @@ public final class Autograder { //coordinates assessment loading, submission val
         return roster;
     }
 
-    private static SubmissionValidator createValidator() {
-        return new SubmissionValidator(List.of(new AnswerFileRule(), new StudentHeaderRule()), List.of(new UnexpectedFileRule()), new SubmissionFileFinder());
+    private static SubmissionValidator createValidator(int answerSearchDepth) {
+        return new SubmissionValidator(List.of(new AnswerFileRule(), new StudentHeaderRule()), List.of(new UnexpectedFileRule()), new SubmissionFileFinder(answerSearchDepth));
     }
 }

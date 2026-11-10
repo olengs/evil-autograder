@@ -19,6 +19,8 @@ public class Config { //loads grading paths & process time limits from configura
     private final Duration compilationTimeout;
     private final Duration executionTimeout;
     private final int gradingWorkers;
+    private final int headerSearchDepth;
+    private final int answerSearchDepth;
     private final long processOutputMaxBytes;
 
     public Config() throws IOException {
@@ -50,6 +52,8 @@ public class Config { //loads grading paths & process time limits from configura
         executionTimeout = getTimeout(properties, "execution.timeout.seconds");
         int gradingWorkersValue = Integer.parseInt(getRequired(properties, "grading.workers"));
         gradingWorkers = gradingWorkersValue < 1 ? 1 : gradingWorkersValue;
+        headerSearchDepth = getSearchDepth(properties, "submission.header.search.depth", 6);
+        answerSearchDepth = getSearchDepth(properties, "submission.answer.search.depth", 5);
         // Validate output limits before any worker starts.
         Long processOutMaxBytes= Long.parseLong(properties.getProperty("process.output.max.bytes", "1048576"));
         this.processOutputMaxBytes = processOutMaxBytes < 1024 ? 1024 : processOutMaxBytes;
@@ -102,6 +106,14 @@ public class Config { //loads grading paths & process time limits from configura
         return executionTimeout;
     }
 
+    public int getHeaderSearchDepth() {
+        return headerSearchDepth;
+    }
+
+    public int getAnswerSearchDepth() {
+        return answerSearchDepth;
+    }
+
     public int getNumGradingWorkers() {
     return gradingWorkers;
 }
@@ -149,6 +161,16 @@ public class Config { //loads grading paths & process time limits from configura
         }
 
         return value.strip();
+    }
+
+    private static int getSearchDepth(Properties properties, String key, int defaultValue) {
+        try {
+            int depth = Integer.parseInt(properties.getProperty(key, Integer.toString(defaultValue)).strip());
+            if (depth > 0) return depth;
+        } catch (NumberFormatException ignored) {
+            // Report the setting name for malformed values as well as nonpositive depths.
+        }
+        throw new IllegalArgumentException(key + " must be a positive whole number");
     }
 
     private static Duration getTimeout(Properties properties, String key) {

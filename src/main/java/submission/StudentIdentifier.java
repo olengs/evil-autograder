@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import submission.files.StudentHeaderReader;
+import utils.files.FileUtils;
 import utils.process.Interruptions;
 import utils.strings.CommonPatternChecker;
 import validation.SubmissionIssue;
@@ -24,9 +25,12 @@ public class StudentIdentifier { //matches ZIP filenames to roster usernames wit
         return resolveCandidate(username, "", username, roster);
     }
 
-    public StudentDetails identifyHeaders(Path answerRoot, List<StudentDetails> roster, List<SubmissionIssue> issues) throws IOException {
+    public record HeaderIdentification(StudentDetails student, boolean conflicting) {}
+
+    public HeaderIdentification inspectHeaders(Path answerRoot, List<StudentDetails> roster,
+            List<SubmissionIssue> issues, List<String> identifiers, int maxDepth) throws IOException {
         var candidates = new LinkedHashMap<String, StudentDetails>();
-        try (var files = Files.walk(answerRoot, 6)) {
+        try (var files = FileUtils.streamPaths(answerRoot, maxDepth)) {
             for (Path file : files.filter(Files::isRegularFile).filter(path -> path.toString().endsWith(".java")).sorted().toList()) {
                 Interruptions.check("header identification interrupted");
                 StudentHeaderReader.Header header;
@@ -38,14 +42,17 @@ public class StudentIdentifier { //matches ZIP filenames to roster usernames wit
                             + answerRoot.relativize(file) + " > " + error.getMessage(), null));
                     continue;
                 }
+                if (header.name() != null && !header.name().isBlank()) identifiers.add(header.name());
                 if (header.email() == null || header.email().isBlank()) continue;
+                identifiers.add(header.email());
                 String username = CommonPatternChecker.normalizeUsername(header.email().split("@", 2)[0]);
                 StudentDetails student = resolveCandidate(username, header.name() == null ? "" : header.name(), header.email().strip(), roster);
                 if (student != null) candidates.putIfAbsent(username, student);
             }
         }
         //Conflicting email headers cannot establish a single student identity.
-        return candidates.size() == 1 ? candidates.values().iterator().next() : null;
+        return new HeaderIdentification(candidates.size() == 1 ? candidates.values().iterator().next() : null,
+                candidates.size() > 1);
     }
 
     private StudentDetails findStudent(String username, List<StudentDetails> roster) {

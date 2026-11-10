@@ -7,18 +7,24 @@ import java.util.Optional;
 
 public class SubmissionFileFinder { //locates question folders & unambiguous answer files
     private final FileSearch fileSearch;
+    private final int maxSearchDepth;
 
     public SubmissionFileFinder() {
-        this(false);
+        this(5);
     }
 
-    private SubmissionFileFinder(boolean reuseLookups) {
-        this.fileSearch = new FileSearch(reuseLookups);
+    public SubmissionFileFinder(int maxSearchDepth) {
+        this(false, maxSearchDepth);
+    }
+
+    private SubmissionFileFinder(boolean reuseLookups, int maxSearchDepth) {
+        this.maxSearchDepth = maxSearchDepth;
+        this.fileSearch = new FileSearch(reuseLookups, maxSearchDepth);
     }
 
     //reuse directory entries & file indexes for this submission only
     public SubmissionFileFinder forSubmission() {
-        return new SubmissionFileFinder(true);
+        return new SubmissionFileFinder(true, maxSearchDepth);
     }
 
     public Optional<Path> findFileIgnoringCase(Path directory, String requiredFileName) throws IOException {

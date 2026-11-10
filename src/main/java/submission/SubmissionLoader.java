@@ -15,7 +15,7 @@ import validation.SubmissionIssue;
 public final class SubmissionLoader { //extracts submissions, matches students & records preparation failures
     private SubmissionLoader() {}
 
-    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> roster, AssessmentDefinition assessment) throws IOException {
+    public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> roster, AssessmentDefinition assessment, int headerSearchDepth) throws IOException {
         Files.createDirectories(workspaceFolder);
         List<StudentSubmission> submissions = new ArrayList<>();
         StudentIdentifier studentIdentifier = new StudentIdentifier();
@@ -23,42 +23,44 @@ public final class SubmissionLoader { //extracts submissions, matches students &
         for (Path zipFile : SubmissionArchives.listZipFiles(submissionFolder)) {
             Interruptions.check("submission loading interrupted");
             StudentDetails student = studentIdentifier.identify(zipFile, roster);
+            List<String> identifiers = new ArrayList<>();
+            identifiers.add(zipFile.getFileName().toString());
             Path extractionDirectory = Files.createTempDirectory(workspaceFolder, "submission-");
             StudentSubmission submission = new StudentSubmission(student, zipFile, extractionDirectory);
 
             try {
                 ZipExtractor.extract(zipFile, extractionDirectory);
-                Path answerRoot = findAnswerRoot(extractionDirectory, assessment);
+                Path answerRoot = findAnswerRoot(extractionDirectory, assessment, identifiers);
                 boolean identifiedFromFolder = false;
                 if (student == null && !answerRoot.equals(extractionDirectory)) {
                     student = studentIdentifier.identifyFolder(answerRoot, roster);
                     identifiedFromFolder = student != null;
                 }
                 List<SubmissionIssue> headerIssues = new ArrayList<>();
+                boolean conflictingIdentifiers = false;
                 if (student == null) {
                     try {
-                        student = studentIdentifier.identifyHeaders(answerRoot, roster, headerIssues);
+                        var headerIdentification = studentIdentifier.inspectHeaders(answerRoot, roster, headerIssues, identifiers, headerSearchDepth);
+                        student = headerIdentification.student();
+                        conflictingIdentifiers = headerIdentification.conflicting();
                     } catch (IOException error) {
                         if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
                         headerIssues.add(SubmissionIssue.warning("header read error", "unable to inspect headers > " + error.getMessage(), null));
                     }
                 }
-                submission = new StudentSubmission(student, zipFile, answerRoot);
+                submission = new StudentSubmission(student, zipFile, answerRoot, identifiers, conflictingIdentifiers);
                 submission.addIssues(headerIssues);
                 if (identifiedFromFolder) {
                     submission.addIssues(List.of(SubmissionIssue.warning("archive name", "identified " + student.getUsername()
                             + " from extracted folder > archive named " + zipFile.getFileName(), null)));
                 }
                 if (student == null) {
-                    boolean hasStudentNumber = SubmissionFileNames.username(zipFile).strip().matches("[0-9]{8}")
-                            || (!answerRoot.equals(extractionDirectory) && answerRoot.getFileName().toString().strip().matches("[0-9]{8}"));
-                    String message = "no match for " + zipFile.getFileName();
-                    submission.addIssues(List.of(hasStudentNumber
-                            ? SubmissionIssue.warning("unknown student", message + " > student number supplied > grading without username", null)
-                            : SubmissionIssue.error("unknown student", message, null)));
+                    submission.addIssues(List.of(SubmissionIssue.warning("unknown student",
+                            submission.getIdentificationMessage() + " > grading without username", null)));
                 }
             } catch (IOException error) {
                 if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
+                submission = new StudentSubmission(student, zipFile, extractionDirectory, identifiers, false);
                 try {
                     FileUtils.deleteDirectory(extractionDirectory);
                 } catch (IOException cleanupError) {
@@ -71,7 +73,7 @@ public final class SubmissionLoader { //extracts submissions, matches students &
         return submissions;
     }
 
-    private static Path findAnswerRoot(Path extracted, AssessmentDefinition assessment) throws IOException {
+    private static Path findAnswerRoot(Path extracted, AssessmentDefinition assessment, List<String> identifiers) throws IOException {
         Path candidate = extracted;
         while (true) {
             for (var question : assessment.getQuestions()) {
@@ -79,13 +81,14 @@ public final class SubmissionLoader { //extracts submissions, matches students &
             }
 
             List<Path> children;
-            try (var entries = Files.list(candidate)) {
+            try (var entries = FileUtils.streamPaths(candidate, 1)) {
                 children = entries.filter(path -> !path.getFileName().toString().startsWith(".")).toList();
             }
             
             if (children.size() != 1 || !Files.isDirectory(children.getFirst())) return candidate;
             //unwrap one outer folder at a time > never guess between several candidates
             candidate = children.getFirst();
+            identifiers.add(candidate.getFileName().toString());
         }
     }
 }
