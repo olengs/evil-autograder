@@ -135,8 +135,10 @@ public class AssessmentGrader { //grades each submission in question order & rec
             return questionGrader.get().grade(question, attempt, tester, progress, studentLabel);
         } catch (IOException error) {
             if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
+            JsonLineLogger.getInstance().logException(Status.ERROR, "AssessmentGrader",
+                    studentLabel + " " + question.getId() + " > question grading failed", error);
             return new QuestionGrade(question.getId(), GradeStatus.runtimeError, 0, List.of(),
-                    "question grading failed > " + error.getMessage());
+                    "question grading failed; see diagnostic log");
         }
     }
 

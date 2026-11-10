@@ -10,6 +10,7 @@ import java.util.List;
 import com.opencsv.CSVWriter;
 
 import utils.process.Interruptions;
+import utils.logging.JsonLineLogger;
 
 public final class CsvWriter { //writes escaped CSV rows before replacing destination file
     private CsvWriter() {}
@@ -32,6 +33,8 @@ public final class CsvWriter { //writes escaped CSV rows before replacing destin
             try {
                 Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             } catch (AtomicMoveNotSupportedException error) {
+                JsonLineLogger.getInstance().logException(JsonLineLogger.Status.WARNING,
+                        "CsvWriter", "atomic CSV replacement unavailable; using normal replacement", error);
                 Interruptions.check("csv writing interrupted");
                 Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
             }

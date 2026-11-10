@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 
+import utils.logging.JsonLineLogger;
+
 // Code mostly from https://github.com/tamboui/tamboui
 // main TUI logic, control flow and keyboard input
 // setup > menu > generation or grading > summary > menu
@@ -53,7 +55,13 @@ public class TerminalUi {
                                 input.setLength(0);
                                 setupMessage = "";
                                 if (setup.issue() == null) session = new UiSession(setup.config());
-                            } catch (IOException error) { setupMessage = error.getMessage(); }
+                            } catch (IOException error) {
+                                JsonLineLogger.getInstance().logException(JsonLineLogger.Status.WARNING,
+                                        "TerminalUi", "setup replacement rejected", error);
+                                setupMessage = error.getMessage();
+                                if (setupMessage == null || setupMessage.isBlank() || setupMessage.length() > 80)
+                                    setupMessage = "Invalid replacement path; see log";
+                            }
                         } else if (key.code() == KeyCode.BACKSPACE && !input.isEmpty())
                             input.delete(input.offsetByCodePoints(input.length(), -1), input.length());
                         else if (key.code() == KeyCode.CHAR && !Character.isISOControl(key.codePoint())) input.append(key.string());

@@ -30,7 +30,7 @@ public final class JsonLineLogger {
     // Startup defaults allow logging before the UI has a valid configuration.
     private int bufferThreshold = Config.DEFAULT_LOG_BUFFER_THRESHOLD;
 
-    private EnumSet<Status> flags = EnumSet.allOf(Status.class);
+    private volatile EnumSet<Status> flags = EnumSet.allOf(Status.class);
 
     private JsonLineLogger() {
         hasInit = false;
@@ -46,13 +46,13 @@ public final class JsonLineLogger {
     }
 
     public void Init(Path logFile, int threshold) throws IOException {
-        if (hasInit) return;
-        this.logfilePath = logFile;
+        if (!hasInit) this.logfilePath = logFile;
         if (threshold <= 0 || threshold > Integer.MAX_VALUE - 5) {
             throw new IllegalArgumentException("log buffer threshold must be positive and allow threshold + 5 without overflow");
         }
         logs.ensureCapacity(threshold + 5);
         bufferThreshold = threshold;
+        if (hasInit) return;
         // Creates parent folders and truncates the previous log for this run.
         FileUtils.writeStringToFile(logfilePath.toFile(), "", StandardCharsets.UTF_8);
         hasInit = true;
@@ -60,9 +60,12 @@ public final class JsonLineLogger {
 
     /// param flags to enable which log status to be enabled, by default all types of logs are enabled.
     public void Init(Path logFile, int threshold, EnumSet<Status> flags) throws IOException {
-        if (hasInit) return;
-        this.flags = flags;
+        setLevels(flags);
         Init(logFile, threshold);
+    }
+
+    public void setLevels(EnumSet<Status> levels) {
+        flags = levels.clone();
     }
 
     public void append(Status status, String feature, String message) {
@@ -79,6 +82,19 @@ public final class JsonLineLogger {
                 }
             }
         }
+    }
+
+    // Flush handled failures immediately so details are available while the UI stays open.
+    public void logException(Status status, String feature, String context, Throwable error) {
+        if (!flags.contains(status)) return;
+        var text = new java.io.StringWriter();
+        error.printStackTrace(new java.io.PrintWriter(text));
+        String detail = context + "\n" + text;
+        if (!hasInit) {
+            System.err.println("[" + feature + "] " + detail);
+            return;
+        }
+        append(status, feature, detail);
     }
 
     public void flush() throws IOException {
