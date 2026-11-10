@@ -6,6 +6,7 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.concurrent.CancellationException;
 
+import config.Config;
 import ui.TerminalUi;
 import utils.logging.JsonLineLogger;
 import utils.logging.JsonLineLogger.Status;
@@ -17,8 +18,8 @@ public class TerminalMain { //starts terminal UI & logs failures or cancellation
         int status = 0;
         System.setOut(new PrintStream(OutputStream.nullOutputStream()));
         try {
-            JsonLineLogger.getInstance().Init(logFile);
-            new TerminalUi().run(Path.of(args.length == 0 ? "config.properties" : args[0]));
+            Config config = new TerminalUi().run(Path.of(args.length == 0 ? "config.properties" : args[0]));
+            JsonLineLogger.getInstance().Init(logFile, config.getLogBufferThreshold());
         } catch (CancellationException error) {
             JsonLineLogger.getInstance().append(Status.LOG, "main", "grading cancelled");
             status = 130;

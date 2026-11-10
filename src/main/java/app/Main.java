@@ -14,8 +14,7 @@ public final class Main { //runs console grading & saves scoresheet
     public static void main(String[] args) {
         try {
             Config config = args.length == 0 ? new Config() : new Config(Path.of(args[0]));
-
-            JsonLineLogger.getInstance().Init(Path.of("log", "console.log.jsonl"));
+            JsonLineLogger.getInstance().Init(Path.of("log", "console.log.jsonl"), config.getLogBufferThreshold());
             try {
                 var results = GradingWorkflow.run(config, new GradingProgress());
                 ConsoleReportPrinter.print(results);

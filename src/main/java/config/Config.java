@@ -9,6 +9,9 @@ import java.util.Map;
 import java.util.Properties;
 
 public class Config { //loads grading paths & process time limits from configuration
+    public static final int DEFAULT_LOG_BUFFER_THRESHOLD = 12;
+
+    private final int logBufferThreshold;
     private final Properties properties;
     private final Path inputDirectory;
     private final Path outputDirectory;
@@ -54,15 +57,22 @@ public class Config { //loads grading paths & process time limits from configura
         gradingWorkers = gradingWorkersValue < 1 ? 1 : gradingWorkersValue;
         headerSearchDepth = getSearchDepth(properties, "submission.header.search.depth", 6);
         answerSearchDepth = getSearchDepth(properties, "submission.answer.search.depth", 5);
+        int logBufferThreshold = Integer.parseInt(properties.getProperty("log.buffer.threshold", "12").strip());
+        this.logBufferThreshold = logBufferThreshold < 12 ? 12 : logBufferThreshold;
         // Validate output limits before any worker starts.
-        Long processOutMaxBytes= Long.parseLong(properties.getProperty("process.output.max.bytes", "1048576"));
-        this.processOutputMaxBytes = processOutMaxBytes < 1024 ? 1024 : processOutMaxBytes;
+        Long processOutMaxBytes = Long.parseLong(properties.getProperty("process.output.max.MiB", "2"));
+        // << 20 to convert to MiB
+        this.processOutputMaxBytes = (processOutMaxBytes < 1 ? 1 : processOutMaxBytes) << 20;
     }
 
     private static Properties loadProperties(Path file) throws IOException {
         Properties values = new Properties();
         try (Reader reader = Files.newBufferedReader(file)) { values.load(reader); }
         return values;
+    }
+
+    public int getLogBufferThreshold() {
+        return logBufferThreshold;
     }
 
     public long getProcessOutputMaxBytes() {

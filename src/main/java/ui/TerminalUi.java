@@ -1,6 +1,7 @@
 package ui;
 
 import config.SetupConfigChecker;
+import config.Config;
 import dev.tamboui.tui.TuiConfig;
 import dev.tamboui.tui.TuiRunner;
 import dev.tamboui.tui.event.KeyCode;
@@ -21,7 +22,8 @@ public class TerminalUi {
     private int selected;
     private String setupMessage = "";
 
-    public void run(Path configFile) throws Exception {
+
+    public Config run(Path configFile) throws Exception {
         SetupConfigChecker setup = new SetupConfigChecker(configFile);
         StringBuilder input = new StringBuilder();
         ResourceUsage resources = new ResourceUsage();
@@ -107,6 +109,8 @@ public class TerminalUi {
                 if (session != null) session.close();
             }
         }
+        
+        return setup.config();
     }
 
     private void start() {
