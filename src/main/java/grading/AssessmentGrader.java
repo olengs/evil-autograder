@@ -45,7 +45,7 @@ public class AssessmentGrader { //grades each submission in question order & rec
         //keep submission order so console reports & verification are predictable
         Map<StudentSubmission, List<QuestionGrade>> results = new LinkedHashMap<>();
         List<String> questionIds = assessment.getQuestions().stream().map(QuestionDefinition::getId).toList();
-        progress.batchStarted(submissions.size(), questionIds);
+        progress.batchStarted(submissions.size(), questionIds, workerCount);
 
         try (ExecutorService workers = Executors.newFixedThreadPool(workerCount)) {
             List<Future<List<QuestionGrade>>> futures = new ArrayList<>();
