@@ -34,7 +34,7 @@ public class TesterGenerator {
     public TesterGenerator(Config config) {
         this.config = config;
         this.openAiClient = OpenAiClient.create(config);
-        this.validator = new GeneratedTesterValidator(config.getCompilationTimeout(), config.getExecutionTimeout());
+        this.validator = new GeneratedTesterValidator(config.getCompilationTimeout(), config.getExecutionTimeout(), config.getProcessOutputMaxBytes());
     }
 
     public List<QuestionGenerationOutcome> generate(String userPrompt) throws IOException {

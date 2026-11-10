@@ -21,6 +21,7 @@ public class Config { //loads grading paths & process time limits from configura
     private final int gradingWorkers;
     private final int headerSearchDepth;
     private final int answerSearchDepth;
+    private final long processOutputMaxBytes;
 
     public Config() throws IOException {
         this(Path.of("config.properties"));
@@ -53,6 +54,9 @@ public class Config { //loads grading paths & process time limits from configura
         gradingWorkers = gradingWorkersValue < 1 ? 1 : gradingWorkersValue;
         headerSearchDepth = getSearchDepth(properties, "submission.header.search.depth", 6);
         answerSearchDepth = getSearchDepth(properties, "submission.answer.search.depth", 5);
+        // Validate output limits before any worker starts.
+        Long processOutMaxBytes= Long.parseLong(properties.getProperty("process.output.max.bytes", "1048576"));
+        this.processOutputMaxBytes = processOutMaxBytes < 1024 ? 1024 : processOutMaxBytes;
     }
 
     private static Properties loadProperties(Path file) throws IOException {
@@ -60,6 +64,11 @@ public class Config { //loads grading paths & process time limits from configura
         try (Reader reader = Files.newBufferedReader(file)) { values.load(reader); }
         return values;
     }
+
+    public long getProcessOutputMaxBytes() {
+        return processOutputMaxBytes;
+    }
+
 
     public Config withOverrides(Map<String, String> overrides) {
         return new Config(properties, overrides);

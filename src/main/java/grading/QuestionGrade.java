@@ -1,26 +1,22 @@
 package grading;
 
 import java.util.List;
-import java.util.Optional;
 
-import utils.process.ProcessResult;
 
-public final class QuestionGrade { //stores a question's marks, status, test cases & process result
+public final class QuestionGrade { //stores a question's marks, status, test cases
     private final String questionId;
     private final GradeStatus status;
     private final double earnedMarks;
     private final List<TestCaseResult> testCaseResults;
-    private final Optional<ProcessResult> processResult;
     private final String message;
 
-    public QuestionGrade(String questionId, GradeStatus status, double earnedMarks, List<TestCaseResult> testCaseResults, ProcessResult processResult, String message) {
+    public QuestionGrade(String questionId, GradeStatus status, double earnedMarks, List<TestCaseResult> testCaseResults, String message) {
         if (status == null) throw new IllegalArgumentException("status is required");
 
         this.questionId = questionId == null ? "" : questionId;
         this.status = status;
         this.earnedMarks = earnedMarks;
         this.testCaseResults = testCaseResults == null ? List.of() : List.copyOf(testCaseResults);
-        this.processResult = Optional.ofNullable(processResult);
         this.message = message == null ? "" : message;
     }
 
@@ -46,9 +42,6 @@ public final class QuestionGrade { //stores a question's marks, status, test cas
         return testCaseResults;
     }
 
-    public Optional<ProcessResult> getProcessResult() {
-        return processResult;
-    }
 
     public String getMessage() {
         return message;
@@ -56,6 +49,6 @@ public final class QuestionGrade { //stores a question's marks, status, test cas
 
     @Override
     public String toString() {
-        return "QuestionGrade{questionId='" + questionId + '\'' + ", status=" + status + ", earnedMarks=" + earnedMarks + ", testCases=" + testCaseResults.size() + ", hasProcessResult=" + processResult.isPresent() + ", hasMessage=" + message + '}';
+        return "QuestionGrade{questionId='" + questionId + '\'' + ", status=" + status + ", earnedMarks=" + earnedMarks + ", testCases=" + testCaseResults.size() + ", hasMessage=" + message + '}';
     }
 }
