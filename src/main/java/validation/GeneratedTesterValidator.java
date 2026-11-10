@@ -111,7 +111,6 @@ public class GeneratedTesterValidator {
             Path support = spec.resourceDirectory().resolve(name);
             if (!Files.isRegularFile(support)) throw new IOException("missing support file > " + name);
             Path destination = workspace.resolve(name);
-            Files.createDirectories(destination.getParent());
             FileUtils.copyFileReplacing(support, destination);
         }
     }
