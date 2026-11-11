@@ -2,6 +2,7 @@ package generation;
 
 import java.util.List;
 
+/// Optional callbacks for generation states
 public interface GenerationListener {
     GenerationListener NONE = new GenerationListener() {};
 

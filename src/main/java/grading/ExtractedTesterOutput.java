@@ -1,6 +1,7 @@
 package grading;
 
-public final class ExtractedTesterOutput { //stores useful lines & generated-tester validation details
+/// stores useful lines & generated-tester validation details
+public final class ExtractedTesterOutput { 
     private final String testOutput;
     private final String lastLine;
     private final boolean outcomeBeforeHeader;

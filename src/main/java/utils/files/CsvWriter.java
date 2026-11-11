@@ -9,10 +9,11 @@ import java.util.List;
 
 import com.opencsv.CSVWriter;
 
-import utils.process.Interruptions;
 import utils.logging.JsonLineLogger;
+import utils.process.Interruptions;
 
-public final class CsvWriter { //writes escaped CSV rows before replacing destination file
+/// writes escaped CSV rows before replacing destination file
+public final class CsvWriter { 
     private CsvWriter() {}
 
     public static void write(Path file, List<String[]> rows) throws IOException {

@@ -12,7 +12,8 @@ import java.util.regex.Pattern;
 
 import utils.files.FileUtils;
 
-public final class AssessmentLoader { //discovers question templates & their support files
+/// discovers question templates & their support files
+public final class AssessmentLoader { 
     private AssessmentLoader() {}
 
     public static AssessmentDefinition load(Path resources) throws IOException {

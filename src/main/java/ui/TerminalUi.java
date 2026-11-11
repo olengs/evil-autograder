@@ -1,17 +1,17 @@
 package ui;
 
-import config.SetupConfigChecker;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.time.Duration;
+
 import config.Config;
+import config.SetupConfigChecker;
 import dev.tamboui.tui.TuiConfig;
 import dev.tamboui.tui.TuiRunner;
 import dev.tamboui.tui.event.KeyCode;
 import dev.tamboui.tui.event.KeyEvent;
 import dev.tamboui.tui.event.PasteEvent;
 import dev.tamboui.tui.event.TickEvent;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.time.Duration;
-
 import utils.logging.JsonLineLogger;
 
 // Code mostly from https://github.com/tamboui/tamboui

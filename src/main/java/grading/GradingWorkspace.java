@@ -19,7 +19,8 @@ import utils.files.FileUtils;
 import utils.logging.JsonLineLogger;
 import utils.logging.JsonLineLogger.Status;
 
-public class GradingWorkspace implements AutoCloseable { //reconciles answer, support & tester files inside the student's question directory
+/// reconciles answer, support & tester files inside the student's question directory
+public class GradingWorkspace implements AutoCloseable {
     private final Path questionDirectory; //candidate directory from the attempt > may not exist for flat/relocated submissions
     private Path directory; //resolved in-place grading base > set in prepare()
 

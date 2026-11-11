@@ -3,7 +3,8 @@ package report;
 import java.io.IOException;
 import java.util.Arrays;
 
-public final class ScoreSheetColumns { //defines shared student CSV column positions & header labels
+/// defines shared student CSV column positions & header labels
+public final class ScoreSheetColumns { 
     public static final int username = 0;
     public static final int gradeNumerator = 1;
 

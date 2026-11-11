@@ -1,15 +1,17 @@
 package validation.rules;
 
-import assessment.QuestionDefinition;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
+import assessment.QuestionDefinition;
 import submission.StudentSubmission;
 import validation.QuestionValidationRule;
 import validation.SubmissionIssue;
 import validation.ValidationFiles;
 
-public class AnswerFileRule implements QuestionValidationRule { //reports missing answers & recoverable folder or filename differences
+/// reports missing answers & recoverable folder or filename differences
+public class AnswerFileRule implements QuestionValidationRule { 
     @Override
     public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question, ValidationFiles.QuestionFiles files) {
         List<SubmissionIssue> issues = new ArrayList<>();

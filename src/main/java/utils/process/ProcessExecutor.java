@@ -1,8 +1,8 @@
 package utils.process;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
@@ -14,7 +14,8 @@ import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.io.IOUtils;
 
-public final class ProcessExecutor { //runs timed processes, captures output & terminates process trees
+/// runs timed processes, captures output & terminates process trees
+public final class ProcessExecutor { 
     private ProcessExecutor() {}
 
     public static final long DEFAULT_OUTPUT_MAX_BYTES = 1_048_576;

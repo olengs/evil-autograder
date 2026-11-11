@@ -10,7 +10,8 @@ import ui.TerminalUi;
 import utils.logging.JsonLineLogger;
 import utils.logging.JsonLineLogger.Status;
 
-public class TerminalMain { //starts terminal UI & logs failures or cancellation
+// runs grading & saves scoresheet with terminal UI
+public class TerminalMain {
 
     public static void main(String[] args) {
         int status = 0;

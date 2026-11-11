@@ -10,7 +10,8 @@ import java.util.zip.ZipFile;
 
 import utils.process.Interruptions;
 
-public final class ZipExtractor { //extracts ZIP entries while rejecting paths outside destination
+/// extracts ZIP entries while rejecting paths outside destination
+public final class ZipExtractor { 
     private ZipExtractor() {
     }
 

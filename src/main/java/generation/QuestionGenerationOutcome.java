@@ -2,6 +2,7 @@ package generation;
 
 import java.nio.file.Path;
 
+/// Store generation outcome from AI
 public record QuestionGenerationOutcome(String questionId, GenerationStatus status, Path writtenFile, String message) {
     public enum GenerationStatus { written, validationFailed, generationFailed }
 

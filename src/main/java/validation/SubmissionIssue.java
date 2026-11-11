@@ -1,6 +1,7 @@
 package validation;
 
-public class SubmissionIssue { //stores a validation finding & determines which questions it blocks
+/// stores a validation finding & determines which questions it blocks
+public class SubmissionIssue { 
 
     private final String code;
     private final IssueSeverity severity;

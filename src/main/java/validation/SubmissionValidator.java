@@ -1,7 +1,5 @@
 package validation;
 
-import assessment.AssessmentDefinition;
-import assessment.QuestionDefinition;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -9,12 +7,16 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+
+import assessment.AssessmentDefinition;
+import assessment.QuestionDefinition;
 import submission.QuestionAttempt;
 import submission.StudentSubmission;
 import submission.files.StudentHeaderReader;
 import submission.files.SubmissionFileFinder;
 
-public class SubmissionValidator { //runs validation rules & builds question attempts for grading
+/// runs validation rules & builds question attempts for grading
+public class SubmissionValidator {
     private final List<QuestionValidationRule> questionRules;
     private final List<SubmissionValidationRule> submissionRules;
     private final SubmissionFileFinder fileFinder;

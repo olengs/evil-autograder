@@ -5,8 +5,9 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
-//output format sent to model > {"tests": [{"id": ..., "testCode": ...}]} > one entry per question
-//a wrapper object because strict json schemas need an object at root > not a bare array
+/// output format sent to model > {"tests": [{"id": ..., "testCode": ...}]} > one entry per question
+/// a wrapper object because strict json schemas need an object at root > not a bare array
+/// used for openai sturctured response
 @JsonClassDescription("Every tester requested in prompt.")
 public class GeneratedTesters {
     @JsonPropertyDescription("One tester per question id listed in prompt > every listed id exactly once.")

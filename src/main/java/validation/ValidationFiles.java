@@ -1,6 +1,5 @@
 package validation;
 
-import assessment.QuestionDefinition;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -8,10 +7,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+
+import assessment.QuestionDefinition;
 import submission.StudentSubmission;
 import submission.files.SubmissionFileFinder;
 
-public final class ValidationFiles { //shares cached question-folder & answer-file lookups across validation
+/// shares cached question-folder & answer-file lookups across validation
+public final class ValidationFiles {
     private final Path root;
     private final SubmissionFileFinder finder;
     private final Map<String, Lookup> folders = new HashMap<>();

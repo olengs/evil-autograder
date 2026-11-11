@@ -5,7 +5,8 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
-public class SubmissionFileFinder { //locates question folders & unambiguous answer files
+/// locates question folders & unambiguous answer files
+public class SubmissionFileFinder { 
     private final FileSearch fileSearch;
     private final int maxSearchDepth;
 

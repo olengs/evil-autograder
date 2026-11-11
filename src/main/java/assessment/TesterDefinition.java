@@ -2,7 +2,8 @@ package assessment;
 
 import java.nio.file.Path;
 
-public class TesterDefinition { //stores a tester's source path & executable main class
+/// stores a tester's source path & executable main class
+public class TesterDefinition { 
     private final double maximumMarks;
     private final int numTestCases;
     private final Path testerDirectory;

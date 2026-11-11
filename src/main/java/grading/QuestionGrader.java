@@ -10,13 +10,14 @@ import assessment.QuestionDefinition;
 import assessment.TesterDefinition;
 import grading.progress.ProgressListener;
 import submission.QuestionAttempt;
+import utils.logging.JsonLineLogger;
+import utils.logging.JsonLineLogger.Status;
 import utils.process.JavaTools;
 import utils.process.ProcessExecutor;
 import utils.process.ProcessResult;
-import utils.logging.JsonLineLogger;
-import utils.logging.JsonLineLogger.Status;
 
-public class QuestionGrader { //compiles answers, runs tester & totals completed test-case marks
+/// compiles answers, runs tester & totals completed test-case marks
+public class QuestionGrader { 
     private final long outputMaxBytes;
     private final Duration compilationTimeout;
     private final Duration executionTimeout;

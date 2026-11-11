@@ -7,7 +7,8 @@ import assessment.QuestionDefinition;
 import validation.IssueSeverity;
 import validation.SubmissionIssue;
 
-public class QuestionAttempt { //stores a question's selected answer files & validation findings
+/// stores a question's selected answer files & validation findings
+public class QuestionAttempt {
     private final QuestionDefinition questionDefinition;
     private final Path questionDirectory;
     private final List<Path> submittedFiles;

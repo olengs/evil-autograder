@@ -1,11 +1,12 @@
 package validation.rules;
 
-import assessment.QuestionDefinition;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import assessment.QuestionDefinition;
 import submission.StudentDetails;
 import submission.StudentSubmission;
 import submission.files.StudentHeaderReader;
@@ -13,7 +14,8 @@ import validation.QuestionValidationRule;
 import validation.SubmissionIssue;
 import validation.ValidationFiles;
 
-public class StudentHeaderRule implements QuestionValidationRule { //compares answer-file name & email headers with matched student
+/// compares answer-file name & email headers with matched student
+public class StudentHeaderRule implements QuestionValidationRule { 
     @Override
     public List<SubmissionIssue> validate(StudentSubmission submission, QuestionDefinition question, ValidationFiles.QuestionFiles files) {
         List<SubmissionIssue> issues = new ArrayList<>();

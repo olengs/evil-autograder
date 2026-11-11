@@ -1,13 +1,15 @@
 package generation;
 
-import assessment.AssessmentLoader;
-import assessment.QuestionDefinition;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import assessment.AssessmentLoader;
+import assessment.QuestionDefinition;
+
+/// Stores question's resources for generated templates
 public record QuestionSpec(String id, String answerTemplateSource, Path resourceDirectory, List<String> supportFiles) {
     public QuestionSpec {
         if (id == null || id.isBlank()) throw new IllegalArgumentException("question id is required");

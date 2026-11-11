@@ -3,7 +3,8 @@ package assessment;
 import java.nio.file.Path;
 import java.util.List;
 
-public class QuestionDefinition { //stores a question's folder, answer filenames & support files
+/// stores a question's folder, answer filenames & support files
+public class QuestionDefinition {
     private final String id;
     private final String expectedFolderName;
     private final Path resourceRoot;

@@ -13,7 +13,8 @@ import grading.QuestionGrade;
 import submission.StudentSubmission;
 import utils.files.CsvWriter;
 
-public final class ScoreSheetWriter { //writes totals & question marks for every submission archive
+/// writes totals & question marks for every submission archive
+public final class ScoreSheetWriter { 
     private ScoreSheetWriter() {}
 
     public static void write(Map<StudentSubmission, List<QuestionGrade>> results, Path output) throws IOException {

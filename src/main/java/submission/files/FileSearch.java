@@ -12,7 +12,8 @@ import java.util.Optional;
 
 import utils.files.FileUtils;
 
-final class FileSearch { //resolves case-insensitive paths & caches bounded submission file searches
+/// resolves case-insensitive paths & caches bounded submission file searches
+final class FileSearch { 
     private final int maxSearchDepth;
     private final boolean reuseLookups;
     private final Map<Path, List<Path>> directoryEntries = new HashMap<>();

@@ -7,7 +7,8 @@ import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class StudentHeaderReader { //reads student name & email fields from source comments or text
+/// reads student name & email fields from source comments or text
+public final class StudentHeaderReader { 
     private static final int MAX_HEADER_LINES = 15;
     private static final Pattern LEADING_COMMENTS = Pattern.compile("\\A\\s*((?:(?://[^\\r\\n]*(?:\\R|$)|/\\*[\\s\\S]*?\\*/)\\s*)+)");
     private static final Pattern NAME_FIELD = fieldPattern("Name");

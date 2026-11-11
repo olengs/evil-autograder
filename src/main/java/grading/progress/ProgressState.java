@@ -8,7 +8,8 @@ import java.util.Optional;
 
 import grading.GradeStatus;
 
-final class ProgressState { //stores mutable progress state & caches UI snapshots
+/// stores mutable progress state & caches UI snapshots
+final class ProgressState { 
     ProgressStage stage = ProgressStage.loading;
     String message = "loading configuration";
     String student = "";

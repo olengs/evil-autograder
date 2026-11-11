@@ -1,28 +1,29 @@
 package generation;
 
-import utils.logging.JsonLineLogger;
-import config.Config;
-import java.util.Locale;
-import java.nio.file.Files;
-import generation.QuestionGenerationOutcome.GenerationStatus;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import config.Config;
+import generation.QuestionGenerationOutcome.GenerationStatus;
 import openai.GeneratedTesters;
 import openai.OpenAiClient;
 import prompt.PromptBuilder;
 import utils.files.PdfFileUtils;
-import utils.files.TesterWriter;
 import utils.files.TesterResources;
+import utils.files.TesterWriter;
+import utils.logging.JsonLineLogger;
 import utils.process.Interruptions;
 import validation.GeneratedTesterValidator;
 import validation.ValidationResult;
 
+/// Generates tester
 public class TesterGenerator {
     private final PromptBuilder promptBuilder = new PromptBuilder();
 

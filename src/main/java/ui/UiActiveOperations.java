@@ -10,6 +10,7 @@ import generation.QuestionGenerationOutcome;
 import generation.TesterGenerator;
 import grading.progress.GradingProgress;
 
+/// current operations being used for UI
 public class UiActiveOperations implements UIOperations {
     public List<QuestionGenerationOutcome> generate(Config config, GenerationListener listener) throws Exception {
         OperationChecks.generation(config);

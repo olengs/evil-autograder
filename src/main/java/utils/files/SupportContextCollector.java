@@ -1,7 +1,5 @@
 package utils.files;
 
-import utils.logging.JsonLineLogger;
-import generation.QuestionSpec;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.StringReader;
@@ -13,14 +11,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
+
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.parser.ParserDelegator;
+
+import generation.QuestionSpec;
+import utils.logging.JsonLineLogger;
+import utils.process.Interruptions;
 import utils.process.JavaTools;
 import utils.process.ProcessExecutor;
-import utils.process.Interruptions;
 
-/** Reads only declared support files and matching class documentation from one question folder. */
+/// Reads only declared support files and matching class documentation from one question folder.
 public final class SupportContextCollector {
     public record TextFile(String name, String type, String content) {}
     public record FolderContext(List<TextFile> files, List<String> issues) {}

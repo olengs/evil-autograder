@@ -12,7 +12,8 @@ import java.util.Properties;
 
 import utils.logging.JsonLineLogger.Status;
 
-public class Config { //loads grading paths & process time limits from configuration
+/// loads grading paths & process time limits from configuration
+public class Config { 
     public static final int DEFAULT_LOG_BUFFER_THRESHOLD = 12;
 
     private final int logBufferThreshold;
