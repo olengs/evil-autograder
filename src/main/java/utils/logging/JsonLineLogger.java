@@ -3,13 +3,15 @@ package utils.logging;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import org.apache.commons.io.FileUtils;
 import java.util.ArrayList;
-import config.Config;
 import java.util.EnumSet;
-import java.util.Map;
+import java.util.LinkedHashMap;
+
+import org.apache.commons.io.FileUtils;
 
 import com.google.gson.Gson;
+
+import config.Config;
 
 // appends structured log entries as JSON lines
 // Shared by grading workers; buffer operations are synchronized.
@@ -25,6 +27,7 @@ public final class JsonLineLogger {
     private static JsonLineLogger instance;
     private Path logfilePath;
     private boolean hasInit;
+    private final LinkedHashMap<String, String> jsonMap;
 
     private final ArrayList<String> logs;
     // Startup defaults allow logging before the UI has a valid configuration.
@@ -35,6 +38,7 @@ public final class JsonLineLogger {
     private JsonLineLogger() {
         hasInit = false;
         logs = new ArrayList<>();
+        jsonMap = new LinkedHashMap<>();
     }
 
     public static JsonLineLogger getInstance() {
@@ -73,7 +77,10 @@ public final class JsonLineLogger {
         if (!flags.contains(status)) return;
 
         synchronized (logs) {
-            logs.add(gson.toJson(Map.of("status", status.toString(), "message", String.format("[%s]: %s", feature, message))));
+            jsonMap.put("status", status.toString());
+            jsonMap.put("message", String.format("[%s]: %s", feature, message));
+            logs.add(gson.toJson(jsonMap));
+            jsonMap.clear();
             if (logs.size() >= bufferThreshold) {
                 try {
                     flush();

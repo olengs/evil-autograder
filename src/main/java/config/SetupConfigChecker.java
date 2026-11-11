@@ -60,7 +60,7 @@ public final class SetupConfigChecker {
         try {
             config = new Config(configFile, overrides);
         } catch (IOException | IllegalArgumentException error) {
-            JsonLineLogger.getInstance().logException(JsonLineLogger.Status.WARNING,
+            JsonLineLogger.getInstance().logException(JsonLineLogger.Status.ERROR,
                     "SetupConfigChecker", "cannot load configuration > " + configFile, error);
             String reason = error.getMessage();
             if (reason == null || reason.isBlank() || reason.length() > 80) reason = "Invalid configuration; see log";
@@ -76,7 +76,7 @@ public final class SetupConfigChecker {
         path = path.toAbsolutePath().normalize();
         String reason = !Files.exists(path) ? "not found" : (file ? !Files.isRegularFile(path) : !Files.isDirectory(path)) ? (file ? "not a regular file" : "not a directory") : !Files.isReadable(path) ? "not readable" : null;
         if (reason != null) JsonLineLogger.getInstance().logException(
-                JsonLineLogger.Status.WARNING, "SetupConfigChecker", "invalid setting > " + setting,
+                JsonLineLogger.Status.ERROR, "SetupConfigChecker", "invalid setting > " + setting,
                 new IOException(reason + " > " + path));
         return reason == null ? null : new Issue(setting, label, path, reason);
     }
