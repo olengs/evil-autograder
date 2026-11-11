@@ -1,0 +1,3 @@
+Inventory:4
+Texta:2
+Textb:4
