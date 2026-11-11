@@ -2,7 +2,6 @@ package generation;
 
 import utils.logging.JsonLineLogger;
 import config.Config;
-import assessment.TesterMetadata;
 import java.util.Locale;
 import java.nio.file.Files;
 import generation.QuestionGenerationOutcome.GenerationStatus;
@@ -45,20 +44,13 @@ public class TesterGenerator {
         Interruptions.check("tester generation interrupted");
         listener.stageChanged("discovering questions");
         List<QuestionSpec> specs = QuestionSpec.collect(config.getResourcesDirectory());
-        var allocations = TesterMetadata.readMarks(config.getTestersDirectory());
-        for (QuestionSpec spec : specs) {
-            Double marks = allocations.get(spec.id().toLowerCase(Locale.ROOT));
-            if (marks == null || (!Double.isFinite(marks * 2) || marks <= 0 || marks * 2 != Math.floor(marks * 2))) {
-                throw new IOException("generation requires positive whole or half marks.txt allocation for " + spec.id());
-            }
-        }
         listener.started(specs.stream().map(QuestionSpec::id).toList());
 
         listener.stageChanged("reading reference files");
         var bundle = promptBuilder.collectFiles(specs);
         Interruptions.check("tester generation interrupted");
         Path outputDirectory = config.getGenerationOutputDirectory();
-        TesterWriter.prepareOutput(specs, allocations, outputDirectory);
+        TesterWriter.prepareOutput(specs, outputDirectory);
         TesterWriter.writeFilesBundle(bundle.text(), outputDirectory);
 
         GeneratedTesters reply;
@@ -69,7 +61,7 @@ public class TesterGenerator {
             Interruptions.check("tester generation interrupted");
             return failedBatch(specs, "generation failed > " + error.getMessage(), listener);
         }
-        return processReply(specs, bundle, reply, outputDirectory, listener, allocations);
+        return processReply(specs, bundle, reply, outputDirectory, listener);
     }
 
     private GeneratedTesters requestTesters(List<QuestionSpec> specs, String files, String userPrompt,
@@ -98,7 +90,7 @@ public class TesterGenerator {
     }
 
     private List<QuestionGenerationOutcome> processReply(List<QuestionSpec> specs, PromptBuilder.FileBundle bundle,
-            GeneratedTesters reply, Path outputDirectory, GenerationListener listener, Map<String, Double> allocations) throws IOException {
+            GeneratedTesters reply, Path outputDirectory, GenerationListener listener) throws IOException {
         Interruptions.check("tester generation interrupted");
         listener.stageChanged("checking returned testers");
         // Save the reply before checking IDs so invalid responses can be reviewed.
@@ -127,21 +119,23 @@ public class TesterGenerator {
             }
         }
         List<QuestionGenerationOutcome> outcomes = new ArrayList<>();
+        Map<String, Double> validatedMarks = new LinkedHashMap<>();
         for (QuestionSpec spec : specs) {
             Interruptions.check("tester generation interrupted");
             listener.questionStarted(spec.id());
             var outcome = validateAndSave(spec, generated.get(spec.id()),
-                    bundle.issuesByQuestion().get(spec.id()), outputDirectory, allocations.get(spec.id().toLowerCase(Locale.ROOT)));
+                    bundle.issuesByQuestion().get(spec.id()), outputDirectory);
+            if (outcome.status() == GenerationStatus.written) validatedMarks.put(spec.id(), (double) generated.get(spec.id()).marks);
             outcomes.add(outcome);
             listener.questionFinished(outcome);
         }
+        if (!validatedMarks.isEmpty()) TesterWriter.writeMarks(validatedMarks, outputDirectory);
         return List.copyOf(outcomes);
     }
 
     private QuestionGenerationOutcome validateAndSave(QuestionSpec spec, GeneratedTesters.Tester entry,
-            String issue, Path outputDirectory, double allocatedMarks) throws InterruptedIOException {
+            String issue, Path outputDirectory) throws InterruptedIOException {
         if (issue == null) issue = generationIssue(entry);
-        if (issue == null && entry.marks != allocatedMarks) issue = "returned marks disagree with marks.txt > " + allocatedMarks;
         if (issue == null) {
             try {
                 TesterResources.validate(spec, entry.resources);
@@ -157,7 +151,7 @@ public class TesterGenerator {
         }
 
         String source = entry.testCode.strip();
-        ValidationResult validation = validator.validate(spec, source, entry.numTestCases, allocatedMarks, entry.resources);
+        ValidationResult validation = validator.validate(spec, source, entry.numTestCases, entry.marks, entry.resources);
         Interruptions.check("tester generation interrupted");
         GenerationStatus status = validation.isValid() ? GenerationStatus.written : GenerationStatus.validationFailed;
         String message = validation.isValid()
