@@ -22,6 +22,7 @@ import submission.StudentSubmission;
 import utils.logging.JsonLineLogger;
 import utils.logging.JsonLineLogger.Status;
 import utils.process.Interruptions;
+import utils.process.ProcessExecutionException;
 import validation.SubmissionIssue;
 
 public class AssessmentGrader { //grades each submission in question order & records skipped questions
@@ -133,7 +134,7 @@ public class AssessmentGrader { //grades each submission in question order & rec
         }
         try {
             return questionGrader.get().grade(question, attempt, tester, progress, studentLabel);
-        } catch (IOException error) {
+        } catch (IOException | ProcessExecutionException error) {
             if (error instanceof InterruptedIOException || Thread.currentThread().isInterrupted()) throw error;
             JsonLineLogger.getInstance().logException(Status.ERROR, "AssessmentGrader",
                     studentLabel + " " + question.getId() + " > question grading failed", error);

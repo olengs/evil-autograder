@@ -77,8 +77,7 @@ public class Config { //loads grading paths & process time limits from configura
         }
         
         // Validate output limits before any worker starts.
-        Long processOutMaxBytes = Long.parseLong(properties.getProperty("process.output.max.MiB", "2"));
-        // << 20 to convert to MiB
+        Long processOutMaxBytes = Long.parseLong(properties.getProperty("process.output.max.MiB", "1"));
         this.processOutputMaxBytes = (processOutMaxBytes < 1 ? 1 : processOutMaxBytes) << 20;
     }
 
