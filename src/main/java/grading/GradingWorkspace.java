@@ -26,6 +26,7 @@ public class GradingWorkspace implements AutoCloseable { //reconciles answer, su
     private final Set<Path> addedFiles = new LinkedHashSet<>();          //files this workspace newly created
     private final Set<Path> addedDirectories = new LinkedHashSet<>();    //directories this workspace newly created
     private final Map<Path, byte[]> overwrittenFiles = new LinkedHashMap<>(); //original bytes of files this workspace replaced
+    private Path classesDirectory; //temp dir for compiled .class output, created inside the question directory
 
     public GradingWorkspace(Path questionDirectory) throws IOException {
         //normalize to a real, absolute base so path-safety checks & relativization are consistent
@@ -155,11 +156,29 @@ public class GradingWorkspace implements AutoCloseable { //reconciles answer, su
         return directory;
     }
 
+    //compiled .class output lives in a temp dir inside the question directory & is removed on close
+    public Path createClassesDirectory() throws IOException {
+        if (classesDirectory == null) {
+            classesDirectory = Files.createTempDirectory(directory, "autograder-classes-");
+        }
+        return classesDirectory;
+    }
+
     @Override
     public void close() throws IOException {
         // Restore the student's question directory to its pre-grading state.
         // Best-effort: a cleanup failure is logged but never masks a grading exception.
         List<String> failures = new ArrayList<>();
+
+        //remove the compiled-classes temp dir (and its .class files) created inside the question directory
+        if (classesDirectory != null) {
+            try {
+                if (Files.isDirectory(classesDirectory)) FileUtils.deleteDirectory(classesDirectory);
+            } catch (IOException error) {
+                failures.add("delete classes dir " + classesDirectory + " > " + error.getMessage());
+            }
+            classesDirectory = null;
+        }
 
         //restore files this workspace overwrote, back to their original bytes
         for (var entry : overwrittenFiles.entrySet()) {
