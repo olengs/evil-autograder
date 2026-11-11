@@ -16,12 +16,15 @@ import assessment.TesterDefinition;
 import submission.QuestionAttempt;
 import submission.files.SubmissionFileFinder;
 import utils.files.FileUtils;
+import utils.logging.JsonLineLogger;
+import utils.logging.JsonLineLogger.Status;
 
 public class GradingWorkspace implements AutoCloseable { //reconciles answer, support & tester files inside the student's question directory
     private final Path directory; //the student's extracted question directory > graded in place
 
     //track changes so an in-place question directory can be restored on close
     private final Set<Path> addedFiles = new LinkedHashSet<>();          //files this workspace newly created
+    private final Set<Path> addedDirectories = new LinkedHashSet<>();    //directories this workspace newly created
     private final Map<Path, byte[]> overwrittenFiles = new LinkedHashMap<>(); //original bytes of files this workspace replaced
 
     public GradingWorkspace(Path questionDirectory) throws IOException {
@@ -113,6 +116,7 @@ public class GradingWorkspace implements AutoCloseable { //reconciles answer, su
                 Path destination = getDirectory().resolve(relativePath);
 
                 if (Files.isDirectory(source)) {
+                    if (!Files.exists(destination)) addedDirectories.add(destination.normalize());
                     Files.createDirectories(destination);
                     continue;
                 }
@@ -153,6 +157,46 @@ public class GradingWorkspace implements AutoCloseable { //reconciles answer, su
 
     @Override
     public void close() throws IOException {
-        // Per-question cleanup (restore/remove injected files) is implemented in later.
+        // Restore the student's question directory to its pre-grading state.
+        // Best-effort: a cleanup failure is logged but never masks a grading exception.
+        List<String> failures = new ArrayList<>();
+
+        //restore files this workspace overwrote, back to their original bytes
+        for (var entry : overwrittenFiles.entrySet()) {
+            try {
+                Files.write(entry.getKey(), entry.getValue());
+            } catch (IOException error) {
+                failures.add("restore " + entry.getKey() + " > " + error.getMessage());
+            }
+        }
+
+        //delete files this workspace newly created (injected tester source & resources, relocated data)
+        for (Path added : addedFiles) {
+            try {
+                Files.deleteIfExists(added);
+            } catch (IOException error) {
+                failures.add("delete " + added + " > " + error.getMessage());
+            }
+        }
+
+        //remove directories this workspace created, deepest-first & only when empty
+        List<Path> directoriesDeepestFirst = new ArrayList<>(addedDirectories);
+        directoriesDeepestFirst.sort(java.util.Comparator.comparingInt(Path::getNameCount).reversed());
+        for (Path dir : directoriesDeepestFirst) {
+            try {
+                if (Files.isDirectory(dir)) Files.deleteIfExists(dir); //deleteIfExists on a dir fails if non-empty > left for run-end cleanup
+            } catch (IOException error) {
+                failures.add("remove dir " + dir + " > " + error.getMessage());
+            }
+        }
+
+        overwrittenFiles.clear();
+        addedFiles.clear();
+        addedDirectories.clear();
+
+        if (!failures.isEmpty()) {
+            JsonLineLogger.getInstance().append(Status.WARNING, "GradingWorkspace",
+                    "in-place cleanup incomplete for " + directory + " > " + String.join("; ", failures));
+        }
     }
 }
