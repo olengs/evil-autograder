@@ -60,12 +60,10 @@ public class TesterGenerator {
         Path outputDirectory = config.getGenerationOutputDirectory();
         TesterWriter.prepareOutput(specs, allocations, outputDirectory);
         TesterWriter.writeFilesBundle(bundle.text(), outputDirectory);
-        String allocationPrompt = "AUTHORITATIVE MARK ALLOCATION FROM marks.txt (overrides conflicting PDF marks):\n"
-                + Files.readString(outputDirectory.resolve("marks.txt"));
 
         GeneratedTesters reply;
         try {
-            reply = requestTesters(specs, bundle.text(), userPrompt + "\n" + allocationPrompt, listener);
+            reply = requestTesters(specs, bundle.text(), userPrompt, listener);
         } catch (IOException | RuntimeException error) {
             JsonLineLogger.getInstance().append(JsonLineLogger.Status.ERROR, "TesterGenerator", error.toString());
             Interruptions.check("tester generation interrupted");

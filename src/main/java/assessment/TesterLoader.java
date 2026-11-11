@@ -18,13 +18,13 @@ public final class TesterLoader { //discovers testers & indexes them by question
         Map<String, TesterDefinition> testers = new HashMap<>();
         try (var files = Files.walk(testerDirectoryPath, 2)) {
             for (Path file : files.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith("Tester.java")).sorted().toList()) {
+                    .filter(path -> path.getFileName().toString().toLowerCase().endsWith("tester.java")).sorted().toList()) {
                 if (!Files.isRegularFile(file))  continue;
 
                 if (!Files.isReadable(file)) throw new IOException("tester file is not readable > " + file);
 
                 String name = file.getFileName().toString();
-                String questionId = name.substring(0, name.length() - "Tester.java".length()).toLowerCase(Locale.ROOT);
+                String questionId = name.substring(0, name.length() - "tester.java".length()).toLowerCase(Locale.ROOT);
                 String mainClassName = name.substring(0, name.length() - ".java".length());
 
                 if (questionId.isBlank() || testers.containsKey(questionId)) throw new IOException("invalid / duplicate tester id > " + name);
