@@ -52,6 +52,11 @@ public final class Autograder { //coordinates assessment loading, submission val
             try {
                 progress.preparing("reading student scoresheet");
                 List<StudentDetails> roster = prepareRoster(config);
+                // Every student takes the same assessment. Estimate the whole run once.
+                long totalAttempts = (long) roster.size() * assessment.getQuestions().size();
+                var questionTimeout = config.getCompilationTimeout().plus(config.getExecutionTimeout());
+                progress.setEstimatedTotal(questionTimeout.multipliedBy(totalAttempts).dividedBy(2));
+
                 progress.preparing("extracting submission zip files");
                 List<StudentSubmission> submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace.path(), roster, assessment, config.getHeaderSearchDepth());
                 if (submissions.isEmpty()) throw new IOException("no submission ZIP files found");
