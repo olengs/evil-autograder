@@ -33,7 +33,7 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
     }
 
     public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester, ProgressListener progress, String studentLabel) throws IOException {
-        try (GradingWorkspace workspace = new GradingWorkspace()) {
+        try (GradingWorkspace workspace = new GradingWorkspace(attempt.getQuestionDirectory())) {
             workspace.prepare(question, attempt, tester);
             try (TemporaryDirectory classes = new TemporaryDirectory("autograder-classes-")) {
                 return gradeInWorkspace(question.getId(), tester, workspace.getDirectory(), classes.path(), progress, studentLabel);

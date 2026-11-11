@@ -16,17 +16,17 @@ import assessment.TesterDefinition;
 import submission.QuestionAttempt;
 import submission.files.SubmissionFileFinder;
 import utils.files.FileUtils;
-import utils.files.TemporaryDirectory;
 
-public class GradingWorkspace implements AutoCloseable { //copies answer, support & tester files into a temporary grading directory
-    private final TemporaryDirectory temporaryDirectory;
+public class GradingWorkspace implements AutoCloseable { //reconciles answer, support & tester files inside the student's question directory
+    private final Path directory; //the student's extracted question directory > graded in place
 
     //track changes so an in-place question directory can be restored on close
     private final Set<Path> addedFiles = new LinkedHashSet<>();          //files this workspace newly created
     private final Map<Path, byte[]> overwrittenFiles = new LinkedHashMap<>(); //original bytes of files this workspace replaced
 
-    public GradingWorkspace() throws IOException {
-        temporaryDirectory = new TemporaryDirectory("autograder-ws-");
+    public GradingWorkspace(Path questionDirectory) throws IOException {
+        //normalize to a real, absolute base so path-safety checks & relativization are consistent
+        this.directory = questionDirectory.toRealPath();
     }
 
     public void prepare(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester) throws IOException {
@@ -148,11 +148,11 @@ public class GradingWorkspace implements AutoCloseable { //copies answer, suppor
     }
 
     public Path getDirectory() {
-        return temporaryDirectory.path();
+        return directory;
     }
 
     @Override
     public void close() throws IOException {
-        temporaryDirectory.close();
+        // Per-question cleanup (restore/remove injected files) is implemented in later.
     }
 }
