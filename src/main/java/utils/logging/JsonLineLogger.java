@@ -50,13 +50,16 @@ public final class JsonLineLogger {
     }
 
     public void Init(Path logFile, int threshold) throws IOException {
-        if (!hasInit) this.logfilePath = logFile;
+        if (hasInit) return;
+
+        this.logfilePath = logFile;
         if (threshold <= 0 || threshold > Integer.MAX_VALUE - 5) {
             throw new IllegalArgumentException("log buffer threshold must be positive and allow threshold + 5 without overflow");
         }
+        
         logs.ensureCapacity(threshold + 5);
         bufferThreshold = threshold;
-        if (hasInit) return;
+        
         // Creates parent folders and truncates the previous log for this run.
         FileUtils.writeStringToFile(logfilePath.toFile(), "", StandardCharsets.UTF_8);
         hasInit = true;
@@ -64,6 +67,7 @@ public final class JsonLineLogger {
 
     /// param flags to enable which log status to be enabled, by default all types of logs are enabled.
     public void Init(Path logFile, int threshold, EnumSet<Status> flags) throws IOException {
+        if (hasInit) return;
         setLevels(flags);
         Init(logFile, threshold);
     }

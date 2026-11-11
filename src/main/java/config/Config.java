@@ -92,6 +92,10 @@ public class Config { //loads grading paths & process time limits from configura
         return logLevels.clone();
     }
 
+    public Path getLogFile() {
+        return Path.of(properties.getProperty("log.file", "log/autograder.log.jsonl").strip()).toAbsolutePath().normalize();
+    }
+
     public int getLogBufferThreshold() {
         return logBufferThreshold;
     }

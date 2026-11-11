@@ -59,6 +59,7 @@ public final class SetupConfigChecker {
         if (issue != null) return;
         try {
             config = new Config(configFile, overrides);
+            JsonLineLogger.getInstance().Init(config.getLogFile(), config.getLogBufferThreshold(), config.getLogLevels());
         } catch (IOException | IllegalArgumentException error) {
             JsonLineLogger.getInstance().logException(JsonLineLogger.Status.ERROR,
                     "SetupConfigChecker", "cannot load configuration > " + configFile, error);

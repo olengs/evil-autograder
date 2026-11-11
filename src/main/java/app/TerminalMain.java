@@ -6,7 +6,6 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.concurrent.CancellationException;
 
-import config.Config;
 import ui.TerminalUi;
 import utils.logging.JsonLineLogger;
 import utils.logging.JsonLineLogger.Status;
@@ -14,13 +13,10 @@ import utils.logging.JsonLineLogger.Status;
 public class TerminalMain { //starts terminal UI & logs failures or cancellation
 
     public static void main(String[] args) {
-        Path logFile = Path.of("log", "tui.log.jsonl");
         int status = 0;
         System.setOut(new PrintStream(OutputStream.nullOutputStream()));
         try {
-            JsonLineLogger.getInstance().Init(logFile, Config.DEFAULT_LOG_BUFFER_THRESHOLD);
-            Config config = new TerminalUi().run(Path.of(args.length == 0 ? "config.properties" : args[0]));
-            JsonLineLogger.getInstance().Init(logFile, config.getLogBufferThreshold(), config.getLogLevels());
+            new TerminalUi().run(Path.of(args.length == 0 ? "config.properties" : args[0]));
         } catch (CancellationException error) {
             JsonLineLogger.getInstance().append(Status.LOG, "main", "grading cancelled");
             status = 130;
@@ -36,7 +32,7 @@ public class TerminalMain { //starts terminal UI & logs failures or cancellation
 
         try {
             JsonLineLogger.getInstance().append(Status.LOG, "main", "process & workspace cleanup finished");
-            JsonLineLogger.getInstance().flush();    
+            JsonLineLogger.getInstance().flush();
         } catch (IOException e) {
             System.out.println("Failed to flush logs:" + e.getMessage());
             status = 1;
