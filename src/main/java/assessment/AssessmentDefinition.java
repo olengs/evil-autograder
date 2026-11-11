@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class AssessmentDefinition { //stores ordered questions in an assessment
+/// stores ordered questions in an assessment
+public class AssessmentDefinition { 
     private final List<QuestionDefinition> questions;
 
     public AssessmentDefinition(List<QuestionDefinition> questions) {

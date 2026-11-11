@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/// Utility functions to parse tester output
 public class TesterOutputParser { 
     
     //parses tester cases & keeps completed outcomes after a timeout

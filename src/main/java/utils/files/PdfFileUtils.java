@@ -4,7 +4,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public final class PdfFileUtils { //checks for a pdf that is about to be uploaded to openai
+/// checks for a pdf that is about to be uploaded to openai
+public final class PdfFileUtils { 
     private static final byte[] pdf = "%PDF-".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
 
     private PdfFileUtils() {

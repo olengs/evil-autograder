@@ -1,6 +1,5 @@
 package utils.files;
 
-import generation.QuestionSpec;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -9,9 +8,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+
+import generation.QuestionSpec;
 import openai.GeneratedTesters.ResourceFile;
 
-/** Validates and writes the text data files returned with a generated tester. */
+/// Validates and writes the text data files returned with a generated tester.
 public final class TesterResources {
     private TesterResources() {}
 

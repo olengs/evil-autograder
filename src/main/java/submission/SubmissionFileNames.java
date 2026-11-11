@@ -3,7 +3,8 @@ package submission;
 import java.nio.file.Path;
 import java.util.Locale;
 
-public final class SubmissionFileNames { //recognizes ZIP filenames & extracts usernames from them
+/// recognizes ZIP filenames & extracts usernames from them
+public final class SubmissionFileNames { 
     private static final String zipExtension = ".zip";
 
     private SubmissionFileNames() {}

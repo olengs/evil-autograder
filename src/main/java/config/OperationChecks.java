@@ -1,16 +1,17 @@
 package config;
 
-import assessment.AssessmentLoader;
-import assessment.TesterLoader;
-import generation.QuestionSpec;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import assessment.AssessmentLoader;
+import assessment.TesterLoader;
+import generation.QuestionSpec;
 import openai.OpenAiClient;
 import submission.SubmissionArchives;
 import utils.files.PdfFileUtils;
 
-// Checking the configurations before allowing certain actions
+/// Checking the configurations before allowing certain actions
 public final class OperationChecks {
     private OperationChecks() {}
 

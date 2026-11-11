@@ -9,12 +9,12 @@ import java.util.List;
 
 import assessment.AssessmentDefinition;
 import utils.files.FileUtils;
+import utils.logging.JsonLineLogger;
 import utils.process.Interruptions;
 import validation.SubmissionIssue;
 
-import utils.logging.JsonLineLogger;
-
-public final class SubmissionLoader { //extracts submissions, matches students & records preparation failures
+/// extracts submissions, matches students & records preparation failures
+public final class SubmissionLoader { 
     private SubmissionLoader() {}
 
     public static List<StudentSubmission> loadSubmissions(Path submissionFolder, Path workspaceFolder, List<StudentDetails> roster, AssessmentDefinition assessment, int headerSearchDepth) throws IOException {

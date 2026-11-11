@@ -11,7 +11,7 @@ import report.ScoreSheetWriter;
 import submission.StudentSubmission;
 import utils.process.Interruptions;
 
-/** Runs grading and exports results without depending on a test framework. */
+/// Runs grading and exports results without depending on a test framework.
 public final class GradingWorkflow {
     private GradingWorkflow() {}
 

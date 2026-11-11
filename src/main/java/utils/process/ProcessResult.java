@@ -1,6 +1,7 @@
 package utils.process;
 
-public final class ProcessResult { //stores process output, exit code & termination status
+/// stores process output, exit code & termination status
+public final class ProcessResult { 
     private final int exitCode;
     private final String standardOutput;
     private final String errorOutput;

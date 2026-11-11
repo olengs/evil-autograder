@@ -1,6 +1,7 @@
 package validation;
 
-public enum IssueSeverity { //defines warning & blocking error severities
+/// defines warning & blocking error severities
+public enum IssueSeverity { 
     warning,
     error
 }

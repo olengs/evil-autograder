@@ -1,6 +1,7 @@
 package submission;
 
-public class StudentDetails { //stores a student's username, name & email
+/// stores a student's username, name & email
+public class StudentDetails { 
     private final String username;
     private final String name;
     private final String email;

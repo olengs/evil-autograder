@@ -1,6 +1,7 @@
 package grading;
 
-public final class TestCaseResult { //stores one tester case's ID, outcome & earned marks
+/// stores one tester case's ID, outcome & earned marks
+public final class TestCaseResult { 
     private final String caseId;
     private final boolean passed;
     private final double earnedMarks;

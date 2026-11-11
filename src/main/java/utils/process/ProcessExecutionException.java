@@ -1,6 +1,7 @@
 package utils.process;
 
-public class ProcessExecutionException extends RuntimeException { //reports process startup, output capture & termination failures
+/// reports process startup, output capture & termination failures
+public class ProcessExecutionException extends RuntimeException { 
     public ProcessExecutionException(String message) {
         super(message);
     }

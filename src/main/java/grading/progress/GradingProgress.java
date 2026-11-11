@@ -1,14 +1,15 @@
 package grading.progress;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.HashSet;
 import java.util.Set;
 
 import grading.GradeStatus;
 
-public class GradingProgress implements ProgressListener { //synchronizes grading progress, student outcomes & run timing
+/// synchronizes grading progress, student outcomes & run timing
+public class GradingProgress implements ProgressListener {
     private final ProgressState state = new ProgressState();
 
     @Override

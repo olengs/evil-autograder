@@ -1,20 +1,19 @@
 package assessment;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import java.nio.file.StandardCopyOption;
-import java.nio.file.AtomicMoveNotSupportedException;
-
 import utils.logging.JsonLineLogger;
 import utils.logging.JsonLineLogger.Status;
 
-/** Reads question:value metadata from the tester root. */
+/// Reads question:value metadata from the tester root.
 public final class TesterMetadata {
     private static final Pattern passedStatement = Pattern.compile(
             "\\bSystem\\s*\\.\\s*out\\s*\\.\\s*println\\s*\\(\\s*\"Passed\"\\s*\\)\\s*;");

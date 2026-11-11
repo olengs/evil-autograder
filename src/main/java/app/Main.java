@@ -8,7 +8,8 @@ import grading.progress.GradingProgress;
 import report.ConsoleReportPrinter;
 import utils.logging.JsonLineLogger;
 
-public final class Main { //runs console grading & saves scoresheet
+// runs grading & saves scoresheet on base console without ui
+public final class Main { 
     private Main() {}
 
     public static void main(String[] args) {

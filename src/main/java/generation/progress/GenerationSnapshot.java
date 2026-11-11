@@ -1,10 +1,11 @@
 package generation.progress;
 
-import generation.QuestionGenerationOutcome;
 import java.time.Duration;
 import java.util.List;
 
-// Immutable generation status read by the terminal render thread.
+import generation.QuestionGenerationOutcome;
+
+/// Immutable generation status read by the terminal render thread.
 public record GenerationSnapshot(String message, String currentQuestion, List<String> questions,
         List<QuestionGenerationOutcome> outcomes, Duration elapsed, boolean finished, boolean failed) {
     public GenerationSnapshot {

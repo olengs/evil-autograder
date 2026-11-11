@@ -13,7 +13,8 @@ import utils.process.Interruptions;
 import utils.strings.CommonPatternChecker;
 import validation.SubmissionIssue;
 
-public class StudentIdentifier { //matches ZIP filenames to roster usernames without regard to case
+/// matches ZIP filenames to roster usernames without regard to case
+public class StudentIdentifier { 
     public StudentDetails identify(Path zipFile, List<StudentDetails> roster) {
         String username = CommonPatternChecker.normalizeUsername(SubmissionFileNames.username(zipFile));
 

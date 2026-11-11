@@ -1,17 +1,20 @@
 package utils.files;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import generation.QuestionSpec;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.math.BigDecimal;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import assessment.TesterMetadata;
+import generation.QuestionSpec;
 import openai.GeneratedTesters;
 
+/// Used by tester generator to write the tester code & resources into files
 public final class TesterWriter {
     private static final Gson json = new GsonBuilder().serializeNulls().disableHtmlEscaping().setPrettyPrinting().create();
 

@@ -1,6 +1,7 @@
 package grading;
 
-public enum GradeStatus { //defines completed, failed, timed-out & skipped grading outcomes
+/// defines completed, failed, timed-out & skipped grading outcomes
+public enum GradeStatus { 
     completed, //compilation & execution & output parsing finished > individual cases may still fail
     compileError,
     runtimeError,

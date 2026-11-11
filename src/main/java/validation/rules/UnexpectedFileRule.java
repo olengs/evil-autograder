@@ -1,8 +1,5 @@
 package validation.rules;
 
-import assessment.AssessmentDefinition;
-import assessment.QuestionDefinition;
-import utils.files.FileUtils;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -15,12 +12,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
+
+import assessment.AssessmentDefinition;
+import assessment.QuestionDefinition;
 import submission.StudentSubmission;
+import utils.files.FileUtils;
 import validation.SubmissionIssue;
 import validation.SubmissionValidationRule;
 import validation.ValidationFiles;
 
-public class UnexpectedFileRule implements SubmissionValidationRule { //warns about unexpected files in question folders
+/// warns about unexpected files in question folders
+public class UnexpectedFileRule implements SubmissionValidationRule { 
     private final Map<AssessmentDefinition, Map<String, Set<String>>> expectedFilesCache = new HashMap<>();
 
     @Override

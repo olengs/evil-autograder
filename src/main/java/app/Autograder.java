@@ -25,7 +25,8 @@ import validation.rules.AnswerFileRule;
 import validation.rules.StudentHeaderRule;
 import validation.rules.UnexpectedFileRule;
 
-public final class Autograder { //coordinates assessment loading, submission validation & grading
+/// coordinates assessment loading, submission validation & grading
+public final class Autograder { 
     private Autograder() {}
 
     public static Map<StudentSubmission, List<QuestionGrade>> run(Config config) throws IOException {

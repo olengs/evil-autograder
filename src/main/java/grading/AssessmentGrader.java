@@ -25,7 +25,8 @@ import utils.process.Interruptions;
 import utils.process.ProcessExecutionException;
 import validation.SubmissionIssue;
 
-public class AssessmentGrader { //grades each submission in question order & records skipped questions
+/// grades each submission in question order & records skipped questions
+public class AssessmentGrader { 
     private final int workerCount;
     private final ThreadLocal<QuestionGrader> questionGrader;
 

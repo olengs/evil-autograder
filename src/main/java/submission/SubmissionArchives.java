@@ -9,7 +9,8 @@ import java.util.stream.Stream;
 
 import utils.files.FileUtils;
 
-public final class SubmissionArchives { //lists submission ZIP files recursively in sorted order
+/// lists submission ZIP files recursively in sorted order
+public final class SubmissionArchives {
     private SubmissionArchives() {}
 
     public static List<Path> listZipFiles(Path submissionFolder) throws IOException {

@@ -6,7 +6,8 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
-public final class TemporaryDirectory implements AutoCloseable { //owns a temporary directory & deletes it when closed
+/// owns a temporary directory & deletes it when closed
+public final class TemporaryDirectory implements AutoCloseable { 
     private final Path path;
 
     public TemporaryDirectory(String prefix) throws IOException {

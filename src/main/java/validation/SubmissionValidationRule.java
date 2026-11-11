@@ -1,9 +1,11 @@
 package validation;
 
-import assessment.AssessmentDefinition;
 import java.util.List;
+
+import assessment.AssessmentDefinition;
 import submission.StudentSubmission;
 
-public interface SubmissionValidationRule { //defines validation checks spanning a student submission
+/// defines validation checks spanning a student submission
+public interface SubmissionValidationRule { 
     List<SubmissionIssue> validate(StudentSubmission submission, AssessmentDefinition assessment, ValidationFiles files);
 }

@@ -8,7 +8,8 @@ import grading.QuestionGrade;
 import submission.StudentSubmission;
 import validation.SubmissionIssue;
 
-public final class ConsoleReportPrinter { //prints student identities, validation findings & question marks
+/// prints student identities, validation findings & question marks
+public final class ConsoleReportPrinter { 
     private ConsoleReportPrinter() {}
 
     public static void print(Map<StudentSubmission, List<QuestionGrade>> results) {

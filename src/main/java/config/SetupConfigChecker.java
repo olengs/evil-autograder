@@ -8,7 +8,7 @@ import java.util.Map;
 
 import utils.logging.JsonLineLogger;
 
-//checks setup config paths & accepts replacement paths for this run
+/// checks setup config paths & accepts replacement paths for this run
 public final class SetupConfigChecker { 
     private Path configFile;
     private final Map<String, String> overrides = new HashMap<>();

@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import utils.files.SupportContextCollector;
 import utils.files.TemplateUtils;
 
+/// builds the prompt for openai tester generation
 public final class PromptBuilder {
     private static final String instructionsResource = "/generation/prompt/tester-generation-prompt.json";
     private static final String exampleResource = "/generation/prompt/tester-example.java.txt";

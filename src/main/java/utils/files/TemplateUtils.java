@@ -1,11 +1,14 @@
 package utils.files;
 
-import utils.logging.JsonLineLogger;
 import java.io.IOException;
-import org.apache.commons.io.IOUtils;
 import java.nio.charset.StandardCharsets;
 
-public final class TemplateUtils { //reads bundled text resources
+import org.apache.commons.io.IOUtils;
+
+import utils.logging.JsonLineLogger;
+
+/// reads bundled text resources
+public final class TemplateUtils { 
     private TemplateUtils() {
     }
 

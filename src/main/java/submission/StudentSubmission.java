@@ -2,13 +2,14 @@ package submission;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 
 import validation.SubmissionIssue;
 
-public class StudentSubmission { //groups a student archive, extracted root, attempts & validation findings
+/// groups a student archive, extracted root, attempts & validation findings
+public class StudentSubmission { 
     private final StudentDetails student;
     private final Path originalZip;
     private final Path rootDirectory;

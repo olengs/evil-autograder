@@ -5,7 +5,8 @@ import java.util.List;
 
 import grading.GradeStatus;
 
-public interface ProgressListener { //defines optional callbacks for grading stages & outcomes
+/// defines optional callbacks for grading stages & outcomes
+public interface ProgressListener { 
     ProgressListener NONE = new ProgressListener() {};
 
     default ProgressListener forSubmission(String id, String student) { return this; }

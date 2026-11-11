@@ -3,7 +3,8 @@ package ui;
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 
-final class ResourceUsage { //samples heap & thread usage for terminal display
+/// samples heap & thread usage for terminal display
+final class ResourceUsage { 
     private final com.sun.management.OperatingSystemMXBean os = ManagementFactory.getPlatformMXBean(com.sun.management.OperatingSystemMXBean.class);
     private final java.lang.management.ThreadMXBean threads = ManagementFactory.getThreadMXBean();
     private long lastSample;

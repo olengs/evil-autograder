@@ -7,7 +7,8 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-public final class TesterLoader { //discovers testers & indexes them by question ID
+/// discovers testers & indexes them by question ID
+public final class TesterLoader { 
     private TesterLoader() {}
 
     public static Map<String, TesterDefinition> load(Path testerDirectory) throws IOException {

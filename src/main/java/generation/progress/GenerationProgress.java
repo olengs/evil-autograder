@@ -1,13 +1,14 @@
 package generation.progress;
 
-import generation.GenerationListener;
-import generation.QuestionGenerationOutcome;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-// Worker callbacks update state; rendering only receives immutable copies.
+import generation.GenerationListener;
+import generation.QuestionGenerationOutcome;
+
+/// Worker callbacks update state; rendering only receives immutable copies.
 public final class GenerationProgress implements GenerationListener {
     private final long started = System.nanoTime();
     private long stopped;

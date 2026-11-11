@@ -20,6 +20,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 
+/// openai client - code mostly comes from https://github.com/openai/openai-java
+/// calls openai endpoints
 public final class OpenAiClient {
     private final OpenAIClient client;
     private final ReasoningEffort reasoningEffort;

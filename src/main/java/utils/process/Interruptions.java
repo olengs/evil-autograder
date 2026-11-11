@@ -2,7 +2,8 @@ package utils.process;
 
 import java.io.InterruptedIOException;
 
-public final class Interruptions { //checks cancellation while preserving thread's interrupt flag
+/// checks cancellation while preserving thread's interrupt flag
+public final class Interruptions { 
     private Interruptions() {}
 
     public static void check(String message) throws InterruptedIOException {

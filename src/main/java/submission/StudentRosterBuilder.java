@@ -12,10 +12,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import submission.files.StudentHeaderReader;
+import utils.logging.JsonLineLogger;
 import utils.process.Interruptions;
 import utils.strings.CommonPatternChecker;
-import utils.logging.JsonLineLogger;
 
+/// builds the list of identified students details.
 public class StudentRosterBuilder {
     
     public static List<StudentDetails> build(Path submissionsFolder) throws IOException {

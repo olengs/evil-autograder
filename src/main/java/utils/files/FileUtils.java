@@ -7,7 +7,8 @@ import java.util.stream.Stream;
 
 import org.apache.commons.io.file.PathUtils;
 
-public final class FileUtils { //lists files, copies replacement files & deletes directories
+/// lists files, copies replacement files & deletes directories
+public final class FileUtils { 
     private FileUtils() {}
 
     //lists files & folders beneath directory > depth 1 lists direct children > caller must close stream

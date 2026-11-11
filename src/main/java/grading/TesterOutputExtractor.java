@@ -1,6 +1,7 @@
 package grading;
 
-public final class TesterOutputExtractor { //extracts useful tester lines after process execution
+/// extracts useful tester lines after process execution
+public final class TesterOutputExtractor { 
     public ExtractedTesterOutput extract(String standardOutput) {
         StringBuilder testOutput = new StringBuilder();
         String lastLine = "";

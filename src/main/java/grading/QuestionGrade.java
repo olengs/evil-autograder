@@ -2,8 +2,8 @@ package grading;
 
 import java.util.List;
 
-
-public final class QuestionGrade { //stores a question's marks, status, test cases
+/// stores a question's marks, status, test cases
+public final class QuestionGrade { 
     private final String questionId;
     private final GradeStatus status;
     private final double earnedMarks;

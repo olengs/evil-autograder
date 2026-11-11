@@ -4,11 +4,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+
 import utils.files.FileUtils;
 
-public final class JavaTools { //locates java & javac in JDK running autograder
+/// locates java, javac, javap in JDK running autograder
+public final class JavaTools { 
     private JavaTools() {}
 
     public static Path getCompilerPath() {
