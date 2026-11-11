@@ -5,27 +5,40 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import assessment.QuestionDefinition;
 import assessment.TesterDefinition;
 import submission.QuestionAttempt;
 import submission.files.SubmissionFileFinder;
 import utils.files.FileUtils;
-import utils.files.TemporaryDirectory;
+import utils.logging.JsonLineLogger;
+import utils.logging.JsonLineLogger.Status;
 
-public class GradingWorkspace implements AutoCloseable { //copies answer, support & tester files into a temporary grading directory
-    private final TemporaryDirectory temporaryDirectory;
+public class GradingWorkspace implements AutoCloseable { //reconciles answer, support & tester files inside the student's question directory
+    private final Path questionDirectory; //candidate directory from the attempt > may not exist for flat/relocated submissions
+    private Path directory; //resolved in-place grading base > set in prepare()
 
-    public GradingWorkspace() throws IOException {
-        temporaryDirectory = new TemporaryDirectory("autograder-ws-");
+    //track changes so an in-place question directory can be restored on close
+    private final Set<Path> addedFiles = new LinkedHashSet<>();          //files this workspace newly created
+    private final Set<Path> addedDirectories = new LinkedHashSet<>();    //directories this workspace newly created
+    private final Map<Path, byte[]> overwrittenFiles = new LinkedHashMap<>(); //original bytes of files this workspace replaced
+    private final Set<Path> compilationSources = new LinkedHashSet<>();  //.java files that form this question's compile unit
+    private Path classesDirectory; //temp dir for compiled .class output, created inside the question directory
+
+    public GradingWorkspace(Path questionDirectory) {
+        //defer existence/real-path resolution to prepare(): the Q# folder may be absent for flat or relocated layouts
+        this.questionDirectory = questionDirectory;
     }
 
     public void prepare(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester) throws IOException {
         var finder = new SubmissionFileFinder();
         Map<String, Path> answerFiles = locateRequiredAnswers(question, attempt, finder);
+        directory = resolveBaseDirectory(answerFiles);
         List<Path> submissionFolders = findSubmissionFolders(attempt, answerFiles);
 
         //copy order matters > supplied support & student answers & missing data > then tester resources
@@ -33,6 +46,23 @@ public class GradingWorkspace implements AutoCloseable { //copies answer, suppor
         copyAnswerFiles(answerFiles);
         copyAdditionalSubmissionData(submissionFolders);
         copyTesterResources(question, tester);
+    }
+
+    // Grade where the student's answers actually live.
+    // Prefer the attempt's question folder; else the single folder holding the answers; else create the question path.
+    private Path resolveBaseDirectory(Map<String, Path> answerFiles) throws IOException {
+        if (Files.isDirectory(questionDirectory)) return questionDirectory.toRealPath();
+
+        //question folder absent (flat/relocated) > use the answers' folder when they share one
+        Set<Path> answerParents = new LinkedHashSet<>();
+        for (Path answerFile : answerFiles.values()) answerParents.add(answerFile.toRealPath().getParent());
+        if (answerParents.size() == 1) return answerParents.iterator().next();
+
+        //scattered answers or none locatable > assemble inside the student's extraction tree (removed on close & at run end)
+        Files.createDirectories(questionDirectory);
+        Path created = questionDirectory.toRealPath();
+        addedDirectories.add(created);
+        return created;
     }
 
     private Map<String, Path> locateRequiredAnswers(QuestionDefinition question, QuestionAttempt attempt, SubmissionFileFinder finder) throws IOException {
@@ -75,13 +105,13 @@ public class GradingWorkspace implements AutoCloseable { //copies answer, suppor
                 if (studentHelpers.size() > 1) throw new IOException("ambiguous support file > " + supportFile);
                 if (!studentHelpers.isEmpty()) source = studentHelpers.getFirst();
             }
-            copyFile(source, supportFile);
+            registerSourceIfJava(copyFile(source, supportFile));
         }
     }
 
     private void copyAnswerFiles(Map<String, Path> answerFiles) throws IOException {
         //correct spelling only in workspace > extracted filenames & source contents stay untouched
-        for (var answer : answerFiles.entrySet()) copyFile(answer.getValue(), answer.getKey());
+        for (var answer : answerFiles.entrySet()) registerSourceIfJava(copyFile(answer.getValue(), answer.getKey()));
     }
 
     private void copyAdditionalSubmissionData(List<Path> submissionFolders) throws IOException {
@@ -107,6 +137,7 @@ public class GradingWorkspace implements AutoCloseable { //copies answer, suppor
                 Path destination = getDirectory().resolve(relativePath);
 
                 if (Files.isDirectory(source)) {
+                    if (!Files.exists(destination)) addedDirectories.add(destination.normalize());
                     Files.createDirectories(destination);
                     continue;
                 }
@@ -117,23 +148,105 @@ public class GradingWorkspace implements AutoCloseable { //copies answer, suppor
                 //tester resources have final priority > cannot replace required student answers
                 boolean isRequiredAnswer = question.getRequiredAnswerFiles().stream().anyMatch(name -> Path.of(name).normalize().toString().equalsIgnoreCase(relativePath.toString()));
                 if (isRequiredAnswer) continue;
-                copyFile(source, relativePath.toString());
+                registerSourceIfJava(copyFile(source, relativePath.toString()));
             }
         }
     }
 
-    private void copyFile(Path source, String relativeName) throws IOException {
+    // .java placed for this question joins the compile unit > scopes javac to this question only, not sibling files sharing the folder
+    private void registerSourceIfJava(Path destination) {
+        if (destination != null && destination.getFileName().toString().endsWith(".java")) compilationSources.add(destination);
+    }
+
+    //explicit compile unit for this question > returned in a stable order
+    public List<Path> getCompilationSources() {
+        return List.copyOf(compilationSources);
+    }
+
+    private Path copyFile(Path source, String relativeName) throws IOException {
         Path destination = getDirectory().resolve(relativeName).normalize();
         if (!destination.startsWith(getDirectory()) || destination.equals(getDirectory())) throw new IOException("invalid workspace path > " + relativeName);
+
+        //in-place grading: the file is already correctly placed > nothing to copy or track
+        if (Files.exists(destination) && Files.isSameFile(source, destination)) return destination;
+
+        //record how to undo this change before overwriting > newly added files are deleted, replaced files are restored
+        if (Files.exists(destination)) {
+            if (!overwrittenFiles.containsKey(destination) && !addedFiles.contains(destination)) {
+                overwrittenFiles.put(destination, Files.readAllBytes(destination));
+            }
+        } else if (!overwrittenFiles.containsKey(destination)) {
+            addedFiles.add(destination);
+        }
+
         FileUtils.copyFileReplacing(source, destination);
+        return destination;
     }
 
     public Path getDirectory() {
-        return temporaryDirectory.path();
+        return directory;
+    }
+
+    //compiled .class output lives in a temp dir inside the question directory & is removed on close
+    public Path createClassesDirectory() throws IOException {
+        if (classesDirectory == null) {
+            classesDirectory = Files.createTempDirectory(directory, "autograder-classes-");
+        }
+        return classesDirectory;
     }
 
     @Override
     public void close() throws IOException {
-        temporaryDirectory.close();
+        // Restore the student's question directory to its pre-grading state.
+        // Best-effort: a cleanup failure is logged but never masks a grading exception.
+        List<String> failures = new ArrayList<>();
+
+        //remove the compiled-classes temp dir (and its .class files) created inside the question directory
+        if (classesDirectory != null) {
+            try {
+                if (Files.isDirectory(classesDirectory)) FileUtils.deleteDirectory(classesDirectory);
+            } catch (IOException error) {
+                failures.add("delete classes dir " + classesDirectory + " > " + error.getMessage());
+            }
+            classesDirectory = null;
+        }
+
+        //restore files this workspace overwrote, back to their original bytes
+        for (var entry : overwrittenFiles.entrySet()) {
+            try {
+                Files.write(entry.getKey(), entry.getValue());
+            } catch (IOException error) {
+                failures.add("restore " + entry.getKey() + " > " + error.getMessage());
+            }
+        }
+
+        //delete files this workspace newly created (injected tester source & resources, relocated data)
+        for (Path added : addedFiles) {
+            try {
+                Files.deleteIfExists(added);
+            } catch (IOException error) {
+                failures.add("delete " + added + " > " + error.getMessage());
+            }
+        }
+
+        //remove directories this workspace created, deepest-first & only when empty
+        List<Path> directoriesDeepestFirst = new ArrayList<>(addedDirectories);
+        directoriesDeepestFirst.sort(java.util.Comparator.comparingInt(Path::getNameCount).reversed());
+        for (Path dir : directoriesDeepestFirst) {
+            try {
+                if (Files.isDirectory(dir)) Files.deleteIfExists(dir); //deleteIfExists on a dir fails if non-empty > left for run-end cleanup
+            } catch (IOException error) {
+                failures.add("remove dir " + dir + " > " + error.getMessage());
+            }
+        }
+
+        overwrittenFiles.clear();
+        addedFiles.clear();
+        addedDirectories.clear();
+
+        if (!failures.isEmpty()) {
+            JsonLineLogger.getInstance().append(Status.WARNING, "GradingWorkspace",
+                    "in-place cleanup incomplete for " + directory + " > " + String.join("; ", failures));
+        }
     }
 }

@@ -10,8 +10,6 @@ import assessment.QuestionDefinition;
 import assessment.TesterDefinition;
 import grading.progress.ProgressListener;
 import submission.QuestionAttempt;
-import utils.files.FileUtils;
-import utils.files.TemporaryDirectory;
 import utils.process.JavaTools;
 import utils.process.ProcessExecutor;
 import utils.process.ProcessResult;
@@ -33,17 +31,16 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
     }
 
     public QuestionGrade grade(QuestionDefinition question, QuestionAttempt attempt, TesterDefinition tester, ProgressListener progress, String studentLabel) throws IOException {
-        try (GradingWorkspace workspace = new GradingWorkspace()) {
+        try (GradingWorkspace workspace = new GradingWorkspace(attempt.getQuestionDirectory())) {
             workspace.prepare(question, attempt, tester);
-            try (TemporaryDirectory classes = new TemporaryDirectory("autograder-classes-")) {
-                return gradeInWorkspace(question.getId(), tester, workspace.getDirectory(), classes.path(), progress, studentLabel);
-            }
+            Path classes = workspace.createClassesDirectory();
+            return gradeInWorkspace(question.getId(), tester, workspace.getDirectory(), classes, workspace.getCompilationSources(), progress, studentLabel);
         }
     }
 
-    private QuestionGrade gradeInWorkspace(String questionId, TesterDefinition tester, Path workspaceDirectory, Path classesDirectory, ProgressListener progress, String studentLabel) throws IOException {
+    private QuestionGrade gradeInWorkspace(String questionId, TesterDefinition tester, Path workspaceDirectory, Path classesDirectory, List<Path> compilationSources, ProgressListener progress, String studentLabel) throws IOException {
         progress.compilationStarted(questionId, compilationTimeout);
-        ProcessResult compilationResult = compile(workspaceDirectory, classesDirectory);
+        ProcessResult compilationResult = compile(workspaceDirectory, classesDirectory, compilationSources);
         logDiagnostics(studentLabel, questionId, "compilation", compilationResult);
         if (compilationResult.isOutputLimitExceeded())
             return failedGrade(questionId, GradeStatus.compileError, outputLimitMessage("compilation", compilationResult));
@@ -99,7 +96,7 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
         return new QuestionGrade(questionId, status, earnedMarks, testResults, message);
     }
 
-    private ProcessResult compile(Path workspaceDirectory, Path classesDirectory) throws IOException {
+    private ProcessResult compile(Path workspaceDirectory, Path classesDirectory, List<Path> compilationSources) throws IOException {
         List<String> command = new ArrayList<>();
         command.add(JavaTools.getCompilerPath().toString());
         command.add("-d");
@@ -107,13 +104,10 @@ public class QuestionGrader { //compiles answers, runs tester & totals completed
         command.add("-cp");
         command.add(workspaceDirectory.toString());
 
-        List<Path> sources;
-        //workspace's direct java files are compilation unit > nested data stays as resources
-        try (var files = FileUtils.streamRegularFiles(workspaceDirectory)) {
-            sources = files.filter(path -> path.getFileName().toString().endsWith(".java")).sorted().toList();
-        }
+        //compile only this question's files > sibling answers sharing the folder stay as resources, not compile units
+        List<Path> sources = compilationSources.stream().sorted().toList();
         if (sources.isEmpty()) {
-            throw new IOException("No Java sources in " + workspaceDirectory);
+            throw new IOException("No Java sources for question in " + workspaceDirectory);
         }
         for (Path source : sources) {
             command.add(source.toString());
