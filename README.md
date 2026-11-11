@@ -31,7 +31,6 @@ Run from the repository root:
 
 | Action | Command |
 | --- | --- |
-| Compile | `mvn compile` |
 | Start on macOS/Linux | `./run.sh` |
 | Start on Windows PowerShell | `.\run.bat` |
 
@@ -81,7 +80,9 @@ The supplied assessment totals **20 marks**: Q1a: 3, Q1b: 3, Q2a: 5, Q2b: 5, Q3:
 - Instructors review tester correctness and unclear identities. Missing headers are flagged, not rewritten.
 - Submissions run locally with the application's permissions. Time limits do not provide a security sandbox.
 
-## Optional AI testers
+## AI tester generation
+
+Generate new test cases from the exam PDF and starter files.
 
 1. Copy `.env.example` to `.env` and set `openapikey=your-api-key`.
 2. Check `exam.pdf.file` and the `llm.*` settings in `config.properties`.
@@ -95,7 +96,7 @@ A complete set is used for the current session. Failed generation keeps the prev
 
 Java source is in `src/main/java/`, with separate packages for validation, grading, reports, the interface, and tester generation.
 
-Libraries are listed in `pom.xml`: TamboUI/JLine3, Commons IO, Gson, OpenCSV, dotenv-java, OpenAI Java SDK, SLF4J NOP, and JUnit.
+Libraries are listed in `pom.xml`: TamboUI/JLine3, Commons IO, Gson, OpenCSV, dotenv-java, OpenAI Java SDK, and JUnit.
 
 ## Troubleshooting
 
