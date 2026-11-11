@@ -20,7 +20,7 @@ Provide the assessment PDF, starter files, dependencies, testers, and student ZI
   ├── assessment.pdf
   ├── student-submission/       # Student ZIPs; subfolders allowed
   ├── Tester-Files/             # Java testers, marks.txt, numTestCases.txt
-  └── starter-files/
+  └── RenameToYourUsername/
       ├── Q1/
       ├── Q2/
       └── Q3/
