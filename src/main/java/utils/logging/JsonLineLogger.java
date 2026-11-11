@@ -3,13 +3,15 @@ package utils.logging;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import org.apache.commons.io.FileUtils;
 import java.util.ArrayList;
-import config.Config;
 import java.util.EnumSet;
-import java.util.Map;
+import java.util.LinkedHashMap;
+
+import org.apache.commons.io.FileUtils;
 
 import com.google.gson.Gson;
+
+import config.Config;
 
 // appends structured log entries as JSON lines
 // Shared by grading workers; buffer operations are synchronized.
@@ -25,6 +27,7 @@ public final class JsonLineLogger {
     private static JsonLineLogger instance;
     private Path logfilePath;
     private boolean hasInit;
+    private final LinkedHashMap<String, String> jsonMap;
 
     private final ArrayList<String> logs;
     // Startup defaults allow logging before the UI has a valid configuration.
@@ -35,6 +38,7 @@ public final class JsonLineLogger {
     private JsonLineLogger() {
         hasInit = false;
         logs = new ArrayList<>();
+        jsonMap = new LinkedHashMap<>();
     }
 
     public static JsonLineLogger getInstance() {
@@ -46,20 +50,25 @@ public final class JsonLineLogger {
     }
 
     public void Init(Path logFile, int threshold) throws IOException {
-        if (!hasInit) this.logfilePath = logFile;
+        if (hasInit) return;
+
         if (threshold <= 0 || threshold > Integer.MAX_VALUE - 5) {
             throw new IllegalArgumentException("log buffer threshold must be positive and allow threshold + 5 without overflow");
         }
+        
         logs.ensureCapacity(threshold + 5);
         bufferThreshold = threshold;
-        if (hasInit) return;
-        // Creates parent folders and truncates the previous log for this run.
-        FileUtils.writeStringToFile(logfilePath.toFile(), "", StandardCharsets.UTF_8);
+        
+        Path target = logFile.toAbsolutePath().normalize();
+        FileUtils.forceMkdirParent(target.toFile());
+        FileUtils.writeStringToFile(target.toFile(), "", StandardCharsets.UTF_8);
+        logfilePath = target;
         hasInit = true;
     }
 
     /// param flags to enable which log status to be enabled, by default all types of logs are enabled.
     public void Init(Path logFile, int threshold, EnumSet<Status> flags) throws IOException {
+        if (hasInit) return;
         setLevels(flags);
         Init(logFile, threshold);
     }
@@ -73,7 +82,10 @@ public final class JsonLineLogger {
         if (!flags.contains(status)) return;
 
         synchronized (logs) {
-            logs.add(gson.toJson(Map.of("status", status.toString(), "message", String.format("[%s]: %s", feature, message))));
+            jsonMap.put("status", status.toString());
+            jsonMap.put("message", String.format("[%s]: %s", feature, message));
+            logs.add(gson.toJson(jsonMap));
+            jsonMap.clear();
             if (logs.size() >= bufferThreshold) {
                 try {
                     flush();

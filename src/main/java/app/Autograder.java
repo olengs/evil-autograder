@@ -18,6 +18,7 @@ import submission.StudentSubmission;
 import submission.SubmissionLoader;
 import submission.files.SubmissionFileFinder;
 import utils.files.TemporaryDirectory;
+import utils.logging.JsonLineLogger;
 import utils.process.Interruptions;
 import validation.SubmissionValidator;
 import validation.rules.AnswerFileRule;
@@ -52,6 +53,12 @@ public final class Autograder { //coordinates assessment loading, submission val
             try {
                 progress.preparing("reading student scoresheet");
                 List<StudentDetails> roster = prepareRoster(config);
+                // Every student takes the same assessment. Estimate the whole run once.
+                long totalAttempts = (long) roster.size() * assessment.getQuestions().size();
+                var questionTimeout = config.getCompilationTimeout().plus(config.getExecutionTimeout());
+                progress.setEstimatedTotal(questionTimeout.multipliedBy(totalAttempts)
+                        .dividedBy(2L * config.getNumGradingWorkers()));
+
                 progress.preparing("extracting submission zip files");
                 List<StudentSubmission> submissions = SubmissionLoader.loadSubmissions(config.getSubmissionsDirectory(), workspace.path(), roster, assessment, config.getHeaderSearchDepth());
                 if (submissions.isEmpty()) throw new IOException("no submission ZIP files found");
@@ -65,9 +72,9 @@ public final class Autograder { //coordinates assessment loading, submission val
                     
                     for (var issue : submission.getSubmissionIssues()) {
                         var level = issue.getSeverity() == validation.IssueSeverity.error
-                                ? utils.logging.JsonLineLogger.Status.ERROR : utils.logging.JsonLineLogger.Status.WARNING;
+                                ? JsonLineLogger.Status.ERROR : JsonLineLogger.Status.WARNING;
                         
-                        utils.logging.JsonLineLogger.getInstance().append(level, "SubmissionValidator",
+                        JsonLineLogger.getInstance().append(level, "SubmissionValidator",
                                 "[student=" + submission.getDisplayName() + "][archive="
                                 + submission.getOriginalZip().toAbsolutePath().normalize() + "] " + issue);
                     }

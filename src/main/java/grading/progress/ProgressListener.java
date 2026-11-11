@@ -12,7 +12,8 @@ public interface ProgressListener { //defines optional callbacks for grading sta
 
     default void preparing(String message) {}
     default void validationStarted(String student) {}
-    default void batchStarted(int students, List<String> questions, int workerCount) {}
+    default void setEstimatedTotal(Duration estimate) {}
+    default void batchStarted(int students, List<String> questions) {}
     default void submissionStarted(String student) {}
     default void questionStarted(String question) {}
     default void compilationStarted(String question, Duration timeout) {}
