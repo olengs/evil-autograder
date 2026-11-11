@@ -5,11 +5,12 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Map;
 import java.util.EnumSet;
 import java.util.Locale;
-import utils.logging.JsonLineLogger.Status;
+import java.util.Map;
 import java.util.Properties;
+
+import utils.logging.JsonLineLogger.Status;
 
 public class Config { //loads grading paths & process time limits from configuration
     public static final int DEFAULT_LOG_BUFFER_THRESHOLD = 12;
@@ -77,7 +78,7 @@ public class Config { //loads grading paths & process time limits from configura
         }
         
         // Validate output limits before any worker starts.
-        Long processOutMaxBytes = Long.parseLong(properties.getProperty("process.output.max.MiB", "1"));
+        Long processOutMaxBytes = Long.valueOf(properties.getProperty("process.output.max.MiB", "1"));
         this.processOutputMaxBytes = (processOutMaxBytes < 1 ? 1 : processOutMaxBytes) << 20;
     }
 
