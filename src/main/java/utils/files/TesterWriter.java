@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Locale;
 import java.math.BigDecimal;
 import assessment.TesterMetadata;
 import openai.GeneratedTesters;
@@ -18,19 +17,16 @@ public final class TesterWriter {
 
     private TesterWriter() {}
 
-    public static void prepareOutput(List<QuestionSpec> specs, Map<String, Double> allocations, Path outputDirectory) throws IOException {
+    public static void writeMarks(Map<String, Double> allocations, Path outputDirectory) throws IOException {
         StringBuilder marks = new StringBuilder();
-        for (QuestionSpec spec : specs) {
-            Double allocation = allocations.get(spec.id().toLowerCase(Locale.ROOT));
-            if (allocation == null || (!Double.isFinite(allocation * 2) || allocation <= 0 || allocation * 2 != Math.floor(allocation * 2))) {
-                throw new IOException("missing or invalid marks.txt allocation > " + spec.id());
-            }
-            marks.append(spec.id()).append(':')
-                    .append(BigDecimal.valueOf(allocation).stripTrailingZeros().toPlainString()).append('\n');
-        }
+        allocations.forEach((id, allocation) -> marks.append(id).append(':')
+                .append(BigDecimal.valueOf(allocation).stripTrailingZeros().toPlainString()).append('\n'));
+        writeFile(outputDirectory, "marks.txt", marks.toString());
+    }
+
+    public static void prepareOutput(List<QuestionSpec> specs, Path outputDirectory) throws IOException {
         Files.createDirectories(outputDirectory);
         deletePrevious(specs, outputDirectory);
-        writeFile(outputDirectory, "marks.txt", marks.toString());
         writeFile(outputDirectory, "numTestCases.txt", "");
         for (QuestionSpec spec : specs) Files.createDirectories(outputDirectory.resolve(spec.folderName()));
     }

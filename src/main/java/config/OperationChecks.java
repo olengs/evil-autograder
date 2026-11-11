@@ -2,7 +2,6 @@ package config;
 
 import assessment.AssessmentLoader;
 import assessment.TesterLoader;
-import assessment.TesterMetadata;
 import generation.QuestionSpec;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,12 +18,7 @@ public final class OperationChecks {
         config.validateGenerationSettings();
         OpenAiClient.readApiKey(config.getLlmApiKeyEnv()); // Check presence without displaying or sending the key.
         PdfFileUtils.requirePdf(config.getExamPdfFile());
-        var marks = TesterMetadata.readMarks(config.getTestersDirectory());
-        for (var question : QuestionSpec.collect(config.getResourcesDirectory())) {
-            Double mark = marks.get(question.id().toLowerCase(java.util.Locale.ROOT));
-            if (mark == null || (!Double.isFinite(mark * 2) || mark <= 0 || mark * 2 != Math.floor(mark * 2)))
-                throw new IOException("missing positive whole or half marks allocation > " + question.id());
-        }
+        QuestionSpec.collect(config.getResourcesDirectory());
         writable(config.getGenerationOutputDirectory());
     }
 
