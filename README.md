@@ -2,6 +2,18 @@
 
 Batch grading for Java lab tests, exams, and assignments. Compiles and tests student submissions, handles common folder mistakes, and exports scores to CSV.
 
+## Table of contents
+
+- [Requirements](#requirements)
+- [Setup](#setup)
+  - [Configuration](#configuration)
+- [How to run](#how-to-run)
+- [UI features](#ui-features)
+  - [Generate testers](#1-generate-testers)
+  - [Run grading](#2-run-grading)
+- [Assumptions](#assumptions)
+- [Misc Notes](#misc-notes)
+
 ## Requirements
 
 - JDK 25 on your PATH.
@@ -47,17 +59,19 @@ Provide the assessment PDF, starter files, dependencies, testers, and student ZI
 
    - Name each tester `<AnswerName>Tester.java`.
 
-     - Eg. `TaskTester.java`.
+     - Eg. `Q1Tester.java`.
 
    - Add question marks to `marks.txt`.
 
-     - Eg. `Task:5` means 5 marks.
+     - Eg. `Q1:5` means 5 marks.
 
    - Add case counts to `numTestCases.txt`.
 
-     - Eg. `Task:10` means 10 cases.
+     - Eg. `Q1:10` means 10 cases.
 
    - Missing counts are inferred from literal `System.out.println("Passed");` statements when possible.
+   - Number of test cases should be a multiple of marks eg. 5 mark 5 test case, 5 mark 10 test case, 2.5 marks 5 test case
+   - Number of test case should be a whole number
    - AI generation creates the testers and metadata files automatically.
 
 4. **Set up AI generation**
@@ -76,10 +90,10 @@ Key settings in `config.properties`:
 | `submissions.folder`, `testers.folder`, `resources.folder` | Assessment folders under the input directory |
 | `scoresheet.file` | Export filename |
 | `exam.pdf.file` | Assessment PDF for tester generation |
-| `grading.workers` | Parallel workers; default: 30 |
-| `compilation.timeout.seconds`, `execution.timeout.seconds` | Time limits; default: 5 seconds each |
+| `grading.workers` | Parallel workers; default: 12 |
+| `compilation.timeout.seconds`, `execution.timeout.seconds` | Time limits; default: 5 seconds each (increase this as you increase number of grading workers, more info under misc notes) |
 | `submission.header.search.depth`, `submission.answer.search.depth` | Search depths; default: 6 and 5 |
-| `log.levels` | Logs `ERROR` by default; add `WARNING` for validation warnings |
+| `log.levels` | Logs `ERROR` by default; add `WARNING` for validation warnings or `LOG` for all logs |
 
 ## How to run
 
@@ -130,3 +144,10 @@ Results are saved to **`output/IS442-ScoreSheet.csv`**, replacing the previous r
 - Test cases have equal weight within each question. Warnings do not automatically deduct marks.
 - Instructors review tester correctness and unclear identities. Missing headers are flagged, not rewritten.
 - Submissions run locally with the application's permissions. Time limits do not provide a security sandbox.
+
+
+## Misc Notes
+
+- Only have 1 compiler is a bottleneck in a monolithic architecture. We cant compile all the student’s submission concurrently.
+- Because of only having 1 compiler, the compiler timeout need to increased based on the number of worker threads, the compiler timeout include waiting for the java compiler to be freed up
+- AI generation: When the pdf given is not very specific about the test it has to do for each question, the generated tester would be based on the AI’s knowledge
