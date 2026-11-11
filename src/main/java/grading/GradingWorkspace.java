@@ -5,9 +5,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import assessment.QuestionDefinition;
 import assessment.TesterDefinition;
@@ -18,6 +20,10 @@ import utils.files.TemporaryDirectory;
 
 public class GradingWorkspace implements AutoCloseable { //copies answer, support & tester files into a temporary grading directory
     private final TemporaryDirectory temporaryDirectory;
+
+    //track changes so an in-place question directory can be restored on close
+    private final Set<Path> addedFiles = new LinkedHashSet<>();          //files this workspace newly created
+    private final Map<Path, byte[]> overwrittenFiles = new LinkedHashMap<>(); //original bytes of files this workspace replaced
 
     public GradingWorkspace() throws IOException {
         temporaryDirectory = new TemporaryDirectory("autograder-ws-");
@@ -125,6 +131,19 @@ public class GradingWorkspace implements AutoCloseable { //copies answer, suppor
     private void copyFile(Path source, String relativeName) throws IOException {
         Path destination = getDirectory().resolve(relativeName).normalize();
         if (!destination.startsWith(getDirectory()) || destination.equals(getDirectory())) throw new IOException("invalid workspace path > " + relativeName);
+
+        //in-place grading: the file is already correctly placed > nothing to copy or track
+        if (Files.exists(destination) && Files.isSameFile(source, destination)) return;
+
+        //record how to undo this change before overwriting > newly added files are deleted, replaced files are restored
+        if (Files.exists(destination)) {
+            if (!overwrittenFiles.containsKey(destination) && !addedFiles.contains(destination)) {
+                overwrittenFiles.put(destination, Files.readAllBytes(destination));
+            }
+        } else if (!overwrittenFiles.containsKey(destination)) {
+            addedFiles.add(destination);
+        }
+
         FileUtils.copyFileReplacing(source, destination);
     }
 
